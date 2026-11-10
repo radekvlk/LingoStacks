@@ -119,6 +119,13 @@ fun FlashcardSessionScreen(
     val currentWord = sessionQueue.getOrNull(currentIndex)
     val nextWord = sessionQueue.getOrNull(currentIndex + 1)
     val thirdWord = sessionQueue.getOrNull(currentIndex + 2)
+    val studyDirection = progressState.studyDirection
+    val isReversedCard = when (studyDirection) {
+        cz.slovickaspeak.app.model.StudyDirection.NATIVE_TO_FOREIGN -> false
+        cz.slovickaspeak.app.model.StudyDirection.FOREIGN_TO_NATIVE -> true
+        cz.slovickaspeak.app.model.StudyDirection.MIXED -> currentIndex % 2 == 1
+    }
+    val isReversedCardState by rememberUpdatedState(isReversedCard)
 
     var feedbackState by remember { mutableStateOf(CardFeedbackState.NEUTRAL) }
     var showHintTranslation by remember { mutableStateOf(false) }
@@ -196,7 +203,7 @@ fun FlashcardSessionScreen(
         lastFlashedWrongWord = heardSnippet
         feedbackState = CardFeedbackState.SPOKEN_WRONG_FLASH
 
-        if (progressState.autoPronounceEnabled && targetWordToPronounce != null) {
+        if (progressState.autoPronounceEnabled && !isReversedCardState && targetWordToPronounce != null) {
             speechControllerRef?.speakEnglish(targetWordToPronounce.english)
         }
 
@@ -237,8 +244,12 @@ fun FlashcardSessionScreen(
             else -> CardFeedbackState.SWIPED_WRONG
         }
 
-        val shouldPronounce = method == AnswerMethod.SWIPED_DONT_KNOW ||
-            (isCorrect && progressState.autoPronounceEnabled)
+        val cardWasReversed = isReversedCardState
+        val shouldPronounce = if (cardWasReversed) {
+            method == AnswerMethod.SWIPED_DONT_KNOW
+        } else {
+            method == AnswerMethod.SWIPED_DONT_KNOW || (isCorrect && progressState.autoPronounceEnabled)
+        }
 
         if (hasMicPermState && micAutoState) {
             // Pause microphone immediately so TTS audio or transition noise never leaks into next card
@@ -280,10 +291,15 @@ fun FlashcardSessionScreen(
                 word = word,
                 isCorrect = isCorrect && !usedHintOnCurrentCard,
                 method = method,
-                spokenTranscript = spokenMatch ?: lastHeardText
+                spokenTranscript = spokenMatch ?: lastHeardText,
+                wasReversed = cardWasReversed
             )
             results.add(attempt)
-            progressState.recordCardAttempt(attempt, usedHint = usedHintOnCurrentCard)
+            progressState.recordCardAttempt(
+                result = attempt,
+                usedHint = usedHintOnCurrentCard,
+                isReversed = cardWasReversed
+            )
 
             when {
                 !isCorrect -> {
@@ -359,9 +375,10 @@ fun FlashcardSessionScreen(
         keepScreenActive()
         val word = currentWordState
         val state = feedbackStateUpdated
+        val expectCzech = isReversedCardState
         val canAcceptSpeech = state == CardFeedbackState.NEUTRAL || state == CardFeedbackState.SPOKEN_WRONG_FLASH
         if (word != null && canAcceptSpeech && candidates.isNotEmpty()) {
-            val matched = WordMatcher.matches(candidates, word, isFinal)
+            val matched = WordMatcher.matches(candidates, word, isFinal, expectCzech = expectCzech)
             if (matched != null) {
                 wrongWordDebounceJob?.cancel()
                 wrongFlashResetJob?.cancel()
@@ -379,7 +396,7 @@ fun FlashcardSessionScreen(
 
                     if (isFinal) {
                         triggerWrongSpokenFlash(snippet, targetWordToPronounce = word)
-                    } else if (!WordMatcher.isPrefixOfTarget(candidates, word)) {
+                    } else if (!WordMatcher.isPrefixOfTarget(candidates, word, expectCzech = expectCzech)) {
                         // Only flash UI after a quiet 950ms pause if the session is still open in a noisy room;
                         // NEVER cancels the recognizer so mid-word speech is never interrupted!
                         wrongWordDebounceJob = coroutineScope.launch {
@@ -432,6 +449,15 @@ fun FlashcardSessionScreen(
     LaunchedEffect(hasMicPermission) {
         if (hasMicPermission && micAutoEnabled) {
             speechControllerRef?.startContinuousListening()
+        }
+    }
+
+    LaunchedEffect(currentWord?.id, isReversedCard, speechControllerRef) {
+        val controller = speechControllerRef ?: return@LaunchedEffect
+        controller.listenInCzech = isReversedCard
+        if (isReversedCard && progressState.autoPronounceEnabled && currentWord != null) {
+            delay(180L)
+            controller.speakEnglish(currentWord.english)
         }
     }
 
@@ -571,12 +597,13 @@ fun FlashcardSessionScreen(
                             strings = strings,
                             language = deck.language,
                             word = currentWord,
-                            srsStat = progressState.getWordSrsStat(currentWord.id),
+                            srsStat = progressState.getWordSrsStat(currentWord.id, isReversed = isReversedCard),
                             isRevealed = isTranslationRevealed,
                             onSpeakSentence = { sentence ->
                                 speechControllerRef?.speakEnglish(sentence)
                             },
-                            onRevealHint = handleToggleHint
+                            onRevealHint = handleToggleHint,
+                            isReversed = isReversedCard
                         )
 
                         RecentAttemptsCard(
@@ -596,7 +623,8 @@ fun FlashcardSessionScreen(
                         lastHeardText = lastHeardText,
                         feedbackState = feedbackState,
                         speechError = speechError,
-                        rmsLevel = rmsLevel
+                        rmsLevel = rmsLevel,
+                        expectCzech = isReversedCard
                     )
                 }
 
@@ -623,6 +651,7 @@ fun FlashcardSessionScreen(
                         onPlayAudio = handlePlayAudio,
                         onDragDelta = handleDragDelta,
                         onDragEnd = handleDragEnd,
+                        isReversed = isReversedCard,
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth()
@@ -682,7 +711,8 @@ fun FlashcardSessionScreen(
                     lastHeardText = lastHeardText,
                     feedbackState = feedbackState,
                     speechError = speechError,
-                    rmsLevel = rmsLevel
+                    rmsLevel = rmsLevel,
+                    expectCzech = isReversedCard
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -702,6 +732,7 @@ fun FlashcardSessionScreen(
                     onPlayAudio = handlePlayAudio,
                     onDragDelta = handleDragDelta,
                     onDragEnd = handleDragEnd,
+                    isReversed = isReversedCard,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
@@ -713,14 +744,15 @@ fun FlashcardSessionScreen(
                     strings = strings,
                     language = deck.language,
                     word = currentWord,
-                    srsStat = progressState.getWordSrsStat(currentWord.id),
+                    srsStat = progressState.getWordSrsStat(currentWord.id, isReversed = isReversedCard),
                     isRevealed = isTranslationRevealed,
                     onSpeakSentence = { sentence ->
                         speechControllerRef?.speakEnglish(sentence)
                     },
                     onRevealHint = handleToggleHint,
                     compact = true,
-                    showSentence = configuration.screenHeightDp >= 640
+                    showSentence = configuration.screenHeightDp >= 640,
+                    isReversed = isReversedCard
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -877,7 +909,8 @@ private fun WordMemoryInsightsCard(
     onSpeakSentence: (String) -> Unit,
     onRevealHint: () -> Unit,
     compact: Boolean = false,
-    showSentence: Boolean = true
+    showSentence: Boolean = true,
+    isReversed: Boolean = false
 ) {
     val boxLevel = (srsStat?.box ?: 0).coerceIn(0, 5)
     val lapses = srsStat?.lapses ?: 0
@@ -1040,7 +1073,7 @@ private fun WordMemoryInsightsCard(
                     color = SurfaceBg,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    if (isRevealed) {
+                    if (isRevealed || isReversed) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1269,8 +1302,10 @@ private fun RecentAttemptsCard(
                             }
 
                             Column(modifier = Modifier.weight(1f)) {
+                                val leadText = if (item.wasReversed) item.word.english else item.word.czech
+                                val tailText = if (item.wasReversed) item.word.czech else item.word.english
                                 Text(
-                                    text = "${item.word.czech} → ${item.word.english}",
+                                    text = "$leadText → $tailText",
                                     fontSize = 12.5.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = TextDark,
@@ -1461,7 +1496,8 @@ private fun Flashcard3DStackArea(
     onPlayAudio: () -> Unit,
     onDragDelta: (Float) -> Unit,
     onDragEnd: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isReversed: Boolean = false
 ) {
     Box(
         modifier = modifier,
@@ -1521,7 +1557,8 @@ private fun Flashcard3DStackArea(
             onToggleHint = onToggleHint,
             onPlayAudio = onPlayAudio,
             onDragDelta = onDragDelta,
-            onDragEnd = onDragEnd
+            onDragEnd = onDragEnd,
+            isReversed = isReversed
         )
     }
 }
@@ -1589,7 +1626,8 @@ private fun LiveSpeechBanner(
     lastHeardText: String?,
     feedbackState: CardFeedbackState,
     speechError: String?,
-    rmsLevel: Float = 0f
+    rmsLevel: Float = 0f,
+    expectCzech: Boolean = false
 ) {
     val bgColor by animateColorAsState(
         targetValue = when (feedbackState) {
@@ -1650,7 +1688,7 @@ private fun LiveSpeechBanner(
                 !lastHeardText.isNullOrBlank() ->
                     strings.bannerHeard(lastHeardText)
                 isListening ->
-                    strings.bannerListeningForLanguage(language)
+                    if (expectCzech) strings.bannerListeningCzech else strings.bannerListeningForLanguage(language)
                 else ->
                     strings.bannerMicReady
             }
@@ -1681,7 +1719,8 @@ private fun SwipeableVocabCard(
     onToggleHint: () -> Unit,
     onPlayAudio: () -> Unit,
     onDragDelta: (Float) -> Unit,
-    onDragEnd: () -> Unit
+    onDragEnd: () -> Unit,
+    isReversed: Boolean = false
 ) {
     // Derived states so swipe badges only recompose when crossing the 75px threshold, NOT every frame!
     val showLeftSwipeBadge by remember {
@@ -1893,7 +1932,7 @@ private fun SwipeableVocabCard(
                 Spacer(modifier = Modifier.height(if (isUltraCompactCard) 5.dp else 8.dp))
 
                 Text(
-                    text = strings.cardPromptSpeakLanguage(language),
+                    text = if (isReversed) strings.cardPromptSpeakCzech else strings.cardPromptSpeakLanguage(language),
                     fontSize = if (isUltraCompactCard) 10.sp else 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = AppleBlue,
@@ -1902,13 +1941,14 @@ private fun SwipeableVocabCard(
 
                 Spacer(modifier = Modifier.height(if (isUltraCompactCard) 2.dp else 4.dp))
 
+                val frontWordText = if (isReversed) word.english else word.czech
                 Text(
-                    text = word.czech,
+                    text = frontWordText,
                     fontSize = when {
-                        isUltraCompactCard && word.czech.length > 22 -> 19.sp
+                        isUltraCompactCard && frontWordText.length > 22 -> 19.sp
                         isUltraCompactCard -> 22.sp
-                        word.czech.length > 34 -> 20.sp
-                        word.czech.length > 22 -> 23.sp
+                        frontWordText.length > 34 -> 20.sp
+                        frontWordText.length > 22 -> 23.sp
                         else -> 26.sp
                     },
                     fontWeight = FontWeight.ExtraBold,
@@ -1916,8 +1956,8 @@ private fun SwipeableVocabCard(
                     textAlign = TextAlign.Center,
                     lineHeight = when {
                         isUltraCompactCard -> 25.sp
-                        word.czech.length > 34 -> 25.sp
-                        word.czech.length > 22 -> 28.sp
+                        frontWordText.length > 34 -> 25.sp
+                        frontWordText.length > 22 -> 28.sp
                         else -> 32.sp
                     },
                     letterSpacing = (-0.4).sp,
@@ -1925,6 +1965,14 @@ private fun SwipeableVocabCard(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(horizontal = 8.dp)
                 )
+                if (isReversed && word.phonetic.isNotEmpty() && !isUltraCompactCard) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = word.phonetic,
+                        fontSize = 12.5.sp,
+                        color = TextMuted
+                    )
+                }
             }
 
             // 3. Dedicated Bottom Slot: either Hint pill OR Translation card
@@ -1990,20 +2038,21 @@ private fun SwipeableVocabCard(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
+                            val revealedText = if (isReversed) word.czech else word.english
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
                             ) {
                                 Text(
-                                    text = word.english,
+                                    text = revealedText,
                                     fontSize = when {
-                                        word.english.length > 26 -> 18.sp
-                                        isCompactCard || word.english.length > 18 -> 20.sp
+                                        revealedText.length > 26 -> 18.sp
+                                        isCompactCard || revealedText.length > 18 -> 20.sp
                                         else -> 24.sp
                                     },
                                     lineHeight = when {
-                                        word.english.length > 26 -> 22.sp
-                                        isCompactCard || word.english.length > 18 -> 24.sp
+                                        revealedText.length > 26 -> 22.sp
+                                        isCompactCard || revealedText.length > 18 -> 24.sp
                                         else -> 28.sp
                                     },
                                     fontWeight = FontWeight.Bold,
@@ -2011,18 +2060,20 @@ private fun SwipeableVocabCard(
                                     textAlign = TextAlign.Center,
                                     modifier = Modifier.weight(1f, fill = false)
                                 )
-                                IconButton(
-                                    onClick = onPlayAudio,
-                                    modifier = Modifier.size(26.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                                        contentDescription = null,
-                                        tint = AppleBlue
-                                    )
+                                if (!isReversed) {
+                                    IconButton(
+                                        onClick = onPlayAudio,
+                                        modifier = Modifier.size(26.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                            contentDescription = null,
+                                            tint = AppleBlue
+                                        )
+                                    }
                                 }
                             }
-                            if (word.phonetic.isNotEmpty()) {
+                            if (!isReversed && word.phonetic.isNotEmpty()) {
                                 Text(
                                     text = word.phonetic,
                                     fontSize = if (isCompactCard) 12.5.sp else 14.sp,

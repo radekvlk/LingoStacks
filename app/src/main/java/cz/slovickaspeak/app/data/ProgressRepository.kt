@@ -163,6 +163,13 @@ class ProgressStateHolder(context: Context) {
     )
         private set
 
+    var studyDirection by mutableStateOf(
+        prefs.getString("study_direction", null)?.let { saved ->
+            cz.slovickaspeak.app.model.StudyDirection.entries.find { it.name == saved }
+        } ?: cz.slovickaspeak.app.model.StudyDirection.NATIVE_TO_FOREIGN
+    )
+        private set
+
     var todayCompletedWords by mutableIntStateOf(loadTodayCompleted())
         private set
 
@@ -212,19 +219,24 @@ class ProgressStateHolder(context: Context) {
     var srsRevision by mutableIntStateOf(0)
         private set
 
-    fun getWordSrsStat(wordId: String): WordSrsStat? {
+    private fun srsKey(wordId: String, isReversed: Boolean): String =
+        if (isReversed) "${wordId}__rev" else wordId
+
+    fun getWordSrsStat(wordId: String, isReversed: Boolean = false): WordSrsStat? {
         @Suppress("UNUSED_EXPRESSION")
         srsRevision
-        return wordSrsMap[wordId]
+        return wordSrsMap[srsKey(wordId, isReversed)]
     }
 
     fun getDeckMasteredCount(deck: cz.slovickaspeak.app.model.VocabDeck): Int {
         @Suppress("UNUSED_EXPRESSION")
         srsRevision
+        val useReversed = studyDirection == cz.slovickaspeak.app.model.StudyDirection.FOREIGN_TO_NATIVE
         return deck.words.count { word ->
-            val stat = wordSrsMap[word.id]
-            (stat != null && stat.box >= 1 && word.id !in needsReviewWordIds) ||
-                    (stat == null && word.id in masteredWordIds && word.id !in needsReviewWordIds)
+            val key = srsKey(word.id, useReversed)
+            val stat = wordSrsMap[key]
+            (stat != null && stat.box >= 1 && key !in needsReviewWordIds) ||
+                    (!useReversed && stat == null && word.id in masteredWordIds && key !in needsReviewWordIds)
         }
     }
 
@@ -232,9 +244,11 @@ class ProgressStateHolder(context: Context) {
         @Suppress("UNUSED_EXPRESSION")
         srsRevision
         val now = System.currentTimeMillis()
+        val useReversed = studyDirection == cz.slovickaspeak.app.model.StudyDirection.FOREIGN_TO_NATIVE
         return deck.words.count { word ->
-            val stat = wordSrsMap[word.id]
-            word.id in needsReviewWordIds || (stat != null && (stat.box == 0 || stat.dueAtMillis <= now))
+            val key = srsKey(word.id, useReversed)
+            val stat = wordSrsMap[key]
+            key in needsReviewWordIds || (stat != null && (stat.box == 0 || stat.dueAtMillis <= now))
         }
     }
 
@@ -248,23 +262,27 @@ class ProgressStateHolder(context: Context) {
     fun prioritizeWordsForSession(words: List<cz.slovickaspeak.app.model.VocabWord>, targetCount: Int): List<cz.slovickaspeak.app.model.VocabWord> {
         if (words.isEmpty()) return emptyList()
         val now = System.currentTimeMillis()
+        val useReversed = studyDirection == cz.slovickaspeak.app.model.StudyDirection.FOREIGN_TO_NATIVE
 
         val tier1Critical = words.filter { w ->
-            val st = wordSrsMap[w.id]
-            w.id in needsReviewWordIds || (st != null && st.box == 0)
-        }.shuffled().sortedByDescending { w -> wordSrsMap[w.id]?.lapses ?: 1 }
+            val key = srsKey(w.id, useReversed)
+            val st = wordSrsMap[key]
+            key in needsReviewWordIds || (st != null && st.box == 0)
+        }.shuffled().sortedByDescending { w -> wordSrsMap[srsKey(w.id, useReversed)]?.lapses ?: 1 }
 
         val tier1Ids = tier1Critical.map { it.id }.toSet()
 
         val tier2Due = words.filter { w ->
-            val st = wordSrsMap[w.id]
+            val key = srsKey(w.id, useReversed)
+            val st = wordSrsMap[key]
             w.id !in tier1Ids && st != null && st.box >= 1 && st.dueAtMillis <= now
-        }.shuffled().sortedBy { w -> wordSrsMap[w.id]?.dueAtMillis ?: 0L }
+        }.shuffled().sortedBy { w -> wordSrsMap[srsKey(w.id, useReversed)]?.dueAtMillis ?: 0L }
 
         val tier2Ids = tier2Due.map { it.id }.toSet()
 
         val tier3Unseen = words.filter { w ->
-            w.id !in tier1Ids && w.id !in tier2Ids && w.id !in wordSrsMap && w.id !in masteredWordIds
+            val key = srsKey(w.id, useReversed)
+            w.id !in tier1Ids && w.id !in tier2Ids && key !in wordSrsMap && (useReversed || w.id !in masteredWordIds)
         }.shuffled()
 
         val tier3Ids = tier3Unseen.map { it.id }.toSet()
@@ -272,8 +290,8 @@ class ProgressStateHolder(context: Context) {
         val tier4Learned = words.filter { w ->
             w.id !in tier1Ids && w.id !in tier2Ids && w.id !in tier3Ids
         }.shuffled().sortedWith(
-            compareBy<cz.slovickaspeak.app.model.VocabWord> { wordSrsMap[it.id]?.box ?: 1 }
-                .thenBy { wordSrsMap[it.id]?.dueAtMillis ?: Long.MAX_VALUE }
+            compareBy<cz.slovickaspeak.app.model.VocabWord> { wordSrsMap[srsKey(it.id, useReversed)]?.box ?: 1 }
+                .thenBy { wordSrsMap[srsKey(it.id, useReversed)]?.dueAtMillis ?: Long.MAX_VALUE }
         )
 
         val prioritizedUnique = tier1Critical + tier2Due + tier3Unseen + tier4Learned
@@ -549,11 +567,22 @@ class ProgressStateHolder(context: Context) {
         }
     }
 
-    fun recordCardAttempt(result: CardAttemptResult, usedHint: Boolean = false) {
+    fun updateStudyDirection(direction: cz.slovickaspeak.app.model.StudyDirection) {
+        studyDirection = direction
+        prefs.edit().putString("study_direction", direction.name).apply()
+        srsRevision += 1
+    }
+
+    fun recordCardAttempt(
+        result: CardAttemptResult,
+        usedHint: Boolean = false,
+        isReversed: Boolean = result.wasReversed
+    ) {
         checkNewDayRollover(alsoRefreshCloud = false)
         totalAttempts += 1
         val now = System.currentTimeMillis()
-        val prevStat = wordSrsMap[result.word.id]
+        val srsWordKey = srsKey(result.word.id, isReversed)
+        val prevStat = wordSrsMap[srsWordKey]
 
         if (result.isCorrect) {
             totalCorrect += 1
@@ -561,13 +590,13 @@ class ProgressStateHolder(context: Context) {
                 // User had to open the hint ("Zobrazit nápovědu") before answering:
                 // Treat as assisted recall -> keep in needsReview and due soon (2 hours) until answered without hint!
                 val lapses = prevStat?.lapses ?: 0
-                wordSrsMap[result.word.id] = WordSrsStat(
-                    wordId = result.word.id,
+                wordSrsMap[srsWordKey] = WordSrsStat(
+                    wordId = srsWordKey,
                     box = 0,
                     lapses = lapses,
                     dueAtMillis = now + 2L * 3600_000L
                 )
-                needsReviewWordIds.add(result.word.id)
+                needsReviewWordIds.add(srsWordKey)
             } else {
                 // Unassisted correct recall!
                 val currentDay = todayKey
@@ -577,8 +606,10 @@ class ProgressStateHolder(context: Context) {
                     prefs.edit().putString("last_study_date", currentDay).apply()
                 }
                 todayCompletedWords += 1
-                needsReviewWordIds.remove(result.word.id)
-                masteredWordIds.add(result.word.id)
+                needsReviewWordIds.remove(srsWordKey)
+                if (!isReversed) {
+                    masteredWordIds.add(result.word.id)
+                }
 
                 val prevBox = prevStat?.box ?: 0
                 // Speaking out loud strengthens memory faster than manual swipe
@@ -594,8 +625,8 @@ class ProgressStateHolder(context: Context) {
                     4 -> 7L * 24L * 3600_000L    // 7 days
                     else -> 21L * 24L * 3600_000L // 21 days (Long-term memory)
                 }
-                wordSrsMap[result.word.id] = WordSrsStat(
-                    wordId = result.word.id,
+                wordSrsMap[srsWordKey] = WordSrsStat(
+                    wordId = srsWordKey,
                     box = nextBox,
                     lapses = prevStat?.lapses ?: 0,
                     dueAtMillis = now + intervalMillis
@@ -604,14 +635,16 @@ class ProgressStateHolder(context: Context) {
         } else {
             // Word was NOT known -> reset Leitner box to 0, increment lapse counter, and keep in needsReview
             val newLapses = (prevStat?.lapses ?: 0) + 1
-            wordSrsMap[result.word.id] = WordSrsStat(
-                wordId = result.word.id,
+            wordSrsMap[srsWordKey] = WordSrsStat(
+                wordId = srsWordKey,
                 box = 0,
                 lapses = newLapses,
                 dueAtMillis = now
             )
-            needsReviewWordIds.add(result.word.id)
-            masteredWordIds.remove(result.word.id)
+            needsReviewWordIds.add(srsWordKey)
+            if (!isReversed) {
+                masteredWordIds.remove(result.word.id)
+            }
         }
         if (result.method == AnswerMethod.SPOKEN_CORRECT) {
             totalSpokenCorrect += 1

@@ -60,6 +60,7 @@ data class UiStrings(
     val googleSaveNameButton: String,
     val googleCancelButton: String,
     val cardPromptSpeakEnglish: String,
+    val cardPromptSpeakCzech: String,
     val cardPromptSpeakLanguage: (LearningLanguage) -> String,
     val showHintButton: String,
     val badgeDontKnow: String,
@@ -73,6 +74,7 @@ data class UiStrings(
     val bannerMicOff: String,
     val bannerHeard: (String) -> String,
     val bannerListening: String,
+    val bannerListeningCzech: String,
     val bannerListeningForLanguage: (LearningLanguage) -> String,
     val bannerMicReady: String,
     val summaryCompleteTitle: String,
@@ -157,6 +159,7 @@ fun getUiStrings(isCs: Boolean): UiStrings {
             googleSaveNameButton = "Uložit",
             googleCancelButton = "Zrušit",
             cardPromptSpeakEnglish = "ŘEKNI ANGLICKY",
+            cardPromptSpeakCzech = "ŘEKNI ČESKY",
             cardPromptSpeakLanguage = { lang ->
                 if (lang == LearningLanguage.SPANISH) "ŘEKNI ŠPANĚLSKY" else "ŘEKNI ANGLICKY"
             },
@@ -172,6 +175,7 @@ fun getUiStrings(isCs: Boolean): UiStrings {
             bannerMicOff = "Mikrofon vypnutý – použij tlačítka nebo posuň kartu",
             bannerHeard = { heard -> "Slyšeno: „$heard“" },
             bannerListening = "Poslouchám – rovnou řekni slovo anglicky",
+            bannerListeningCzech = "Poslouchám – řekni překlad česky",
             bannerListeningForLanguage = { lang ->
                 if (lang == LearningLanguage.SPANISH) "Poslouchám – rovnou řekni slovo španělsky"
                 else "Poslouchám – rovnou řekni slovo anglicky"
@@ -257,6 +261,7 @@ fun getUiStrings(isCs: Boolean): UiStrings {
             googleSaveNameButton = "Save",
             googleCancelButton = "Cancel",
             cardPromptSpeakEnglish = "SPEAK IN ENGLISH",
+            cardPromptSpeakCzech = "SPEAK IN CZECH",
             cardPromptSpeakLanguage = { lang ->
                 if (lang == LearningLanguage.SPANISH) "SPEAK IN SPANISH" else "SPEAK IN ENGLISH"
             },
@@ -272,6 +277,7 @@ fun getUiStrings(isCs: Boolean): UiStrings {
             bannerMicOff = "Microphone off – use buttons or swipe card",
             bannerHeard = { heard -> "Heard: \"$heard\"" },
             bannerListening = "Listening – speak the word in English",
+            bannerListeningCzech = "Listening – say translation in Czech",
             bannerListeningForLanguage = { lang ->
                 if (lang == LearningLanguage.SPANISH) "Listening – speak the word in Spanish"
                 else "Listening – speak the word in English"

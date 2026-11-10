@@ -213,6 +213,13 @@ fun AppleFullSettingsDialog(
                             onSelectLanguage = { progressState.updateSelectedLanguage(it) }
                         )
 
+                        StudyDirectionSectionCard(
+                            strings = strings,
+                            selectedLanguage = progressState.selectedLanguage,
+                            selectedDirection = progressState.studyDirection,
+                            onSelectDirection = { progressState.updateStudyDirection(it) }
+                        )
+
                         AppearanceSectionCard(
                             strings = strings,
                             isDarkMode = progressState.isDarkMode,
@@ -1449,6 +1456,70 @@ private fun LanguageSelectionSectionCard(
                                 color = if (selected) AppleBlue else TextMuted,
                                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                                 fontSize = 13.sp,
+                                modifier = Modifier
+                                    .padding(vertical = 9.dp)
+                                    .wrapContentWidth(Alignment.CenterHorizontally)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StudyDirectionSectionCard(
+    strings: UiStrings,
+    selectedLanguage: cz.slovickaspeak.app.model.LearningLanguage,
+    selectedDirection: cz.slovickaspeak.app.model.StudyDirection,
+    onSelectDirection: (cz.slovickaspeak.app.model.StudyDirection) -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = CardSurface,
+        border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = if (strings.isCzech) "🔄 Směr učení" else "🔄 Study Direction",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextDark
+            )
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = AppleSecondaryFill,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(3.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    cz.slovickaspeak.app.model.StudyDirection.entries.forEach { dir ->
+                        val selected = selectedDirection == dir
+                        Surface(
+                            shape = RoundedCornerShape(9.dp),
+                            color = if (selected) CardElevatedSurface else Color.Transparent,
+                            border = if (selected) BorderStroke(1.dp, if (cz.slovickaspeak.app.ui.theme.isDarkThemeActive) AppleBlue.copy(alpha = 0.65f) else Color.Black.copy(alpha = 0.08f)) else null,
+                            shadowElevation = if (selected) 3.dp else 0.dp,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(9.dp))
+                                .clickable { onSelectDirection(dir) }
+                        ) {
+                            Text(
+                                text = dir.shortLabel(selectedLanguage),
+                                color = if (selected) AppleBlue else TextMuted,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                fontSize = 12.5.sp,
                                 modifier = Modifier
                                     .padding(vertical = 9.dp)
                                     .wrapContentWidth(Alignment.CenterHorizontally)

@@ -54,6 +54,30 @@ data class VocabDeck(
     fun localizedSubtitle(isCzech: Boolean): String = if (isCzech) subtitle else subtitleEn
 }
 
+enum class StudyDirection {
+    NATIVE_TO_FOREIGN, // CZ -> EN / ES
+    FOREIGN_TO_NATIVE, // EN / ES -> CZ
+    MIXED;             // Střídání obou směrů
+
+    fun shortLabel(language: LearningLanguage): String {
+        val foreignCode = language.code.uppercase()
+        return when (this) {
+            NATIVE_TO_FOREIGN -> "CZ → $foreignCode"
+            FOREIGN_TO_NATIVE -> "$foreignCode → CZ"
+            MIXED -> "CZ ⇄ $foreignCode"
+        }
+    }
+
+    fun localizedDescription(isCzech: Boolean, language: LearningLanguage): String {
+        val foreignCode = language.code.uppercase()
+        return when (this) {
+            NATIVE_TO_FOREIGN -> if (isCzech) "Z češtiny do $foreignCode (aktivní)" else "Czech → $foreignCode (active)"
+            FOREIGN_TO_NATIVE -> if (isCzech) "Z $foreignCode do češtiny (poslech)" else "$foreignCode → Czech (passive)"
+            MIXED -> if (isCzech) "Střídavě oba směry (Mix)" else "Mixed both ways"
+        }
+    }
+}
+
 enum class AnswerMethod {
     SPOKEN_CORRECT,
     SWIPED_KNOW,
@@ -64,7 +88,8 @@ data class CardAttemptResult(
     val word: VocabWord,
     val isCorrect: Boolean,
     val method: AnswerMethod,
-    val spokenTranscript: String? = null
+    val spokenTranscript: String? = null,
+    val wasReversed: Boolean = false
 )
 
 object BuiltInVocabulary {

@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import cz.slovickaspeak.app.model.CefrLevel
 import cz.slovickaspeak.app.model.LearningLanguage
+import cz.slovickaspeak.app.model.StudyDirection
 import cz.slovickaspeak.app.model.VocabDeck
 import cz.slovickaspeak.app.ui.theme.*
 
@@ -53,6 +54,7 @@ fun DeckSelectionScreen(
     val strings = rememberAppStrings()
     val selectedLanguage = progressState.selectedLanguage
     val selectedLevel = progressState.selectedCefrLevel
+    val studyDirection = progressState.studyDirection
     var showSettingsDialog by remember { mutableStateOf(false) }
     var settingsInitialTab by remember { mutableIntStateOf(0) }
     val dailyGoalWords = progressState.dailyGoalWords
@@ -144,6 +146,7 @@ fun DeckSelectionScreen(
                             strings = strings,
                             selectedLanguage = selectedLanguage,
                             selectedLevel = selectedLevel,
+                            studyDirection = studyDirection,
                             completedTodayWords = completedTodayWords,
                             dailyGoalWords = dailyGoalWords,
                             isGoalReached = isGoalReached,
@@ -153,6 +156,9 @@ fun DeckSelectionScreen(
                             },
                             onSelectLevel = { level ->
                                 progressState.updateSelectedCefrLevel(level)
+                            },
+                            onSelectDirection = { direction ->
+                                progressState.updateStudyDirection(direction)
                             }
                         )
                     }
@@ -227,6 +233,7 @@ fun DeckSelectionScreen(
  strings = strings,
  selectedLanguage = selectedLanguage,
  selectedLevel = selectedLevel,
+ studyDirection = studyDirection,
  completedTodayWords = completedTodayWords,
  dailyGoalWords = dailyGoalWords,
  isGoalReached = isGoalReached,
@@ -236,6 +243,9 @@ fun DeckSelectionScreen(
  },
  onSelectLevel = { level ->
  progressState.updateSelectedCefrLevel(level)
+ },
+ onSelectDirection = { direction ->
+ progressState.updateStudyDirection(direction)
  }
  )
  }
@@ -517,15 +527,18 @@ private fun DeckGoalIndicatorCard(
     strings: UiStrings,
     selectedLanguage: LearningLanguage,
     selectedLevel: CefrLevel?,
+    studyDirection: StudyDirection,
     completedTodayWords: Int,
     dailyGoalWords: Int,
     isGoalReached: Boolean,
     goalProgressFraction: Float,
     onSelectLanguage: (LearningLanguage) -> Unit,
-    onSelectLevel: (CefrLevel?) -> Unit
+    onSelectLevel: (CefrLevel?) -> Unit,
+    onSelectDirection: (StudyDirection) -> Unit
 ) {
     var languageDropdownExpanded by remember { mutableStateOf(false) }
     var levelDropdownExpanded by remember { mutableStateOf(false) }
+    var directionDropdownExpanded by remember { mutableStateOf(false) }
 
     Surface(
         shape = RoundedCornerShape(22.dp),
@@ -606,6 +619,47 @@ private fun DeckGoalIndicatorCard(
                                 onClick = {
                                     onSelectLevel(level)
                                     levelDropdownExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Study Direction Row (CZ -> EN / EN -> CZ / Mix)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (strings.isCzech) "Směr učení" else "Study direction",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = TextMuted
+                )
+
+                Box {
+                    FilterDropdownPill(
+                        label = studyDirection.shortLabel(selectedLanguage),
+                        onClick = { directionDropdownExpanded = true }
+                    )
+
+                    DropdownMenu(
+                        expanded = directionDropdownExpanded,
+                        onDismissRequest = { directionDropdownExpanded = false }
+                    ) {
+                        StudyDirection.entries.forEach { dir ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = dir.localizedDescription(strings.isCzech, selectedLanguage),
+                                        fontWeight = if (studyDirection == dir) FontWeight.Bold else FontWeight.Medium
+                                    )
+                                },
+                                onClick = {
+                                    onSelectDirection(dir)
+                                    directionDropdownExpanded = false
                                 }
                             )
                         }

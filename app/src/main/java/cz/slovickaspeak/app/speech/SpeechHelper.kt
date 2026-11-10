@@ -213,7 +213,7 @@ object WordMatcher {
         return combiningMarksRegex.replace(decomposed, "")
     }
 
-    fun normalize(input: String): String {
+    fun normalize(input: String, stripLeadingForeignArticles: Boolean = true): String {
         val rawWords = stripAccents(input)
             .lowercase(Locale.US)
             .replace("'", "")
@@ -224,7 +224,11 @@ object WordMatcher {
             .filter { it.isNotEmpty() }
 
         val joined = rawWords.joinToString(" ")
-        return joined.replace(leadingArticles, "").trim()
+        return if (stripLeadingForeignArticles) {
+            joined.replace(leadingArticles, "").trim()
+        } else {
+            joined
+        }
     }
 
     /**
@@ -310,27 +314,49 @@ object WordMatcher {
         return homophoneGroups.any { group -> a in group && b in group }
     }
 
+    private fun primaryCzechDisplay(targetWord: VocabWord): String {
+        return targetWord.czech
+            .replace(Regex("\\s*\\(.*?\\)"), "")
+            .split("/", ";", ",")
+            .firstOrNull { it.isNotBlank() }
+            ?.trim()
+            ?.ifEmpty { targetWord.czech }
+            ?: targetWord.czech
+    }
+
     /**
-     * Builds all normalized acceptable target phrases without splitting primary phrases on commas.
+     * Builds all normalized acceptable target phrases (for either foreign or Czech expected answers).
      */
-    private fun extractNormalizedTargets(targetWord: VocabWord): List<String> {
-        val primaryParts = targetWord.english.split("/", ";").map { it.trim() }
-        val variantParts = targetWord.acceptedVariants.flatMap { it.split("/", ";").map { p -> p.trim() } }
-        return (primaryParts + variantParts)
-            .map { normalize(it) }
-            .filter { it.isNotEmpty() }
-            .distinct()
+    private fun extractNormalizedTargets(targetWord: VocabWord, expectCzech: Boolean = false): List<String> {
+        return if (expectCzech) {
+            val withoutParens = targetWord.czech.replace(Regex("\\s*\\(.*?\\)"), " ").trim()
+            val parts = withoutParens
+                .split("/", ";", ",", "–", " - ")
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+            (listOf(withoutParens) + parts)
+                .map { normalize(it, stripLeadingForeignArticles = false) }
+                .filter { it.isNotEmpty() }
+                .distinct()
+        } else {
+            val primaryParts = targetWord.english.split("/", ";").map { it.trim() }
+            val variantParts = targetWord.acceptedVariants.flatMap { it.split("/", ";").map { p -> p.trim() } }
+            (primaryParts + variantParts)
+                .map { normalize(it, stripLeadingForeignArticles = true) }
+                .filter { it.isNotEmpty() }
+                .distinct()
+        }
     }
 
     /**
      * Returns true if any candidate is currently a valid prefix or first word of the target word,
      * meaning the user is still mid-pronunciation (e.g. "straw" for "strawberry" or "washing" for "washing machine").
      */
-    fun isPrefixOfTarget(spokenCandidates: List<String>, targetWord: VocabWord): Boolean {
-        val rawTargets = extractNormalizedTargets(targetWord)
+    fun isPrefixOfTarget(spokenCandidates: List<String>, targetWord: VocabWord, expectCzech: Boolean = false): Boolean {
+        val rawTargets = extractNormalizedTargets(targetWord, expectCzech)
 
         for (candidate in spokenCandidates) {
-            val norm = normalize(candidate)
+            val norm = normalize(candidate, stripLeadingForeignArticles = !expectCzech)
             if (norm.isEmpty()) continue
             val lastToken = norm.split(" ").lastOrNull() ?: norm
             for (target in rawTargets) {
@@ -377,11 +403,17 @@ object WordMatcher {
      * Returns the canonical target word / variant that was matched (e.g. "cookie"),
      * so UI feedback always correctly displays the intended word!
      */
-    fun matches(spokenCandidates: List<String>, targetWord: VocabWord, isFinal: Boolean = true): String? {
-        val rawTargets = extractNormalizedTargets(targetWord)
+    fun matches(
+        spokenCandidates: List<String>,
+        targetWord: VocabWord,
+        isFinal: Boolean = true,
+        expectCzech: Boolean = false
+    ): String? {
+        val rawTargets = extractNormalizedTargets(targetWord, expectCzech)
+        val matchedDisplay = if (expectCzech) primaryCzechDisplay(targetWord) else targetWord.english
 
         val parsedCandidates = spokenCandidates.mapNotNull { cand ->
-            val norm = normalize(cand)
+            val norm = normalize(cand, stripLeadingForeignArticles = !expectCzech)
             if (norm.isEmpty()) return@mapNotNull null
             val words = norm.split(" ").filter { it.isNotEmpty() }
             val phrases = mutableListOf(norm)
@@ -403,16 +435,15 @@ object WordMatcher {
             for (cand in parsedCandidates) {
                 for (phrase in cand.phrases) {
                     if (phrase == target || cand.words.contains(target)) {
-                        return targetWord.english
+                        return matchedDisplay
                     }
                     if (target.contains(" ") && phrase.contains(target)) {
-                        return targetWord.english
+                        return matchedDisplay
                     }
                 }
-                // Multi-word phrase exact words match
                 if (targetWords.size >= 2 && cand.words.size >= targetWords.size) {
                     if (targetWords.all { cand.words.contains(it) }) {
-                        return targetWord.english
+                        return matchedDisplay
                     }
                 }
             }
@@ -423,44 +454,58 @@ object WordMatcher {
             for (cand in parsedCandidates) {
                 for (phrase in cand.phrases) {
                     if (areHomophones(phrase, target) || cand.words.any { areHomophones(it, target) }) {
-                        return targetWord.english
+                        return matchedDisplay
                     }
                 }
             }
         }
 
-        // TIER 3: Standard Grammatical Inflections (s, es, ed, ing, d)
+        // TIER 3: Grammatical inflections (EN/ES suffixes OR Czech stem declensions)
         for (target in rawTargets) {
-            val inflections = listOf(
-                "${target}s",
-                "${target}es",
-                "${target}d",
-                "${target}ed",
-                "${target}ing",
-                target.removeSuffix("s"),
-                target.removeSuffix("es"),
-                target.removeSuffix("ed"),
-                target.removeSuffix("ing")
-            ).filter { it.length >= 2 && it != target }
-
-            for (cand in parsedCandidates) {
-                for (phrase in cand.phrases) {
-                    if (phrase in inflections || cand.words.any { it in inflections }) {
-                        return targetWord.english
+            if (expectCzech) {
+                if (target.length >= 4 && !target.contains(" ")) {
+                    val stemLen = (target.length - 2).coerceAtLeast(3)
+                    val targetStem = target.take(stemLen)
+                    for (cand in parsedCandidates) {
+                        if (cand.words.any { it.length >= stemLen && it.startsWith(targetStem) }) {
+                            return matchedDisplay
+                        }
                     }
                 }
-            }
-        }
+            } else {
+                val inflections = listOf(
+                    "${target}s",
+                    "${target}es",
+                    "${target}d",
+                    "${target}ed",
+                    "${target}ing",
+                    target.removeSuffix("s"),
+                    target.removeSuffix("es"),
+                    target.removeSuffix("ed"),
+                    target.removeSuffix("ing")
+                ).filter { it.length >= 2 && it != target }
 
-        // TIER 4: Exact Phonetic Skeleton Match (e.g. "biscuit" -> "piskit", accent tolerance)
-        for (target in rawTargets) {
-            val targetPhonetic = phoneticCode(target)
-            if (targetPhonetic.length >= 2) {
                 for (cand in parsedCandidates) {
                     for (phrase in cand.phrases) {
-                        val candPhonetic = phoneticCode(phrase)
-                        if (candPhonetic == targetPhonetic || cand.words.any { phoneticCode(it) == targetPhonetic }) {
-                            return targetWord.english
+                        if (phrase in inflections || cand.words.any { it in inflections }) {
+                            return matchedDisplay
+                        }
+                    }
+                }
+            }
+        }
+
+        // TIER 4: Exact Phonetic Skeleton Match (foreign pronunciation tolerance)
+        if (!expectCzech) {
+            for (target in rawTargets) {
+                val targetPhonetic = phoneticCode(target)
+                if (targetPhonetic.length >= 2) {
+                    for (cand in parsedCandidates) {
+                        for (phrase in cand.phrases) {
+                            val candPhonetic = phoneticCode(phrase)
+                            if (candPhonetic == targetPhonetic || cand.words.any { phoneticCode(it) == targetPhonetic }) {
+                                return matchedDisplay
+                            }
                         }
                     }
                 }
@@ -468,8 +513,6 @@ object WordMatcher {
         }
 
         // TIER 5: Loose Fuzzy / Near-Phonetic Tolerance
-        // STRICT: Only allowed if isFinal == true (never on mid-speech partials!),
-        // or if none of the candidates are prefixes of the target word.
         val anyIsPrefix = parsedCandidates.any { cand ->
             rawTargets.any { target -> target.startsWith(cand.norm) || target.startsWith(cand.words.last()) }
         }
@@ -481,26 +524,23 @@ object WordMatcher {
 
                 for (cand in parsedCandidates) {
                     for (phrase in cand.phrases) {
-                        // Near-phonetic distance: ONLY for words with phonetic skeleton >= 5!
-                        // (So "cook" [kuk=3] NEVER matches "cookie" [kuki=4]!)
-                        if (targetPhonetic.length >= 5) {
+                        if (!expectCzech && targetPhonetic.length >= 5) {
                             val candPhonetic = phoneticCode(phrase)
                             if (candPhonetic.length >= 4 &&
                                 abs(candPhonetic.length - targetPhonetic.length) <= 1 &&
                                 levenshtein(candPhonetic, targetPhonetic) <= 1
                             ) {
-                                return targetWord.english
+                                return matchedDisplay
                             }
                         }
 
-                        // Character Levenshtein
                         when {
                             target.length in 4..6 -> {
                                 if (phrase.length in (target.length - 1)..(target.length + 1) &&
                                     levenshtein(phrase, target) <= 1 &&
-                                    !target.startsWith(phrase) // Prevents incomplete prefix matching
+                                    !target.startsWith(phrase)
                                 ) {
-                                    return targetWord.english
+                                    return matchedDisplay
                                 }
                             }
                             target.length >= 7 -> {
@@ -510,22 +550,22 @@ object WordMatcher {
                                 if (levenshtein(phrase, target) <= maxDist ||
                                     (phrase.length >= target.length - 1 && phrase.startsWith(targetStem))
                                 ) {
-                                    return targetWord.english
+                                    return matchedDisplay
                                 }
                             }
                         }
                     }
 
-                    // Multi-word phrase phonetic tolerance
                     if (targetWords.size >= 2 && cand.words.size >= targetWords.size) {
                         val matchedCount = targetWords.count { tw ->
                             cand.words.any { cw ->
-                                cw == tw || areHomophones(cw, tw) || phoneticCode(cw) == phoneticCode(tw) ||
+                                cw == tw || areHomophones(cw, tw) ||
+                                    (!expectCzech && phoneticCode(cw) == phoneticCode(tw)) ||
                                     (tw.length >= 5 && levenshtein(cw, tw) <= 1)
                             }
                         }
                         if (matchedCount >= targetWords.size) {
-                            return targetWord.english
+                            return matchedDisplay
                         }
                     }
                 }
@@ -576,6 +616,9 @@ class SpeechSessionController(
 
     var shouldStayListening: Boolean = false
         private set
+
+    @Volatile
+    var listenInCzech: Boolean = false
 
     private var isCurrentlyListening = false
     private var isStartingListen = false
@@ -1118,10 +1161,14 @@ class SpeechSessionController(
         lastStartAttemptUptime = SystemClock.uptimeMillis()
         accumulatedPartialsInCycle.clear()
 
-        val localeTag = language.speechLocaleTag // e.g. "es-ES" or "en-US"
-        val altLocaleTag = localeTag.replace('-', '_') // e.g. "es_ES" or "en_US"
-        val langCode = language.code // e.g. "es" or "en"
-        val targetLocale = if (language == LearningLanguage.SPANISH) Locale("es", "ES") else Locale.US
+        val localeTag = if (listenInCzech) "cs-CZ" else language.speechLocaleTag // e.g. "cs-CZ", "es-ES" or "en-US"
+        val altLocaleTag = localeTag.replace('-', '_') // e.g. "cs_CZ", "es_ES" or "en_US"
+        val langCode = if (listenInCzech) "cs" else language.code // e.g. "cs", "es" or "en"
+        val targetLocale = when {
+            listenInCzech -> Locale("cs", "CZ")
+            language == LearningLanguage.SPANISH -> Locale("es", "ES")
+            else -> Locale.US
+        }
 
         try {
             Locale.setDefault(targetLocale)
