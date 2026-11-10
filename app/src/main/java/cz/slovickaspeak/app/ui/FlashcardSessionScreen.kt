@@ -25,6 +25,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -42,6 +43,8 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -122,6 +125,7 @@ fun FlashcardSessionScreen(
     var masteredInSessionCount by remember(dailyGoalWords) { mutableIntStateOf(0) }
     val results = remember(dailyGoalWords) { mutableStateListOf<CardAttemptResult>() }
     var showGoalPicker by remember { mutableStateOf(false) }
+    var showRecentWordsPanel by remember { mutableStateOf(false) }
 
     val currentWord = sessionQueue.getOrNull(currentIndex)
     val nextWord = sessionQueue.getOrNull(currentIndex + 1)
@@ -251,6 +255,7 @@ fun FlashcardSessionScreen(
         if (isTransitioningUpdated || (currentState != CardFeedbackState.NEUTRAL && currentState != CardFeedbackState.SPOKEN_WRONG_FLASH)) return
 
         isTransitioningCard = true
+        showRecentWordsPanel = false
         wrongWordDebounceJob?.cancel()
         wrongFlashResetJob?.cancel()
         lastFlashedWrongWord = null
@@ -554,7 +559,62 @@ fun FlashcardSessionScreen(
         val handlePlayAudio: () -> Unit = {
             speechControllerRef?.speakEnglish(currentWord.english)
         }
+        val handleReplayWordText: (String) -> Unit = { wordText ->
+            speechControllerRef?.speakEnglish(wordText)
+        }
+        val handleReopenPreviousWord: (VocabWord) -> Unit = reopen@{ targetWord ->
+            if (isTransitioningUpdated) return@reopen
+            showRecentWordsPanel = false
+            if (currentWordState?.id == targetWord.id) return@reopen
+
+            isTransitioningCard = true
+            wrongWordDebounceJob?.cancel()
+            wrongFlashResetJob?.cancel()
+            lastFlashedWrongWord = null
+            feedbackState = CardFeedbackState.NEUTRAL
+            showHintTranslation = false
+            usedHintOnCurrentCard = false
+            lastHeardText = null
+
+            coroutineScope.launch {
+                if (hasMicPermState && micAutoState) {
+                    speechControllerRef?.pauseForCardTransition()
+                }
+                launch {
+                    cardAlpha.animateTo(0f, tween(durationMillis = 130, easing = FastOutSlowInEasing))
+                }
+                offsetX.animateTo(320f, tween(durationMillis = 135, easing = FastOutSlowInEasing))
+
+                sessionQueue.add(currentIndex, targetWord)
+
+                offsetX.snapTo(-420f)
+                cardScale.snapTo(0.93f)
+                cardAlpha.snapTo(0.15f)
+                launch {
+                    cardAlpha.animateTo(1f, tween(durationMillis = 180, easing = AppleGlideEasing))
+                }
+                launch {
+                    cardScale.animateTo(1f, tween(durationMillis = 210, easing = AppleGlideEasing))
+                }
+                offsetX.animateTo(0f, tween(durationMillis = 210, easing = AppleGlideEasing))
+
+                cardActiveTimestamp = SystemClock.uptimeMillis()
+                isTransitioningCard = false
+                keepScreenActive()
+                val reopenedReversed = when (progressState.studyDirection) {
+                    StudyDirection.NATIVE_TO_FOREIGN -> false
+                    StudyDirection.FOREIGN_TO_NATIVE -> true
+                    StudyDirection.MIXED -> (currentIndex % 2 == 1)
+                }
+                if (hasMicPermState && micAutoState && !(reopenedReversed && progressState.autoPronounceEnabled)) {
+                    speechControllerRef?.startForNewCard()
+                }
+            }
+        }
         val handleDragDelta: (Float) -> Unit = { delta ->
+            if (showRecentWordsPanel) {
+                showRecentWordsPanel = false
+            }
             keepScreenActive()
             if (isCardInteractive) {
                 coroutineScope.launch {
@@ -664,9 +724,8 @@ fun FlashcardSessionScreen(
                         RecentAttemptsCard(
                             strings = strings,
                             results = results,
-                            onReplayWord = { wordText ->
-                                speechControllerRef?.speakEnglish(wordText)
-                            }
+                            onReplayWord = handleReplayWordText,
+                            onSelectWord = handleReopenPreviousWord
                         )
                     }
 
@@ -708,6 +767,17 @@ fun FlashcardSessionScreen(
                         onToggleAutoPronounce = {
                             progressState.setAutoPronounce(!progressState.autoPronounceEnabled)
                         },
+                        pauseWhileSpeaking = progressState.pauseCardWhileSpeaking,
+                        onTogglePauseWhileSpeaking = {
+                            progressState.updatePauseCardWhileSpeaking(!progressState.pauseCardWhileSpeaking)
+                        },
+                        recentResults = results,
+                        showRecentWordsPanel = showRecentWordsPanel,
+                        onToggleRecentWordsPanel = {
+                            showRecentWordsPanel = !showRecentWordsPanel
+                        },
+                        onReplayRecentWord = handleReplayWordText,
+                        onReopenRecentWord = handleReopenPreviousWord,
                         onDragDelta = handleDragDelta,
                         onDragEnd = handleDragEnd,
                         isReversed = isReversedCard,
@@ -796,6 +866,17 @@ fun FlashcardSessionScreen(
                     onToggleAutoPronounce = {
                         progressState.setAutoPronounce(!progressState.autoPronounceEnabled)
                     },
+                    pauseWhileSpeaking = progressState.pauseCardWhileSpeaking,
+                    onTogglePauseWhileSpeaking = {
+                        progressState.updatePauseCardWhileSpeaking(!progressState.pauseCardWhileSpeaking)
+                    },
+                    recentResults = results,
+                    showRecentWordsPanel = showRecentWordsPanel,
+                    onToggleRecentWordsPanel = {
+                        showRecentWordsPanel = !showRecentWordsPanel
+                    },
+                    onReplayRecentWord = handleReplayWordText,
+                    onReopenRecentWord = handleReopenPreviousWord,
                     onDragDelta = handleDragDelta,
                     onDragEnd = handleDragEnd,
                     isReversed = isReversedCard,
@@ -1279,11 +1360,9 @@ private fun WordMemoryInsightsCard(
 private fun RecentAttemptsCard(
     strings: UiStrings,
     results: List<CardAttemptResult>,
-    onReplayWord: (String) -> Unit
+    onReplayWord: (String) -> Unit,
+    onSelectWord: (VocabWord) -> Unit = {}
 ) {
-    val recent = results.asReversed().take(4)
-    val spokenCount = results.count { it.method == AnswerMethod.SPOKEN_CORRECT }
-
     Surface(
         shape = RoundedCornerShape(20.dp),
         color = CardSurface,
@@ -1296,113 +1375,139 @@ private fun RecentAttemptsCard(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.History,
-                        contentDescription = null,
-                        tint = AppleIndigo,
-                        modifier = Modifier.size(17.dp)
-                    )
-                    Text(
-                        text = if (strings.isCzech) "Poslední odpovědi" else "Recent Answers",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextDark
-                    )
-                }
+            RecentAttemptsPanelContent(
+                strings = strings,
+                results = results,
+                onReplayWord = onReplayWord,
+                onSelectWord = onSelectWord
+            )
+        }
+    }
+}
 
-                if (results.isNotEmpty()) {
-                    Text(
-                        text = if (strings.isCzech) "$spokenCount hlasem" else "$spokenCount spoken",
-                        fontSize = 11.5.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = TextMuted
-                    )
-                }
-            }
+@Composable
+private fun RecentAttemptsPanelContent(
+    strings: UiStrings,
+    results: List<CardAttemptResult>,
+    onReplayWord: (String) -> Unit,
+    onSelectWord: (VocabWord) -> Unit
+) {
+    val recent = results.asReversed().distinctBy { it.word.id }.take(4)
+    val spokenCount = results.count { it.method == AnswerMethod.SPOKEN_CORRECT }
 
-            if (recent.isEmpty()) {
-                Text(
-                    text = if (strings.isCzech) {
-                        "Tvé odpovědi se zobrazí zde — kliknutím si slovíčko kdykoliv znovu poslechneš."
-                    } else {
-                        "Your recent answers will appear here — tap any item to replay pronunciation."
-                    },
-                    fontSize = 12.sp,
-                    color = TextMuted,
-                    lineHeight = 16.sp
-                )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.History,
+                contentDescription = null,
+                tint = AppleIndigo,
+                modifier = Modifier.size(17.dp)
+            )
+            Text(
+                text = if (strings.isCzech) "Poslední odpovědi" else "Recent Answers",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextDark
+            )
+        }
+
+        if (results.isNotEmpty()) {
+            Text(
+                text = if (strings.isCzech) "$spokenCount hlasem" else "$spokenCount spoken",
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.Medium,
+                color = TextMuted
+            )
+        }
+    }
+
+    if (recent.isEmpty()) {
+        Text(
+            text = if (strings.isCzech) {
+                "Tvé odpovědi se zobrazí zde — kliknutím na slovo se vrátíš na jeho kartu."
             } else {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    recent.forEach { item ->
-                        val statusColor = if (item.isCorrect) AppleGreen else AppleRed
-                        val statusBg = if (item.isCorrect) AppleGreenTint else AppleRedTint
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(SurfaceBg)
-                                .clickable { onReplayWord(item.word.english) }
-                                .padding(horizontal = 10.dp, vertical = 7.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(22.dp)
-                                    .clip(CircleShape)
-                                    .background(statusBg),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = if (item.isCorrect) Icons.Default.Check else Icons.Default.Close,
-                                    contentDescription = null,
-                                    tint = statusColor,
-                                    modifier = Modifier.size(13.dp)
-                                )
-                            }
+                "Your recent answers will appear here — tap any word to return to its card."
+            },
+            fontSize = 12.sp,
+            color = TextMuted,
+            lineHeight = 16.sp
+        )
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            recent.forEach { item ->
+                val statusColor = if (item.isCorrect) AppleGreen else AppleRed
+                val statusBg = if (item.isCorrect) AppleGreenTint else AppleRedTint
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(SurfaceBg)
+                        .clickable { onSelectWord(item.word) }
+                        .padding(horizontal = 10.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(22.dp)
+                            .clip(CircleShape)
+                            .background(statusBg),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (item.isCorrect) Icons.Default.Check else Icons.Default.Close,
+                            contentDescription = null,
+                            tint = statusColor,
+                            modifier = Modifier.size(13.dp)
+                        )
+                    }
 
-                            Column(modifier = Modifier.weight(1f)) {
-                                val leadText = if (item.wasReversed) item.word.english else item.word.czech
-                                val tailText = if (item.wasReversed) item.word.czech else item.word.english
-                                Text(
-                                    text = "$leadText → $tailText",
-                                    fontSize = 12.5.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = TextDark,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                if (!item.spokenTranscript.isNullOrBlank()) {
-                                    Text(
-                                        text = if (strings.isCzech) {
-                                            "Rozpoznáno: “${item.spokenTranscript}”"
-                                        } else {
-                                            "Heard: “${item.spokenTranscript}”"
-                                        },
-                                        fontSize = 11.sp,
-                                        color = TextMuted,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            }
-
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                                contentDescription = null,
-                                tint = AppleBlue,
-                                modifier = Modifier.size(16.dp)
+                    Column(modifier = Modifier.weight(1f)) {
+                        val leadText = if (item.wasReversed) item.word.english else item.word.czech
+                        val tailText = if (item.wasReversed) item.word.czech else item.word.english
+                        Text(
+                            text = "$leadText → $tailText",
+                            fontSize = 12.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextDark,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (!item.spokenTranscript.isNullOrBlank()) {
+                            Text(
+                                text = if (strings.isCzech) {
+                                    "Rozpoznáno: “${item.spokenTranscript}”"
+                                } else {
+                                    "Heard: “${item.spokenTranscript}”"
+                                },
+                                fontSize = 11.sp,
+                                color = TextMuted,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .clickable { onReplayWord(item.word.english) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                            contentDescription = null,
+                            tint = AppleBlue,
+                            modifier = Modifier.size(16.dp)
+                        )
                     }
                 }
             }
@@ -1524,6 +1629,13 @@ private fun Flashcard3DStackArea(
     onPlayAudio: () -> Unit,
     autoPronounceEnabled: Boolean = false,
     onToggleAutoPronounce: () -> Unit = {},
+    pauseWhileSpeaking: Boolean = true,
+    onTogglePauseWhileSpeaking: () -> Unit = {},
+    recentResults: List<CardAttemptResult> = emptyList(),
+    showRecentWordsPanel: Boolean = false,
+    onToggleRecentWordsPanel: () -> Unit = {},
+    onReplayRecentWord: (String) -> Unit = {},
+    onReopenRecentWord: (VocabWord) -> Unit = {},
     onDragDelta: (Float) -> Unit,
     onDragEnd: () -> Unit,
     modifier: Modifier = Modifier,
@@ -1555,13 +1667,9 @@ private fun Flashcard3DStackArea(
             ) {}
         }
 
-        // Second depth card in 3D stack (rises and scales up purely in GPU graphicsLayer)
+        // Second depth card in 3D stack (rises and scales up purely in GPU graphicsLayer; shadow stays outside alpha saveLayer)
         if (nextWord != null) {
-            Surface(
-                shape = RoundedCornerShape(34.dp),
-                color = CardSurface,
-                border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
-                shadowElevation = 0.dp,
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .fillMaxHeight(0.97f)
@@ -1570,10 +1678,31 @@ private fun Flashcard3DStackArea(
                         scaleX = 0.92f + 0.06f * prog
                         scaleY = 0.92f + 0.06f * prog
                         translationY = (14f - 12f * prog) * density
-                        alpha = 0.78f + 0.22f * prog
                     }
-                    .softRoundedShadow(cornerRadius = 34.dp, maxAlpha = 0.06f, spreadDp = 10.dp, offsetYDp = 4.dp)
-            ) {}
+                    .softRoundedShadow(
+                        cornerRadius = 34.dp,
+                        maxAlpha = 0.06f,
+                        spreadDp = 10.dp,
+                        offsetYDp = 4.dp,
+                        alphaProvider = {
+                            val prog = (abs(offsetX) / 380f).coerceIn(0f, 1f)
+                            0.78f + 0.22f * prog
+                        }
+                    )
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(34.dp),
+                    color = CardSurface,
+                    border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
+                    shadowElevation = 0.dp,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            val prog = (abs(offsetX) / 380f).coerceIn(0f, 1f)
+                            alpha = 0.78f + 0.22f * prog
+                        }
+                ) {}
+            }
         }
 
         // Active Foreground Card (reads offsetX, scale, alpha ONLY in graphicsLayer)
@@ -1592,6 +1721,13 @@ private fun Flashcard3DStackArea(
             onPlayAudio = onPlayAudio,
             autoPronounceEnabled = autoPronounceEnabled,
             onToggleAutoPronounce = onToggleAutoPronounce,
+            pauseWhileSpeaking = pauseWhileSpeaking,
+            onTogglePauseWhileSpeaking = onTogglePauseWhileSpeaking,
+            recentResults = recentResults,
+            showRecentWordsPanel = showRecentWordsPanel,
+            onToggleRecentWordsPanel = onToggleRecentWordsPanel,
+            onReplayRecentWord = onReplayRecentWord,
+            onReopenRecentWord = onReopenRecentWord,
             onDragDelta = onDragDelta,
             onDragEnd = onDragEnd,
             isReversed = isReversed
@@ -1866,21 +2002,55 @@ private fun Modifier.softRoundedShadow(
     maxAlpha: Float = 0.11f,
     spreadDp: Dp = 16.dp,
     offsetYDp: Dp = 6.dp,
-    layers: Int = 6
+    layers: Int = 6,
+    alphaProvider: () -> Float = { 1f }
 ): Modifier = drawBehind {
+    val externalAlpha = alphaProvider().coerceIn(0f, 1f)
+    if (externalAlpha <= 0.001f) return@drawBehind
     val baseRadius = cornerRadius.toPx()
     val maxSpread = spreadDp.toPx()
     val offsetY = offsetYDp.toPx()
     for (i in layers downTo 1) {
         val fraction = i.toFloat() / layers.toFloat()
         val extra = maxSpread * fraction
-        val layerAlpha = (maxAlpha / layers) * (1.6f - fraction * 0.85f)
+        val layerAlpha = ((maxAlpha / layers) * (1.6f - fraction * 0.85f) * externalAlpha)
         drawRoundRect(
             color = Color.Black.copy(alpha = layerAlpha.coerceIn(0f, maxAlpha)),
             topLeft = Offset(-extra * 0.5f, -extra * 0.3f + offsetY * fraction),
             size = Size(size.width + extra, size.height + extra),
             cornerRadius = CornerRadius(baseRadius + extra * 0.5f, baseRadius + extra * 0.5f)
         )
+    }
+}
+
+@Composable
+private fun CardCornerToggleIcon(
+    isEnabled: Boolean,
+    enabledIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    disabledIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        shape = CircleShape,
+        color = if (isEnabled) AppleBlue.copy(alpha = 0.14f) else SurfaceBg,
+        border = BorderStroke(
+            width = if (isEnabled) 1.2.dp else 0.5.dp,
+            color = if (isEnabled) AppleBlue else CardBorderGray.copy(alpha = 0.6f)
+        ),
+        modifier = Modifier
+            .size(34.dp)
+            .clip(CircleShape)
+            .clickable(onClick = onClick)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = if (isEnabled) enabledIcon else disabledIcon,
+                contentDescription = contentDescription,
+                tint = if (isEnabled) AppleBlue else TextMuted,
+                modifier = Modifier.size(18.dp)
+            )
+        }
     }
 }
 
@@ -1900,6 +2070,13 @@ private fun SwipeableVocabCard(
     onPlayAudio: () -> Unit,
     autoPronounceEnabled: Boolean = false,
     onToggleAutoPronounce: () -> Unit = {},
+    pauseWhileSpeaking: Boolean = true,
+    onTogglePauseWhileSpeaking: () -> Unit = {},
+    recentResults: List<CardAttemptResult> = emptyList(),
+    showRecentWordsPanel: Boolean = false,
+    onToggleRecentWordsPanel: () -> Unit = {},
+    onReplayRecentWord: (String) -> Unit = {},
+    onReopenRecentWord: (VocabWord) -> Unit = {},
     onDragDelta: (Float) -> Unit,
     onDragEnd: () -> Unit,
     isReversed: Boolean = false
@@ -1936,14 +2113,8 @@ private fun SwipeableVocabCard(
         label = "cardBorder"
     )
 
-    Surface(
-        shape = RoundedCornerShape(34.dp),
-        color = cardBg,
-        border = BorderStroke(
-            if (feedbackState == CardFeedbackState.NEUTRAL && !showLeftSwipeBadge && !showRightSwipeBadge) 1.dp else 2.5.dp,
-            cardBorder
-        ),
-        shadowElevation = 0.dp,
+    // Draw shadow outside the alpha graphicsLayer so saveLayer never clips shadow spread to a sharp rectangle
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .fillMaxHeight(0.97f)
@@ -1955,9 +2126,14 @@ private fun SwipeableVocabCard(
                 rotationZ = (x / 52f).coerceIn(-12f, 12f)
                 scaleX = s
                 scaleY = s
-                alpha = alphaProvider()
             }
-            .softRoundedShadow(cornerRadius = 34.dp, maxAlpha = 0.11f, spreadDp = 16.dp, offsetYDp = 6.dp)
+            .softRoundedShadow(
+                cornerRadius = 34.dp,
+                maxAlpha = 0.11f,
+                spreadDp = 16.dp,
+                offsetYDp = 6.dp,
+                alphaProvider = alphaProvider
+            )
             .pointerInput(word.id) {
                 detectHorizontalDragGestures(
                     onDragEnd = { onDragEnd() },
@@ -1969,6 +2145,20 @@ private fun SwipeableVocabCard(
                 )
             }
     ) {
+        Surface(
+            shape = RoundedCornerShape(34.dp),
+            color = cardBg,
+            border = BorderStroke(
+                if (feedbackState == CardFeedbackState.NEUTRAL && !showLeftSwipeBadge && !showRightSwipeBadge) 1.dp else 2.5.dp,
+                cardBorder
+            ),
+            shadowElevation = 0.dp,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    alpha = alphaProvider()
+                }
+        ) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val isUltraCompactCard = maxHeight < 290.dp
             val isCompactCard = maxHeight < 350.dp
@@ -2000,44 +2190,50 @@ private fun SwipeableVocabCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Top Row: Left/Right Swipe Badges + Center Level Badge
+            // Top Row: Left/Right Swipe Badges + Word Display & Auto-Pronounce Corner Toggles
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (showLeftSwipeBadge ||
-                    feedbackState == CardFeedbackState.SWIPED_WRONG ||
-                    feedbackState == CardFeedbackState.SPOKEN_WRONG_FLASH
-                ) {
-                    Surface(
-                        color = AppleRed,
-                        shape = RoundedCornerShape(50)
+                Box(modifier = Modifier.weight(1f)) {
+                    if (showLeftSwipeBadge ||
+                        feedbackState == CardFeedbackState.SWIPED_WRONG ||
+                        feedbackState == CardFeedbackState.SPOKEN_WRONG_FLASH
                     ) {
-                        Text(
-                            text = if (feedbackState == CardFeedbackState.SPOKEN_WRONG_FLASH) {
-                                strings.badgeTryAgain
-                            } else {
-                                strings.badgeDontKnow
-                            },
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
-                        )
-                    }
-                } else {
-                    Surface(
-                        color = deckLevelColor.copy(alpha = 0.12f),
-                        shape = RoundedCornerShape(50)
-                    ) {
-                        Text(
-                            text = deckLevelLabel,
-                            color = deckLevelColor,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
-                            modifier = Modifier.padding(horizontal = 11.dp, vertical = 4.dp)
-                        )
+                        Surface(
+                            color = AppleRed,
+                            shape = RoundedCornerShape(50)
+                        ) {
+                            Text(
+                                text = if (feedbackState == CardFeedbackState.SPOKEN_WRONG_FLASH) {
+                                    strings.badgeTryAgain
+                                } else {
+                                    strings.badgeDontKnow
+                                },
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+                            )
+                        }
+                    } else {
+                        Surface(
+                            color = deckLevelColor.copy(alpha = 0.12f),
+                            shape = RoundedCornerShape(50)
+                        ) {
+                            Text(
+                                text = deckLevelLabel,
+                                color = deckLevelColor,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(horizontal = 11.dp, vertical = 4.dp)
+                            )
+                        }
                     }
                 }
 
@@ -2062,34 +2258,43 @@ private fun SwipeableVocabCard(
                         )
                     }
                 } else {
-                    Surface(
-                        shape = CircleShape,
-                        color = if (autoPronounceEnabled) AppleBlue.copy(alpha = 0.14f) else SurfaceBg,
-                        border = BorderStroke(
-                            width = if (autoPronounceEnabled) 1.2.dp else 0.5.dp,
-                            color = if (autoPronounceEnabled) AppleBlue else CardBorderGray.copy(alpha = 0.6f)
-                        ),
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(CircleShape)
-                            .clickable { onToggleAutoPronounce() }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = if (autoPronounceEnabled) {
-                                    Icons.AutoMirrored.Filled.VolumeUp
-                                } else {
-                                    Icons.AutoMirrored.Filled.VolumeOff
-                                },
-                                contentDescription = if (strings.isCzech) {
-                                    "Automaticky zopakovat výslovnost"
-                                } else {
-                                    "Repeat pronunciation automatically"
-                                },
-                                tint = if (autoPronounceEnabled) AppleBlue else TextMuted,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
+                        CardCornerToggleIcon(
+                            isEnabled = pauseWhileSpeaking,
+                            enabledIcon = Icons.Default.Visibility,
+                            disabledIcon = Icons.Default.VisibilityOff,
+                            contentDescription = if (strings.isCzech) {
+                                "Zobrazit slovo mezi kartami"
+                            } else {
+                                "Show word readback between cards"
+                            },
+                            onClick = onTogglePauseWhileSpeaking
+                        )
+                        CardCornerToggleIcon(
+                            isEnabled = autoPronounceEnabled,
+                            enabledIcon = Icons.AutoMirrored.Filled.VolumeUp,
+                            disabledIcon = Icons.AutoMirrored.Filled.VolumeOff,
+                            contentDescription = if (strings.isCzech) {
+                                "Automaticky zopakovat výslovnost"
+                            } else {
+                                "Repeat pronunciation automatically"
+                            },
+                            onClick = onToggleAutoPronounce
+                        )
+                        CardCornerToggleIcon(
+                            isEnabled = showRecentWordsPanel,
+                            enabledIcon = Icons.Default.History,
+                            disabledIcon = Icons.Default.History,
+                            contentDescription = if (strings.isCzech) {
+                                "Předchozí slova"
+                            } else {
+                                "Recent words"
+                            },
+                            onClick = onToggleRecentWordsPanel
+                        )
                     }
                 }
             }
@@ -2103,12 +2308,20 @@ private fun SwipeableVocabCard(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
+                val emojiCorner = if (isUltraCompactCard) 18.dp else 24.dp
                 Surface(
-                    shape = RoundedCornerShape(if (isUltraCompactCard) 18.dp else 24.dp),
+                    shape = RoundedCornerShape(emojiCorner),
                     color = SurfaceBg,
                     border = BorderStroke(1.dp, CardBorderGray.copy(alpha = 0.45f)),
-                    shadowElevation = 4.dp,
-                    modifier = Modifier.size(emojiBoxSize)
+                    shadowElevation = 0.dp,
+                    modifier = Modifier
+                        .size(emojiBoxSize)
+                        .softRoundedShadow(
+                            cornerRadius = emojiCorner,
+                            maxAlpha = 0.08f,
+                            spreadDp = 8.dp,
+                            offsetYDp = 3.dp
+                        )
                 ) {
                     Box(
                         modifier = Modifier
@@ -2289,6 +2502,64 @@ private fun SwipeableVocabCard(
                                 )
                             }
                         }
+                    }
+                }
+            }
+        }
+
+            if (showRecentWordsPanel) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onToggleRecentWordsPanel
+                        )
+                )
+            }
+
+            AnimatedVisibility(
+                visible = showRecentWordsPanel,
+                enter = scaleIn(
+                    initialScale = 0.92f,
+                    animationSpec = spring(
+                        dampingRatio = 0.78f,
+                        stiffness = Spring.StiffnessMedium
+                    )
+                ),
+                exit = scaleOut(
+                    targetScale = 0.94f,
+                    animationSpec = tween(120)
+                ),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = cardVertPadding + 42.dp, start = 14.dp, end = 14.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = CardElevatedSurface,
+                    border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.85f)),
+                    shadowElevation = 0.dp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .softRoundedShadow(
+                            cornerRadius = 20.dp,
+                            maxAlpha = 0.14f,
+                            spreadDp = 12.dp,
+                            offsetYDp = 5.dp
+                        )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        RecentAttemptsPanelContent(
+                            strings = strings,
+                            results = recentResults,
+                            onReplayWord = onReplayRecentWord,
+                            onSelectWord = onReopenRecentWord
+                        )
                     }
                 }
             }
