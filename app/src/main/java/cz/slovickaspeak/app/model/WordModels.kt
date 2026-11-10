@@ -71,9 +71,9 @@ enum class StudyDirection {
     fun localizedDescription(isCzech: Boolean, language: LearningLanguage): String {
         val foreignCode = language.code.uppercase()
         return when (this) {
-            NATIVE_TO_FOREIGN -> if (isCzech) "Z češtiny do $foreignCode (aktivní)" else "Czech → $foreignCode (active)"
-            FOREIGN_TO_NATIVE -> if (isCzech) "Z $foreignCode do češtiny (poslech)" else "$foreignCode → Czech (passive)"
-            MIXED -> if (isCzech) "Střídavě oba směry (Mix)" else "Mixed both ways"
+            NATIVE_TO_FOREIGN -> "CZ → $foreignCode"
+            FOREIGN_TO_NATIVE -> "$foreignCode → CZ"
+            MIXED -> if (isCzech) "Střídavě oba směry" else "Mixed both ways"
         }
     }
 }

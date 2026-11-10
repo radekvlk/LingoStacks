@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -627,7 +628,9 @@ private fun DeckGoalIndicatorCard(
                                 text = {
                                     Text(
                                         text = dir.localizedDescription(strings.isCzech, selectedLanguage),
-                                        fontWeight = if (studyDirection == dir) FontWeight.Bold else FontWeight.Medium
+                                        fontWeight = if (studyDirection == dir) FontWeight.Bold else FontWeight.Medium,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth()
                                     )
                                 },
                                 onClick = {
