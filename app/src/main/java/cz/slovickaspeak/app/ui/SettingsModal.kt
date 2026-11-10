@@ -27,12 +27,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -665,13 +669,37 @@ private fun AppVersionSectionCard(
     strings: UiStrings,
     progressState: ProgressStateHolder
 ) {
+    val context = LocalContext.current
     val versionName = progressState.appVersionName
     val available = progressState.availableOtaRelease
     val isChecking = progressState.isCheckingOta
     val uriHandler = LocalUriHandler.current
-    val githubReleasesUrl = "https://github.com/${progressState.otaRepoSlug}/releases/latest"
-    var editingRepo by remember { mutableStateOf(false) }
-    var repoInput by remember(progressState.otaRepoSlug) { mutableStateOf(progressState.otaRepoSlug) }
+    val cleanSlug = cz.slovickaspeak.app.data.OtaUpdater.normalizeRepoSlug(progressState.otaRepoSlug)
+    val githubReleasesUrl = "https://github.com/$cleanSlug/releases/latest"
+    val targetShareVersion = available?.versionName ?: versionName
+    val directApkDownloadUrl = available?.apkDownloadUrl?.takeIf { it.isNotBlank() }
+        ?: "https://github.com/$cleanSlug/releases/download/v$versionName/LingoWords_v$versionName.apk"
+
+    val shareDirectApkLink: () -> Unit = {
+        val shareBody = if (strings.isCzech) {
+            "Stáhni si LingoWords v$targetShareVersion (APK): $directApkDownloadUrl"
+        } else {
+            "Download LingoWords v$targetShareVersion (APK): $directApkDownloadUrl"
+        }
+        val sendIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, "LingoWords v$targetShareVersion")
+            putExtra(Intent.EXTRA_TEXT, shareBody)
+        }
+        val chooser = Intent.createChooser(
+            sendIntent,
+            if (strings.isCzech) "Sdílet odkaz ke stažení" else "Share download link"
+        )
+        try {
+            context.startActivity(chooser)
+        } catch (_: Exception) {
+        }
+    }
 
     Surface(
         shape = RoundedCornerShape(20.dp),
@@ -681,8 +709,9 @@ private fun AppVersionSectionCard(
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Apple Settings Style Header: rounded-square vector icon + title + neutral version pill
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -690,132 +719,159 @@ private fun AppVersionSectionCard(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = AppleBlueTint,
-                        modifier = Modifier.size(34.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(11.dp))
+                            .background(Brush.linearGradient(listOf(AppleBlue, AppleIndigo))),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(text = "🚀", fontSize = 16.sp)
-                        }
+                        Icon(
+                            imageVector = Icons.Default.SystemUpdate,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
-                    Column {
+                    Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                         Text(
-                            text = if (strings.isCzech) "Verze a GitHub OTA" else "Version & GitHub OTA",
-                            fontSize = 14.sp,
+                            text = if (strings.isCzech) "Verze aplikace" else "App Version",
+                            fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextDark
+                            color = TextDark,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "LingoWords v$versionName",
+                            text = "LingoWords • GitHub OTA",
                             fontSize = 12.sp,
-                            color = TextMuted
+                            color = TextMuted,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
                 Surface(
-                    shape = RoundedCornerShape(50),
+                    shape = RoundedCornerShape(9.dp),
                     color = SurfaceBg,
-                    border = BorderStroke(0.5.dp, CardBorderGray)
+                    border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.7f))
                 ) {
                     Text(
                         text = "v$versionName",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AppleBlue,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextDark,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                     )
                 }
             }
 
-            // Repo slug row with quick Edit button
+            // Grouped iOS Settings Action List (GitHub link + Direct APK Share)
             Surface(
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
                 color = SurfaceBg,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "GitHub: ${progressState.otaRepoSlug}",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = TextDark,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(
-                            onClick = { editingRepo = !editingRepo },
-                            modifier = Modifier.size(26.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = null,
-                                tint = AppleBlue,
-                                modifier = Modifier.size(15.dp)
-                            )
-                        }
-                    }
-
-                    Text(
-                        text = if (strings.isCzech) {
-                            "🔗 Stáhnout nejnovější verzi na GitHubu ↗"
-                        } else {
-                            "🔗 Download latest version on GitHub ↗"
-                        },
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = AppleBlue,
-                        textDecoration = TextDecoration.Underline,
                         modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
+                            .fillMaxWidth()
                             .clickable {
                                 try {
                                     uriHandler.openUri(githubReleasesUrl)
                                 } catch (_: Exception) {
                                 }
                             }
-                            .padding(vertical = 2.dp)
-                    )
-
-                    if (editingRepo) {
-                        OutlinedTextField(
-                            value = repoInput,
-                            onValueChange = { repoInput = it },
-                            singleLine = true,
-                            label = {
-                                Text(
-                                    text = if (strings.isCzech) "uzivatel/repozitar" else "owner/repo",
-                                    fontSize = 11.sp
-                                )
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Button(
-                            onClick = {
-                                progressState.updateOtaRepoSlug(repoInput)
-                                editingRepo = false
-                            },
-                            shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = AppleBlue),
-                            modifier = Modifier.fillMaxWidth()
+                            .padding(horizontal = 13.dp, vertical = 11.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(26.dp)
+                                .clip(RoundedCornerShape(7.dp))
+                                .background(AppleBlueTint),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = if (strings.isCzech) "Uložit a zkontrolovat" else "Save & Check",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                contentDescription = null,
+                                tint = AppleBlue,
+                                modifier = Modifier.size(14.dp)
                             )
                         }
+                        Text(
+                            text = if (strings.isCzech) {
+                                "Nejnovější vydání na GitHubu"
+                            } else {
+                                "Download latest on GitHub"
+                            },
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextDark,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = TextMuted,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 49.dp)
+                            .height(0.5.dp)
+                            .background(CardBorderGray.copy(alpha = 0.45f))
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = shareDirectApkLink)
+                            .padding(horizontal = 13.dp, vertical = 11.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(26.dp)
+                                .clip(RoundedCornerShape(7.dp))
+                                .background(AppleBlueTint),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = null,
+                                tint = AppleBlue,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                        Text(
+                            text = if (strings.isCzech) {
+                                "Sdílet odkaz ke stažení (APK)"
+                            } else {
+                                "Share direct APK link"
+                            },
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextDark,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = TextMuted,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
                 }
             }
@@ -823,59 +879,77 @@ private fun AppVersionSectionCard(
             if (progressState.otaStatusMessage != null) {
                 Text(
                     text = progressState.otaStatusMessage ?: "",
-                    fontSize = 11.sp,
+                    fontSize = 11.5.sp,
                     color = if (available != null) AppleGreenDark else TextMuted
                 )
             }
 
+            // Full-width clean Apple tonal CTA button (no harsh wireframe outline)
             if (available != null) {
                 Button(
                     onClick = { progressState.openOtaModal() },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(13.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = AppleGreen),
-                    modifier = Modifier.fillMaxWidth()
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp)
                 ) {
                     Text(
                         text = if (strings.isCzech) {
-                            "✨ Aktualizovat na v${available.versionName}"
+                            "Aktualizovat na v${available.versionName}"
                         } else {
-                            "✨ Update to v${available.versionName}"
+                            "Update to v${available.versionName}"
                         },
                         fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
-                        color = Color.White
+                        fontSize = 13.5.sp,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             } else {
-                OutlinedButton(
-                    onClick = { progressState.checkForOtaUpdate(manual = true) },
-                    enabled = !isChecking,
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, AppleBlue.copy(alpha = 0.5f)),
-                    modifier = Modifier.fillMaxWidth()
+                Surface(
+                    shape = RoundedCornerShape(13.dp),
+                    color = AppleBlueTint,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(13.dp))
+                        .clickable(enabled = !isChecking) {
+                            progressState.checkForOtaUpdate(manual = true)
+                        }
                 ) {
-                    if (isChecking) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                            color = AppleBlue
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        if (isChecking) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(15.dp),
+                                strokeWidth = 2.dp,
+                                color = AppleBlue
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = null,
+                                tint = AppleBlue,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(7.dp))
+                        }
+                        Text(
+                            text = if (strings.isCzech) "Zkontrolovat aktualizace" else "Check for Updates",
+                            color = AppleBlue,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 13.5.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = null,
-                            tint = AppleBlue,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
                     }
-                    Text(
-                        text = if (strings.isCzech) "Zkontrolovat aktualizace (OTA)" else "Check for OTA Updates",
-                        color = AppleBlue,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 13.sp
-                    )
                 }
             }
         }
