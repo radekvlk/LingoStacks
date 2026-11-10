@@ -24,6 +24,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -86,6 +87,7 @@ import cz.slovickaspeak.app.speech.WordMatcher
 import cz.slovickaspeak.app.ui.theme.*
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -163,6 +165,7 @@ fun FlashcardSessionScreen(
 
     var isListening by remember { mutableStateOf(false) }
     var micAutoEnabled by remember { mutableStateOf(true) }
+    var isAppResumed by remember { mutableStateOf(true) }
     var rmsLevel by remember { mutableFloatStateOf(0f) }
 
     // GPU-driven Animatables (read ONLY inside graphicsLayer draw phase to avoid layout thrashing)
@@ -466,6 +469,8 @@ fun FlashcardSessionScreen(
     }
 
     val currentHandleSpeech by rememberUpdatedState(handleSpeechCandidates)
+    val showGoalPickerUpdated by rememberUpdatedState(showGoalPicker)
+    val showOtaDialogUpdated by rememberUpdatedState(progressState.showOtaDialog)
     val lifecycleOwner = LocalLifecycleOwner.current
 
     DisposableEffect(lifecycleOwner, deck.language) {
@@ -483,12 +488,22 @@ fun FlashcardSessionScreen(
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_RESUME -> {
-                    if (hasMicPermState && micAutoState) {
+                    isAppResumed = true
+                    rmsLevel = 0f
+                    keepScreenActive()
+                    if (hasMicPermState && micAutoState && !showGoalPickerUpdated && !showOtaDialogUpdated) {
                         controller.startContinuousListening()
                     }
                 }
                 Lifecycle.Event.ON_PAUSE, Lifecycle.Event.ON_STOP -> {
-                    // Immediately stop recognizer and restore phone volume when minimized to background
+                    // Immediately release mic DSP, waves, and screen wake lock when paused or minimized
+                    isAppResumed = false
+                    rmsLevel = 0f
+                    screenAwakeTimeoutJob?.cancel()
+                    try {
+                        currentView.keepScreenOn = false
+                    } catch (_: Throwable) {
+                    }
                     controller.stopListening()
                 }
                 else -> {}
@@ -502,9 +517,16 @@ fun FlashcardSessionScreen(
         }
     }
 
-    LaunchedEffect(hasMicPermission) {
-        if (hasMicPermission && micAutoEnabled) {
-            speechControllerRef?.startContinuousListening()
+    val isModalBlocking = showGoalPicker || progressState.showOtaDialog
+    val isMicVisualActive = micAutoEnabled && isAppResumed && !isModalBlocking
+
+    LaunchedEffect(hasMicPermission, isModalBlocking, isAppResumed, micAutoEnabled, speechControllerRef) {
+        val controller = speechControllerRef ?: return@LaunchedEffect
+        if (isModalBlocking || !isAppResumed || !hasMicPermission || !micAutoEnabled) {
+            rmsLevel = 0f
+            controller.stopListening()
+        } else {
+            controller.startContinuousListening()
         }
     }
 
@@ -774,7 +796,8 @@ fun FlashcardSessionScreen(
                         lastHeardText = lastHeardText,
                         feedbackState = feedbackState,
                         speechError = speechError,
-                        rmsLevel = rmsLevel,
+                        rmsLevelProvider = { rmsLevel },
+                        animateMicWaves = isMicVisualActive,
                         expectCzech = isReversedCard
                     )
                 }
@@ -793,9 +816,9 @@ fun FlashcardSessionScreen(
                         currentWord = currentWord,
                         nextWord = nextWord,
                         thirdWord = thirdWord,
-                        offsetX = offsetX.value,
-                        cardScale = cardScale.value,
-                        cardAlpha = cardAlpha.value,
+                        offsetXProvider = { offsetX.value },
+                        cardScaleProvider = { cardScale.value },
+                        cardAlphaProvider = { cardAlpha.value },
                         feedbackState = feedbackState,
                         showHintTranslation = isTranslationRevealed,
                         onToggleHint = handleToggleHint,
@@ -826,7 +849,8 @@ fun FlashcardSessionScreen(
                         strings = strings,
                         isListening = isListening,
                         micAutoEnabled = micAutoEnabled,
-                        rmsLevel = rmsLevel,
+                        rmsLevelProvider = { rmsLevel },
+                        animateMicWaves = isMicVisualActive,
                         enabled = isCardInteractive,
                         onSwipeDontKnow = {
                             triggerCardResolution(
@@ -876,7 +900,8 @@ fun FlashcardSessionScreen(
                     lastHeardText = lastHeardText,
                     feedbackState = feedbackState,
                     speechError = speechError,
-                    rmsLevel = rmsLevel,
+                    rmsLevelProvider = { rmsLevel },
+                    animateMicWaves = isMicVisualActive,
                     expectCzech = isReversedCard
                 )
 
@@ -888,9 +913,9 @@ fun FlashcardSessionScreen(
                     currentWord = currentWord,
                     nextWord = nextWord,
                     thirdWord = thirdWord,
-                    offsetX = offsetX.value,
-                    cardScale = cardScale.value,
-                    cardAlpha = cardAlpha.value,
+                    offsetXProvider = { offsetX.value },
+                    cardScaleProvider = { cardScale.value },
+                    cardAlphaProvider = { cardAlpha.value },
                     feedbackState = feedbackState,
                     showHintTranslation = isTranslationRevealed,
                     onToggleHint = handleToggleHint,
@@ -940,7 +965,8 @@ fun FlashcardSessionScreen(
                     strings = strings,
                     isListening = isListening,
                     micAutoEnabled = micAutoEnabled,
-                    rmsLevel = rmsLevel,
+                    rmsLevelProvider = { rmsLevel },
+                    animateMicWaves = isMicVisualActive,
                     enabled = isCardInteractive,
                     onSwipeDontKnow = {
                         triggerCardResolution(
@@ -1649,9 +1675,9 @@ private fun Flashcard3DStackArea(
     currentWord: VocabWord,
     nextWord: VocabWord?,
     thirdWord: VocabWord?,
-    offsetX: Float,
-    cardScale: Float,
-    cardAlpha: Float,
+    offsetXProvider: () -> Float,
+    cardScaleProvider: () -> Float,
+    cardAlphaProvider: () -> Float,
     feedbackState: CardFeedbackState,
     showHintTranslation: Boolean,
     onToggleHint: () -> Unit,
@@ -1689,7 +1715,7 @@ private fun Flashcard3DStackArea(
                     .fillMaxWidth()
                     .fillMaxHeight(0.97f)
                     .graphicsLayer {
-                        val prog = (abs(offsetX) / 380f).coerceIn(0f, 1f)
+                        val prog = (abs(offsetXProvider()) / 380f).coerceIn(0f, 1f)
                         scaleX = 0.86f + 0.05f * prog
                         scaleY = 0.86f + 0.05f * prog
                         translationY = (26f - 10f * prog) * density
@@ -1705,7 +1731,7 @@ private fun Flashcard3DStackArea(
                     .fillMaxWidth()
                     .fillMaxHeight(0.97f)
                     .graphicsLayer {
-                        val prog = (abs(offsetX) / 380f).coerceIn(0f, 1f)
+                        val prog = (abs(offsetXProvider()) / 380f).coerceIn(0f, 1f)
                         scaleX = 0.92f + 0.06f * prog
                         scaleY = 0.92f + 0.06f * prog
                         translationY = (14f - 12f * prog) * density
@@ -1716,7 +1742,7 @@ private fun Flashcard3DStackArea(
                         spreadDp = 10.dp,
                         offsetYDp = 4.dp,
                         alphaProvider = {
-                            val prog = (abs(offsetX) / 380f).coerceIn(0f, 1f)
+                            val prog = (abs(offsetXProvider()) / 380f).coerceIn(0f, 1f)
                             0.78f + 0.22f * prog
                         }
                     )
@@ -1729,7 +1755,7 @@ private fun Flashcard3DStackArea(
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer {
-                            val prog = (abs(offsetX) / 380f).coerceIn(0f, 1f)
+                            val prog = (abs(offsetXProvider()) / 380f).coerceIn(0f, 1f)
                             alpha = 0.78f + 0.22f * prog
                         }
                 ) {}
@@ -1743,9 +1769,9 @@ private fun Flashcard3DStackArea(
             word = currentWord,
             deckLevelLabel = "${deck.language.flagEmoji} ${deck.level.label} • ${deck.localizedTitle(strings.isCzech)}",
             deckLevelColor = Color(deck.level.colorHex),
-            offsetXProvider = { offsetX },
-            scaleProvider = { cardScale },
-            alphaProvider = { cardAlpha },
+            offsetXProvider = offsetXProvider,
+            scaleProvider = cardScaleProvider,
+            alphaProvider = cardAlphaProvider,
             feedbackState = feedbackState,
             showHintTranslation = showHintTranslation,
             onToggleHint = onToggleHint,
@@ -1893,51 +1919,87 @@ private fun WordPronounceReadbackBubble(
 private fun AudioWaveVisualizer(
     color: Color,
     rmsLevel: Float = 0f,
+    rmsLevelProvider: () -> Float = { rmsLevel },
+    animateWaves: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "audioWaveBars")
+    // Store State<Float> objects without reading .value during composition -> Canvas draws on GPU with zero layout/recomposition
+    val h1State: State<Float>
+    val h2State: State<Float>
+    val h3State: State<Float>
+    val h4State: State<Float>
+    val h5State: State<Float>
 
-    val h1 by infiniteTransition.animateFloat(
-        initialValue = 4f, targetValue = 13f,
-        animationSpec = infiniteRepeatable(tween(420, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "h1"
-    )
-    val h2 by infiniteTransition.animateFloat(
-        initialValue = 14f, targetValue = 5f,
-        animationSpec = infiniteRepeatable(tween(360, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "h2"
-    )
-    val h3 by infiniteTransition.animateFloat(
-        initialValue = 6f, targetValue = 16f,
-        animationSpec = infiniteRepeatable(tween(480, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "h3"
-    )
-    val h4 by infiniteTransition.animateFloat(
-        initialValue = 13f, targetValue = 6f,
-        animationSpec = infiniteRepeatable(tween(400, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "h4"
-    )
-    val h5 by infiniteTransition.animateFloat(
-        initialValue = 5f, targetValue = 11f,
-        animationSpec = infiniteRepeatable(tween(450, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "h5"
-    )
+    if (animateWaves) {
+        val infiniteTransition = rememberInfiniteTransition(label = "audioWaveBars")
+        h1State = infiniteTransition.animateFloat(
+            initialValue = 4f, targetValue = 13f,
+            animationSpec = infiniteRepeatable(tween(420, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+            label = "h1"
+        )
+        h2State = infiniteTransition.animateFloat(
+            initialValue = 14f, targetValue = 5f,
+            animationSpec = infiniteRepeatable(tween(360, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+            label = "h2"
+        )
+        h3State = infiniteTransition.animateFloat(
+            initialValue = 6f, targetValue = 16f,
+            animationSpec = infiniteRepeatable(tween(480, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+            label = "h3"
+        )
+        h4State = infiniteTransition.animateFloat(
+            initialValue = 13f, targetValue = 6f,
+            animationSpec = infiniteRepeatable(tween(400, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+            label = "h4"
+        )
+        h5State = infiniteTransition.animateFloat(
+            initialValue = 5f, targetValue = 11f,
+            animationSpec = infiniteRepeatable(tween(450, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+            label = "h5"
+        )
+    } else {
+        h1State = remember { mutableFloatStateOf(5f) }
+        h2State = remember { mutableFloatStateOf(8f) }
+        h3State = remember { mutableFloatStateOf(11f) }
+        h4State = remember { mutableFloatStateOf(8f) }
+        h5State = remember { mutableFloatStateOf(5f) }
+    }
 
-    val boost = (rmsLevel * 1.5f).coerceIn(0f, 6f)
+    val boostAnim = remember { Animatable(0f) }
+    LaunchedEffect(animateWaves, rmsLevelProvider) {
+        if (!animateWaves) {
+            boostAnim.snapTo(0f)
+        } else {
+            snapshotFlow { (rmsLevelProvider() * 3.5f).coerceIn(0f, 6f) }
+                .collectLatest { targetBoost ->
+                    boostAnim.animateTo(
+                        targetValue = targetBoost,
+                        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing)
+                    )
+                }
+        }
+    }
 
-    Row(
-        modifier = modifier.height(18.dp),
-        horizontalArrangement = Arrangement.spacedBy(3.dp),
-        verticalAlignment = Alignment.CenterVertically
+    Canvas(
+        modifier = modifier
+            .width(27.dp)
+            .height(18.dp)
     ) {
-        listOf(h1, h2, h3, h4, h5).forEach { baseH ->
-            val finalHeight = (baseH + boost).coerceIn(4f, 18f)
-            Box(
-                modifier = Modifier
-                    .width(3.dp)
-                    .height(finalHeight.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(color)
+        val barWidthPx = 3.dp.toPx()
+        val gapPx = 3.dp.toPx()
+        val corner = CornerRadius(barWidthPx / 2f, barWidthPx / 2f)
+        val boost = boostAnim.value
+        val maxH = size.height
+        val heights = floatArrayOf(h1State.value, h2State.value, h3State.value, h4State.value, h5State.value)
+        for (i in heights.indices) {
+            val hPx = (heights[i] + boost).coerceIn(4f, 18f).dp.toPx().coerceAtMost(maxH)
+            val x = i * (barWidthPx + gapPx)
+            val y = (maxH - hPx) * 0.5f
+            drawRoundRect(
+                color = color,
+                topLeft = Offset(x, y),
+                size = Size(barWidthPx, hPx),
+                cornerRadius = corner
             )
         }
     }
@@ -1953,6 +2015,8 @@ private fun LiveSpeechBanner(
     feedbackState: CardFeedbackState,
     speechError: String?,
     rmsLevel: Float = 0f,
+    rmsLevelProvider: () -> Float = { rmsLevel },
+    animateMicWaves: Boolean = micAutoEnabled,
     expectCzech: Boolean = false
 ) {
     val bgColor by animateColorAsState(
@@ -1988,12 +2052,13 @@ private fun LiveSpeechBanner(
                     .background(dotColor)
             )
 
-            // Dynamic Audio Waveform (animované vlnění při poslechu jako v návrhu)
+            // Dynamic Audio Waveform (Canvas GPU draw phase with zero measure/layout churn)
             if (micAutoEnabled && isListening && feedbackState == CardFeedbackState.NEUTRAL) {
                 Spacer(modifier = Modifier.width(8.dp))
                 AudioWaveVisualizer(
                     color = dotColor,
-                    rmsLevel = rmsLevel
+                    rmsLevelProvider = rmsLevelProvider,
+                    animateWaves = animateMicWaves
                 )
             }
 
@@ -2650,24 +2715,48 @@ private fun BottomControlBar(
     strings: UiStrings,
     isListening: Boolean,
     micAutoEnabled: Boolean,
-    rmsLevel: Float,
+    rmsLevel: Float = 0f,
+    rmsLevelProvider: () -> Float = { rmsLevel },
+    animateMicWaves: Boolean = micAutoEnabled,
     enabled: Boolean,
     onSwipeDontKnow: () -> Unit,
     onToggleMic: () -> Unit,
     onSwipeKnow: () -> Unit
 ) {
-    // Calm breathing + smooth outward fading ripples ONLY when mic is active (no jittery RMS shake on the icon)
-    val smoothRms by animateFloatAsState(
-        targetValue = if (micAutoEnabled) rmsLevel.coerceIn(0f, 1f) else 0f,
-        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
-        label = "smoothMicRms"
+    // Store animated states without reading .value during composition -> zero per-frame recomposition!
+    val smoothRmsAnim = remember { Animatable(0f) }
+    LaunchedEffect(animateMicWaves, rmsLevelProvider) {
+        if (!animateMicWaves) {
+            smoothRmsAnim.snapTo(0f)
+        } else {
+            snapshotFlow { rmsLevelProvider().coerceIn(0f, 1f) }
+                .collectLatest { target ->
+                    smoothRmsAnim.animateTo(
+                        targetValue = target,
+                        animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing)
+                    )
+                }
+        }
+    }
+
+    val isVoiceActive by remember(animateMicWaves) {
+        derivedStateOf { animateMicWaves && rmsLevelProvider() > 0.12f }
+    }
+    val voicePulseScaleState = animateFloatAsState(
+        targetValue = if (isVoiceActive) 1.08f else 1.0f,
+        animationSpec = spring(
+            dampingRatio = 0.85f,
+            stiffness = 140f
+        ),
+        label = "voicePulseScale"
     )
-    val breathScale: Float
-    val wave1Progress: Float
-    val wave2Progress: Float
-    if (micAutoEnabled) {
+
+    val breathScaleState: State<Float>
+    val wave1State: State<Float>
+    val wave2State: State<Float>
+    if (animateMicWaves) {
         val infiniteTransition = rememberInfiniteTransition(label = "micBreathing")
-        breathScale = infiniteTransition.animateFloat(
+        breathScaleState = infiniteTransition.animateFloat(
             initialValue = 1.0f,
             targetValue = 1.04f,
             animationSpec = infiniteRepeatable(
@@ -2675,8 +2764,8 @@ private fun BottomControlBar(
                 repeatMode = RepeatMode.Reverse
             ),
             label = "breathScale"
-        ).value
-        wave1Progress = infiniteTransition.animateFloat(
+        )
+        wave1State = infiniteTransition.animateFloat(
             initialValue = 0f,
             targetValue = 1f,
             animationSpec = infiniteRepeatable(
@@ -2684,8 +2773,8 @@ private fun BottomControlBar(
                 repeatMode = RepeatMode.Restart
             ),
             label = "micWave1"
-        ).value
-        wave2Progress = infiniteTransition.animateFloat(
+        )
+        wave2State = infiniteTransition.animateFloat(
             initialValue = 0f,
             targetValue = 1f,
             animationSpec = infiniteRepeatable(
@@ -2694,11 +2783,18 @@ private fun BottomControlBar(
                 initialStartOffset = StartOffset(1100)
             ),
             label = "micWave2"
-        ).value
+        )
     } else {
-        breathScale = 1.0f
-        wave1Progress = 0f
-        wave2Progress = 0f
+        breathScaleState = remember { mutableFloatStateOf(1.0f) }
+        wave1State = remember { mutableFloatStateOf(0f) }
+        wave2State = remember { mutableFloatStateOf(0f) }
+    }
+
+    val activeMicBrush = remember(AppleBlue, AppleIndigo) {
+        Brush.linearGradient(listOf(AppleBlue, AppleIndigo))
+    }
+    val inactiveMicBrush = remember {
+        Brush.linearGradient(listOf(Color(0xFF636366), Color(0xFF48484A)))
     }
 
     Surface(
@@ -2764,11 +2860,14 @@ private fun BottomControlBar(
                 modifier = Modifier
                     .size(80.dp)
                     .drawBehind {
-                        if (micAutoEnabled) {
+                        if (animateMicWaves) {
                             val buttonRadius = 32.dp.toPx()
                             val maxExtraRadius = 22.dp.toPx()
-                            val intensity = 0.34f + smoothRms * 0.14f
-                            listOf(wave1Progress, wave2Progress).forEach { p ->
+                            val intensity = 0.34f + smoothRmsAnim.value * 0.14f
+                            val p1 = wave1State.value
+                            val p2 = wave2State.value
+                            for (i in 0..1) {
+                                val p = if (i == 0) p1 else p2
                                 val fade = (1f - p) * (1f - p)
                                 val r = buttonRadius * 0.85f + (buttonRadius * 0.15f + maxExtraRadius) * p
                                 val fillAlpha = (intensity * fade).coerceIn(0f, 1f)
@@ -2790,20 +2889,18 @@ private fun BottomControlBar(
                 Box(
                     modifier = Modifier
                         .size(64.dp)
-                        .scale(breathScale)
+                        .graphicsLayer {
+                            val s = breathScaleState.value * voicePulseScaleState.value
+                            scaleX = s
+                            scaleY = s
+                        }
                         .shadow(
                             elevation = if (micAutoEnabled) 10.dp else 6.dp,
                             shape = CircleShape,
                             spotColor = if (micAutoEnabled) AppleBlue.copy(alpha = 0.42f) else Color.Black.copy(alpha = 0.2f)
                         )
                         .clip(CircleShape)
-                        .background(
-                            if (micAutoEnabled) {
-                                Brush.linearGradient(listOf(AppleBlue, AppleIndigo))
-                            } else {
-                                Brush.linearGradient(listOf(Color(0xFF636366), Color(0xFF48484A)))
-                            }
-                        )
+                        .background(if (micAutoEnabled) activeMicBrush else inactiveMicBrush)
                         .clickable(onClick = onToggleMic),
                     contentAlignment = Alignment.Center
                 ) {

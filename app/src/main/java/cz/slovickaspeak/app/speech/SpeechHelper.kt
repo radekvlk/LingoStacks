@@ -771,6 +771,8 @@ class SpeechSessionController(
     var currentTargetBiasStrings: List<String> = emptyList()
 
     private var consecutiveEmptyNoMatch = 0
+    private var silentCycleCount = 0
+    private var lastReportedRms = -1f
 
     private var isCurrentlyListening = false
     private var isStartingListen = false
@@ -780,6 +782,7 @@ class SpeechSessionController(
     private var isTtsSpeaking = false
 
     private var lastStartAttemptUptime = 0L
+    private var cycleReadyUptime = 0L
     private var lastEndOfSpeechUptime = 0L
     private var lastCycleEndUptime = 0L
     private var consecutiveErrors = 0
@@ -848,14 +851,30 @@ class SpeechSessionController(
                 }
             }
 
+            val nextCheckDelay = if (isCurrentlyListening && !isStartingListen && !isProcessingSpeech) {
+                2400L
+            } else {
+                1200L
+            }
             mainHandler.removeCallbacks(this)
-            mainHandler.postDelayed(this, 800L)
+            mainHandler.postDelayed(this, nextCheckDelay)
         }
     }
 
     private fun scheduleWatchdog() {
+        val delayMs = if (isCurrentlyListening && !isStartingListen && !isProcessingSpeech) 2400L else 1200L
         mainHandler.removeCallbacks(watchdogRunnable)
-        mainHandler.postDelayed(watchdogRunnable, 800L)
+        mainHandler.postDelayed(watchdogRunnable, delayMs)
+    }
+
+    private fun emitRmsIfChanged(normalized: Float) {
+        val clamped = normalized.coerceIn(0f, 1f)
+        if (lastReportedRms == clamped) return
+        if (clamped > 0f && lastReportedRms > 0f && kotlin.math.abs(clamped - lastReportedRms) < 0.04f) {
+            return
+        }
+        lastReportedRms = clamped
+        mainHandler.post { rmsCallback(clamped) }
     }
 
     private fun scheduleListenRestart(delayMs: Long) {
@@ -1024,6 +1043,7 @@ class SpeechSessionController(
     }
 
     fun startContinuousListening() {
+        silentCycleCount = 0
         muteSystemSounds()
         val alreadyActive = shouldStayListening && !isPausedForTts && !isPausedForTransition &&
             (isCurrentlyListening || isStartingListen || isProcessingSpeech)
@@ -1052,6 +1072,9 @@ class SpeechSessionController(
         isStartingListen = false
         isCurrentlyListening = false
         isProcessingSpeech = false
+        cycleReadyUptime = 0L
+        silentCycleCount = 0
+        lastReportedRms = -1f
         mainHandler.removeCallbacks(watchdogRunnable)
         mainHandler.removeCallbacks(restartListenRunnable)
         mainHandler.removeCallbacks(transitionFallbackRunnable)
@@ -1066,6 +1089,7 @@ class SpeechSessionController(
             // Keep system sounds muted for 1500ms so the recognizer teardown/cancel earcon is completely silenced!
             restoreSystemSounds(1500L)
             listeningCallback(false)
+            lastReportedRms = 0f
             rmsCallback(0f)
         }
     }
@@ -1078,6 +1102,7 @@ class SpeechSessionController(
     fun pauseForCardTransition() {
         if (!shouldStayListening) return
         isPausedForTransition = true
+        silentCycleCount = 0
         mainHandler.removeCallbacks(restartListenRunnable)
         mainHandler.removeCallbacks(transitionFallbackRunnable)
         mainHandler.post {
@@ -1091,7 +1116,9 @@ class SpeechSessionController(
             isCurrentlyListening = false
             isStartingListen = false
             isProcessingSpeech = false
+            cycleReadyUptime = 0L
             accumulatedPartialsInCycle.clear()
+            lastReportedRms = 0f
             rmsCallback(0f)
             mainHandler.postDelayed(transitionFallbackRunnable, 1200L)
         }
@@ -1103,6 +1130,7 @@ class SpeechSessionController(
      */
     fun startForNewCard() {
         if (!shouldStayListening) return
+        silentCycleCount = 0
         mainHandler.removeCallbacks(transitionFallbackRunnable)
         mainHandler.removeCallbacks(restartListenRunnable)
         mainHandler.post {
@@ -1129,9 +1157,11 @@ class SpeechSessionController(
         isCurrentlyListening = false
         isStartingListen = false
         isProcessingSpeech = false
+        cycleReadyUptime = 0L
         lastEndOfSpeechUptime = 0L
         lastCycleEndUptime = SystemClock.uptimeMillis()
         accumulatedPartialsInCycle.clear()
+        lastReportedRms = 0f
         rmsCallback(0f)
         if (shouldStayListening && !isPausedForTts && !isPausedForTransition && !isTtsSpeaking) {
             scheduleListenRestart(150L)
@@ -1186,6 +1216,7 @@ class SpeechSessionController(
                     isStartingListen = false
                     isCurrentlyListening = true
                     isProcessingSpeech = false
+                    cycleReadyUptime = SystemClock.uptimeMillis()
                     lastEndOfSpeechUptime = 0L
                     consecutiveErrors = 0
                     accumulatedPartialsInCycle.clear()
@@ -1198,14 +1229,18 @@ class SpeechSessionController(
                     isStartingListen = false
                     isCurrentlyListening = true
                     isProcessingSpeech = false
+                    silentCycleCount = 0
                     lastEndOfSpeechUptime = 0L
                 }
 
                 override fun onRmsChanged(rmsdB: Float) {
                     if (!shouldStayListening || isPausedForTts || isPausedForTransition) return
-                    // rmsdB typically ranges from -2f to 10f on Android
-                    val normalized = ((rmsdB + 2f) / 10f).coerceIn(0f, 1f)
-                    mainHandler.post { rmsCallback(normalized) }
+                    if (rmsdB > 1.8f) {
+                        silentCycleCount = 0
+                    }
+                    // rmsdB ranges roughly -2..10 dB; noise-gate low room hiss below 1.2 dB so idle mic stays calm
+                    val normalized = ((rmsdB - 1.2f) / 8.8f).coerceIn(0f, 1f)
+                    emitRmsIfChanged(normalized)
                 }
 
                 override fun onBufferReceived(buffer: ByteArray?) {}
@@ -1216,16 +1251,19 @@ class SpeechSessionController(
                     isCurrentlyListening = false
                     isProcessingSpeech = true
                     lastEndOfSpeechUptime = SystemClock.uptimeMillis()
-                    mainHandler.post { rmsCallback(0f) }
+                    emitRmsIfChanged(0f)
                 }
 
                 override fun onError(error: Int) {
+                    val now = SystemClock.uptimeMillis()
+                    val cycleDurationMs = if (cycleReadyUptime > 0L) now - cycleReadyUptime else 0L
                     isStartingListen = false
                     isCurrentlyListening = false
                     isProcessingSpeech = false
+                    cycleReadyUptime = 0L
                     lastEndOfSpeechUptime = 0L
-                    lastCycleEndUptime = SystemClock.uptimeMillis()
-                    mainHandler.post { rmsCallback(0f) }
+                    lastCycleEndUptime = now
+                    emitRmsIfChanged(0f)
 
                     if (!shouldStayListening || isPausedForTts || isPausedForTransition) {
                         accumulatedPartialsInCycle.clear()
@@ -1249,19 +1287,31 @@ class SpeechSessionController(
                         accumulatedPartialsInCycle.clear()
                         if (capturedPartials.isNotEmpty()) {
                             consecutiveEmptyNoMatch = 0
+                            silentCycleCount = 0
                             finalHeardCallback(capturedPartials)
-                        } else if (error == SpeechRecognizer.ERROR_NO_MATCH) {
-                            consecutiveEmptyNoMatch += 1
-                            if (consecutiveEmptyNoMatch >= 4) {
-                                // Unresponsive engine returning repeated empty NO_MATCH: switch between Google & Default
+                        } else {
+                            silentCycleCount = (silentCycleCount + 1).coerceAtMost(10)
+                            // Only treat NO_MATCH as a broken recognizer if the cycle died almost immediately (< 1.8s),
+                            // never during genuine quiet pauses (avoids recreating the Binder service every 20s!).
+                            if (error == SpeechRecognizer.ERROR_NO_MATCH && cycleDurationMs < 1800L) {
+                                consecutiveEmptyNoMatch += 1
+                                if (consecutiveEmptyNoMatch >= 4) {
+                                    consecutiveEmptyNoMatch = 0
+                                    useDefaultFallbackRecognizer = !useDefaultFallbackRecognizer
+                                    recreateRecognizerAndListen()
+                                    return
+                                }
+                            } else {
                                 consecutiveEmptyNoMatch = 0
-                                useDefaultFallbackRecognizer = !useDefaultFallbackRecognizer
-                                recreateRecognizerAndListen()
-                                return
                             }
                         }
                         if (shouldStayListening && !isPausedForTts && !isPausedForTransition) {
-                            scheduleListenRestart(180L)
+                            val restartDelay = when {
+                                silentCycleCount <= 2 -> 180L
+                                silentCycleCount <= 5 -> 420L
+                                else -> 850L
+                            }
+                            scheduleListenRestart(restartDelay)
                         }
                         return
                     }
@@ -1296,10 +1346,11 @@ class SpeechSessionController(
                     isStartingListen = false
                     isCurrentlyListening = false
                     isProcessingSpeech = false
+                    cycleReadyUptime = 0L
                     lastEndOfSpeechUptime = 0L
                     lastCycleEndUptime = SystemClock.uptimeMillis()
                     consecutiveErrors = 0
-                    mainHandler.post { rmsCallback(0f) }
+                    emitRmsIfChanged(0f)
 
                     if (!shouldStayListening || isPausedForTts || isPausedForTransition || !wasActive) {
                         accumulatedPartialsInCycle.clear()
@@ -1315,6 +1366,7 @@ class SpeechSessionController(
 
                     if (combined.isNotEmpty()) {
                         consecutiveEmptyNoMatch = 0
+                        silentCycleCount = 0
                         finalHeardCallback(combined)
                     }
                     if (shouldStayListening && !isPausedForTts && !isPausedForTransition) {
@@ -1328,6 +1380,7 @@ class SpeechSessionController(
 
                     val matches = extractAllCandidates(partialResults)
                     if (matches.isNotEmpty()) {
+                        silentCycleCount = 0
                         accumulatedPartialsInCycle.addAll(matches)
                         partialHeardCallback(matches)
                     }

@@ -47,7 +47,10 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -80,15 +83,18 @@ fun AppleFullSettingsDialog(
     var manualGoogleEmail by remember { mutableStateOf("radek.vlk@gmail.com") }
     var manualGoogleName by remember { mutableStateOf("Radek Vlk") }
 
-    // Sync cloud leaderboard ONLY while Leaderboard tab is open and user is signed in (battery saver)
+    // Sync cloud leaderboard ONLY while Leaderboard tab is visible, in foreground (RESUMED), and user is signed in
+    val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(Unit) {
         progressState.pushMyProgressToCloud(force = true)
     }
-    LaunchedEffect(selectedTab, progressState.googleUser) {
-        if (selectedTab == 1 && progressState.googleUser != null) {
-            while (true) {
-                progressState.refreshFromCloud()
-                delay(30_000L)
+    LaunchedEffect(selectedTab, progressState.googleUser, showCompleteStatsInModal, lifecycleOwner) {
+        if (selectedTab == 1 && progressState.googleUser != null && !showCompleteStatsInModal) {
+            lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                while (true) {
+                    progressState.refreshFromCloud()
+                    delay(30_000L)
+                }
             }
         }
     }
@@ -1068,42 +1074,11 @@ private fun <T> AppleSegmentedControl(
 }
 
 @Composable
-private fun AppearanceSectionCard(
-    strings: UiStrings,
-    isDarkMode: Boolean,
-    onSelectDarkMode: (Boolean) -> Unit
-) {
-    Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = CardSurface,
-        border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Text(
-                text = strings.appearanceTitle,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextDark
-            )
-
-            AppleSegmentedControl(
-                options = listOf(false to strings.lightModeLabel, true to strings.darkModeLabel),
-                selectedValue = isDarkMode,
-                onSelect = onSelectDarkMode
-            )
-        }
-    }
-}
-
-@Composable
-private fun AutoPronounceSectionCard(
-    strings: UiStrings,
-    autoPronounceEnabled: Boolean,
-    onToggleAutoPronounce: (Boolean) -> Unit
+private fun SettingsSwitchCard(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
@@ -1125,24 +1100,21 @@ private fun AutoPronounceSectionCard(
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
-                    text = if (strings.isCzech) "🔊 Zopakovat výslovnost" else "🔊 Repeat Pronunciation",
+                    text = title,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextDark
                 )
                 Text(
-                    text = if (strings.isCzech)
-                        "Po vyřešení karty nahlas zopakuje správnou výslovnost (i při volbě Nevím)."
-                    else
-                        "Repeats correct pronunciation out loud after finishing each card (and on Unknown).",
+                    text = subtitle,
                     fontSize = 12.sp,
                     color = TextMuted,
                     lineHeight = 16.sp
                 )
             }
             Switch(
-                checked = autoPronounceEnabled,
-                onCheckedChange = onToggleAutoPronounce,
+                checked = checked,
+                onCheckedChange = onCheckedChange,
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White,
                     checkedTrackColor = AppleBlue,
@@ -1155,51 +1127,57 @@ private fun AutoPronounceSectionCard(
 }
 
 @Composable
+private fun AppearanceSectionCard(
+    strings: UiStrings,
+    isDarkMode: Boolean,
+    onSelectDarkMode: (Boolean) -> Unit
+) {
+    SettingsSwitchCard(
+        title = if (strings.isCzech) "🌙 Tmavý režim" else "🌙 Dark Mode",
+        subtitle = if (strings.isCzech) {
+            "Přepne vzhled aplikace mezi světlým a tmavým motivem."
+        } else {
+            "Switches app appearance between Light and Dark theme."
+        },
+        checked = isDarkMode,
+        onCheckedChange = onSelectDarkMode
+    )
+}
+
+@Composable
+private fun AutoPronounceSectionCard(
+    strings: UiStrings,
+    autoPronounceEnabled: Boolean,
+    onToggleAutoPronounce: (Boolean) -> Unit
+) {
+    SettingsSwitchCard(
+        title = if (strings.isCzech) "🔊 Zopakovat výslovnost" else "🔊 Repeat Pronunciation",
+        subtitle = if (strings.isCzech) {
+            "Po vyřešení karty nahlas zopakuje správnou výslovnost (i při volbě Nevím)."
+        } else {
+            "Repeats correct pronunciation out loud after finishing each card (and on Unknown)."
+        },
+        checked = autoPronounceEnabled,
+        onCheckedChange = onToggleAutoPronounce
+    )
+}
+
+@Composable
 private fun CardExitSpeedSectionCard(
     strings: UiStrings,
     pauseWhileSpeaking: Boolean,
     onSelectPauseWhileSpeaking: (Boolean) -> Unit
 ) {
-    Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = CardSurface,
-        border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = if (strings.isCzech) "📖 Zobrazení slova po odpovědi" else "📖 Word Display After Answer",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextDark
-                )
-                Text(
-                    text = if (strings.isCzech) {
-                        "Zvolte, zda se po odjezdu karty ukáže bounce okno se slovem při čtení, nebo ihned přijede další."
-                    } else {
-                        "Choose whether to show a bounce bubble with the word while spoken aloud, or jump straight to the next card."
-                    },
-                    fontSize = 12.sp,
-                    color = TextMuted,
-                    lineHeight = 16.sp
-                )
-            }
-
-            AppleSegmentedControl(
-                options = listOf(
-                    true to (if (strings.isCzech) "Číst při výslovnosti" else "Read & bounce"),
-                    false to (if (strings.isCzech) "Rychle bez ukázání" else "Fast, no reveal")
-                ),
-                selectedValue = pauseWhileSpeaking,
-                onSelect = onSelectPauseWhileSpeaking,
-                fontSize = 12.5.sp
-            )
-        }
-    }
+    SettingsSwitchCard(
+        title = if (strings.isCzech) "📖 Zobrazení slova po odpovědi" else "📖 Word Display After Answer",
+        subtitle = if (strings.isCzech) {
+            "Po odjezdu karty ukáže bounce okno se slovem; vypnuté přejde ihned na další kartu."
+        } else {
+            "Shows a bounce bubble with the word between cards; turn off for an instant transition."
+        },
+        checked = pauseWhileSpeaking,
+        onCheckedChange = onSelectPauseWhileSpeaking
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
