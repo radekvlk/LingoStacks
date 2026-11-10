@@ -707,7 +707,23 @@ fun FlashcardSessionScreen(
                         .fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(10.dp))
+
+                WordMemoryInsightsCard(
+                    strings = strings,
+                    language = deck.language,
+                    word = currentWord,
+                    srsStat = progressState.getWordSrsStat(currentWord.id),
+                    isRevealed = isTranslationRevealed,
+                    onSpeakSentence = { sentence ->
+                        speechControllerRef?.speakEnglish(sentence)
+                    },
+                    onRevealHint = handleToggleHint,
+                    compact = true,
+                    showSentence = configuration.screenHeightDp >= 640
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
 
                 BottomControlBar(
                     strings = strings,
@@ -859,7 +875,9 @@ private fun WordMemoryInsightsCard(
     srsStat: cz.slovickaspeak.app.data.WordSrsStat?,
     isRevealed: Boolean,
     onSpeakSentence: (String) -> Unit,
-    onRevealHint: () -> Unit
+    onRevealHint: () -> Unit,
+    compact: Boolean = false,
+    showSentence: Boolean = true
 ) {
     val boxLevel = (srsStat?.box ?: 0).coerceIn(0, 5)
     val lapses = srsStat?.lapses ?: 0
@@ -877,16 +895,19 @@ private fun WordMemoryInsightsCard(
     }
 
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(if (compact) 18.dp else 20.dp),
         color = CardSurface,
         border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(4.dp, RoundedCornerShape(20.dp), spotColor = Color.Black.copy(alpha = 0.04f))
+            .shadow(4.dp, RoundedCornerShape(if (compact) 18.dp else 20.dp), spotColor = Color.Black.copy(alpha = 0.04f))
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.padding(
+                horizontal = if (compact) 12.dp else 14.dp,
+                vertical = if (compact) 9.dp else 12.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 10.dp)
         ) {
             // Header: Pametovy stav + SRS indikátor
             Row(
@@ -902,11 +923,11 @@ private fun WordMemoryInsightsCard(
                         imageVector = Icons.Default.Psychology,
                         contentDescription = null,
                         tint = statusColor,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(if (compact) 16.dp else 18.dp)
                     )
                     Text(
                         text = if (strings.isCzech) "Paměť & Kontext" else "Memory & Context",
-                        fontSize = 13.sp,
+                        fontSize = if (compact) 12.sp else 13.sp,
                         fontWeight = FontWeight.Bold,
                         color = TextDark
                     )
@@ -937,7 +958,7 @@ private fun WordMemoryInsightsCard(
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .height(6.dp)
+                            .height(if (compact) 4.dp else 6.dp)
                             .clip(RoundedCornerShape(50))
                             .background(if (active) statusColor else SurfaceBg)
                     )
@@ -953,7 +974,7 @@ private fun WordMemoryInsightsCard(
             }
 
             // Příkladová věta: zakrytý kontext před odpovědí -> plná věta + audio po odkrytí
-            if (word.exampleSentence.isNotBlank()) {
+            if (showSentence && word.exampleSentence.isNotBlank()) {
                 val (maskedSentence, didMask) = remember(word.id, word.exampleSentence, word.english) {
                     maskTargetWordInSentence(word.exampleSentence, word.english)
                 }
@@ -968,19 +989,21 @@ private fun WordMemoryInsightsCard(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { onSpeakSentence(word.exampleSentence) }
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                                .padding(horizontal = 11.dp, vertical = if (compact) 7.dp else 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = "“${word.exampleSentence}”",
-                                    fontSize = 13.sp,
+                                    fontSize = if (compact) 12.sp else 13.sp,
                                     fontStyle = FontStyle.Italic,
                                     color = TextDark,
-                                    lineHeight = 18.sp
+                                    lineHeight = if (compact) 16.sp else 18.sp,
+                                    maxLines = if (compact) 2 else 4,
+                                    overflow = TextOverflow.Ellipsis
                                 )
-                                if (word.phonetic.isNotBlank() || word.acceptedVariants.isNotEmpty()) {
+                                if (!compact && (word.phonetic.isNotBlank() || word.acceptedVariants.isNotEmpty())) {
                                     Spacer(modifier = Modifier.height(4.dp))
                                     val extraInfo = buildList {
                                         if (word.phonetic.isNotBlank()) add(word.phonetic)
@@ -1000,7 +1023,7 @@ private fun WordMemoryInsightsCard(
                             }
                             Box(
                                 modifier = Modifier
-                                    .size(32.dp)
+                                    .size(if (compact) 28.dp else 32.dp)
                                     .clip(CircleShape)
                                     .background(AppleBlueTint),
                                 contentAlignment = Alignment.Center
@@ -1009,14 +1032,14 @@ private fun WordMemoryInsightsCard(
                                     imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                                     contentDescription = null,
                                     tint = AppleBlue,
-                                    modifier = Modifier.size(17.dp)
+                                    modifier = Modifier.size(if (compact) 15.dp else 17.dp)
                                 )
                             }
                         }
                     } else if (didMask) {
                         Column(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                            verticalArrangement = Arrangement.spacedBy(3.dp)
+                            modifier = Modifier.padding(horizontal = 11.dp, vertical = if (compact) 7.dp else 10.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             Text(
                                 text = if (strings.isCzech) {
@@ -1024,16 +1047,18 @@ private fun WordMemoryInsightsCard(
                                 } else {
                                     "Context clue (${language.localizedTitle(false)})"
                                 },
-                                fontSize = 11.sp,
+                                fontSize = 10.5.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = AppleBlue
                             )
                             Text(
                                 text = "“$maskedSentence”",
-                                fontSize = 13.sp,
+                                fontSize = if (compact) 12.sp else 13.sp,
                                 fontStyle = FontStyle.Italic,
                                 color = TextDark,
-                                lineHeight = 18.sp
+                                lineHeight = if (compact) 16.sp else 18.sp,
+                                maxLines = if (compact) 2 else 4,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     } else {
@@ -1041,7 +1066,7 @@ private fun WordMemoryInsightsCard(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { onRevealHint() }
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                                .padding(horizontal = 11.dp, vertical = if (compact) 7.dp else 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
@@ -1049,7 +1074,7 @@ private fun WordMemoryInsightsCard(
                                 imageVector = Icons.Default.Lightbulb,
                                 contentDescription = null,
                                 tint = AppleOrange,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(15.dp)
                             )
                             Text(
                                 text = if (strings.isCzech) {
@@ -1057,7 +1082,7 @@ private fun WordMemoryInsightsCard(
                                 } else {
                                     "Reveal translation and example sentence"
                                 },
-                                fontSize = 12.5.sp,
+                                fontSize = if (compact) 12.sp else 12.5.sp,
                                 color = TextMuted
                             )
                         }
