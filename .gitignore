@@ -1,0 +1,10 @@
+.gradle/
+.kotlin/
+app/build/
+build/
+local.properties
+*.apk
+app/lingowords.keystore
+Spustit_Emulator.bat
+.idea/
+*.iml
