@@ -73,6 +73,7 @@ fun AppleFullSettingsDialog(
     val context = LocalContext.current
     val strings = rememberAppStrings()
     var selectedTab by remember { mutableIntStateOf(initialTab) } // 0 = Goal & Stats, 1 = Leaderboard
+    var showCompleteStatsInModal by remember { mutableStateOf(false) }
     var showGoogleEmailPrompt by remember { mutableStateOf(false) }
     var manualGoogleEmail by remember { mutableStateOf("radek.vlk@gmail.com") }
     var manualGoogleName by remember { mutableStateOf("Radek Vlk") }
@@ -106,6 +107,17 @@ fun AppleFullSettingsDialog(
         } else {
             showGoogleEmailPrompt = true
         }
+    }
+
+    if (showCompleteStatsInModal) {
+        AppleCompleteStatsDialog(
+            progressState = progressState,
+            onOpenLeaderboard = {
+                showCompleteStatsInModal = false
+                selectedTab = 1
+            },
+            onDismiss = { showCompleteStatsInModal = false }
+        )
     }
 
     Dialog(
@@ -266,7 +278,8 @@ fun AppleFullSettingsDialog(
                         // 1. Overall Personal Statistics
                         AllStatisticsSectionCard(
                             strings = strings,
-                            progressState = progressState
+                            progressState = progressState,
+                            onTileClick = { showCompleteStatsInModal = true }
                         )
 
                         // 2. Daily Leaderboard
@@ -1647,7 +1660,8 @@ private fun EnglishLevelSectionCard(
 @Composable
 private fun AllStatisticsSectionCard(
     strings: UiStrings,
-    progressState: ProgressStateHolder
+    progressState: ProgressStateHolder,
+    onTileClick: (() -> Unit)? = null
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
@@ -1675,14 +1689,16 @@ private fun AllStatisticsSectionCard(
                     value = strings.statStreakDays(progressState.streakDays),
                     label = strings.statStreakLabel,
                     accentColor = AppleOrange,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    onClick = onTileClick
                 )
                 AppleStatTile(
                     emoji = "🎯",
                     value = "${progressState.accuracyPercent} %",
                     label = strings.statAccuracyLabel,
                     accentColor = AppleGreen,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    onClick = onTileClick
                 )
             }
 
@@ -1695,14 +1711,16 @@ private fun AllStatisticsSectionCard(
                     value = "${progressState.totalSpokenCorrect}",
                     label = strings.statSpokenLabel,
                     accentColor = AppleBlue,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    onClick = onTileClick
                 )
                 AppleStatTile(
                     emoji = "✅",
                     value = "${progressState.todayCompletedWords}/${progressState.dailyGoalWords}",
                     label = strings.statTodayGoalLabel,
                     accentColor = AppleIndigo,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    onClick = onTileClick
                 )
             }
 
@@ -1715,14 +1733,16 @@ private fun AllStatisticsSectionCard(
                     value = "${progressState.totalCorrect}",
                     label = strings.statTotalLearnedLabel,
                     accentColor = AppleGreenDark,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    onClick = onTileClick
                 )
                 AppleStatTile(
                     emoji = "🏆",
                     value = "${progressState.completedSessions}",
                     label = strings.statCompletedLessonsLabel,
                     accentColor = ApplePurple,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    onClick = onTileClick
                 )
             }
         }
@@ -1735,12 +1755,15 @@ private fun AppleStatTile(
     value: String,
     label: String,
     accentColor: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
 ) {
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = SurfaceBg,
         modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .let { base -> if (onClick != null) base.clickable(onClick = onClick) else base }
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
