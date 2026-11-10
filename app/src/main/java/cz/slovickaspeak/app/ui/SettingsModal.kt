@@ -1617,7 +1617,10 @@ fun OtaUpdateModalDialog(
                     }
                 }
 
-                if (release.changelog.isNotBlank()) {
+                val localizedChangelog = remember(release.changelog, strings.isCzech) {
+                    cz.slovickaspeak.app.data.OtaUpdater.extractLocalizedChangelog(release.changelog, strings.isCzech)
+                }
+                if (localizedChangelog.isNotBlank()) {
                     Surface(
                         shape = RoundedCornerShape(14.dp),
                         color = SurfaceBg,
@@ -1638,7 +1641,7 @@ fun OtaUpdateModalDialog(
                                 color = TextDark
                             )
                             Text(
-                                text = release.changelog,
+                                text = localizedChangelog,
                                 fontSize = 12.sp,
                                 color = TextMuted,
                                 lineHeight = 17.sp
@@ -1708,9 +1711,10 @@ fun OtaUpdateModalDialog(
                         )
                     }
                 } else {
-                    if (progressState.otaStatusMessage != null && !progressState.otaStatusMessage!!.contains("připravena")) {
+                    val statusMsg = progressState.otaStatusMessage
+                    if (statusMsg != null && !statusMsg.contains("připravena") && !statusMsg.contains("is ready")) {
                         Text(
-                            text = progressState.otaStatusMessage ?: "",
+                            text = statusMsg,
                             fontSize = 11.sp,
                             color = TextMuted
                         )

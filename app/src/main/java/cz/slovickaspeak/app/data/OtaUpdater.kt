@@ -56,7 +56,30 @@ object OtaUpdater {
     }
 
     /**
+     * Extracts localized section from bilingual release notes marked with [CS] and [EN].
+     */
+    fun extractLocalizedChangelog(rawBody: String, isCzech: Boolean): String {
+        val trimmed = rawBody.trim()
+        if (trimmed.isEmpty()) return ""
+
+        val csPattern = Regex("(?s)\\[CS](.*?)(?=\\[EN]|\\z)")
+        val enPattern = Regex("(?s)\\[EN](.*?)(?=\\[CS]|\\z)")
+        val csMatch = csPattern.find(trimmed)?.groupValues?.getOrNull(1)?.trim()
+        val enMatch = enPattern.find(trimmed)?.groupValues?.getOrNull(1)?.trim()
+
+        if (!csMatch.isNullOrBlank() || !enMatch.isNullOrBlank()) {
+            return if (isCzech) {
+                csMatch.orEmpty().ifBlank { enMatch.orEmpty() }
+            } else {
+                enMatch.orEmpty().ifBlank { csMatch.orEmpty() }
+            }
+        }
+        return trimmed
+    }
+
+    /**
      * Checks GitHub Releases API for the latest published release with an attached .apk asset.
+     * Falls back automatically to GitHub's rate-limit-free web redirect endpoint if API returns 403/429.
      */
     fun checkLatestRelease(
         repoSlug: String,
@@ -80,6 +103,11 @@ object OtaUpdater {
             }
 
             val code = conn.responseCode
+            if (code == 403 || code == 429) {
+                conn.disconnect()
+                // Unauthenticated api.github.com rate limit reached: use unlimited web redirect fallback!
+                return checkViaWebRedirect(slug, isCzech)
+            }
             if (code == 404) {
                 conn.disconnect()
                 return OtaCheckResult.RepoNotReady(
@@ -92,9 +120,7 @@ object OtaUpdater {
             }
             if (code !in 200..299) {
                 conn.disconnect()
-                return OtaCheckResult.Error(
-                    if (isCzech) "GitHub odpověděl chybou HTTP $code." else "GitHub returned HTTP $code."
-                )
+                return checkViaWebRedirect(slug, isCzech)
             }
 
             val bodyStr = conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
@@ -104,7 +130,8 @@ object OtaUpdater {
             val tagName = json.optString("tag_name", "").trim()
             val cleanRemoteVersion = tagName.removePrefix("v").removePrefix("V").trim()
             val releaseTitle = json.optString("name", tagName).ifBlank { "v$cleanRemoteVersion" }
-            val changelog = json.optString("body", "").trim()
+            val rawChangelog = json.optString("body", "").trim()
+            val localizedChangelog = extractLocalizedChangelog(rawChangelog, isCzech)
             val publishedAt = json.optString("published_at", "").take(10)
 
             val assets = json.optJSONArray("assets")
@@ -140,7 +167,7 @@ object OtaUpdater {
             val newer = isRemoteNewer(
                 remoteVersion = cleanRemoteVersion,
                 currentVersion = BuildConfig.VERSION_NAME,
-                changelog = changelog,
+                changelog = rawChangelog,
                 currentVersionCode = BuildConfig.VERSION_CODE
             )
 
@@ -150,7 +177,7 @@ object OtaUpdater {
                         tagName = tagName,
                         versionName = cleanRemoteVersion,
                         title = releaseTitle,
-                        changelog = changelog,
+                        changelog = localizedChangelog,
                         apkDownloadUrl = chosenUrl,
                         apkFileName = chosenName,
                         apkSizeBytes = chosenSize,
@@ -160,6 +187,91 @@ object OtaUpdater {
             } else {
                 OtaCheckResult.UpToDate(BuildConfig.VERSION_NAME)
             }
+        } catch (_: Exception) {
+            checkViaWebRedirect(slug, isCzech)
+        }
+    }
+
+    /**
+     * Unlimited fallback via GitHub web redirect (https://github.com/owner/repo/releases/latest -> 302 tag).
+     * Never hits api.github.com 60 req/hour rate limits!
+     */
+    private fun checkViaWebRedirect(slug: String, isCzech: Boolean): OtaCheckResult {
+        return try {
+            val latestUrl = URL("https://github.com/$slug/releases/latest")
+            val conn = (latestUrl.openConnection() as HttpURLConnection).apply {
+                instanceFollowRedirects = false
+                requestMethod = "HEAD"
+                connectTimeout = 7000
+                readTimeout = 7000
+                setRequestProperty("User-Agent", "LingoWords-Android/${BuildConfig.VERSION_NAME}")
+            }
+            val code = conn.responseCode
+            val location = conn.getHeaderField("Location") ?: ""
+            conn.disconnect()
+
+            if (code !in 300..399 || !location.contains("/releases/tag/")) {
+                return OtaCheckResult.RepoNotReady(
+                    if (isCzech) {
+                        "V repozitáři $slug zatím není žádné vydání (Release)."
+                    } else {
+                        "No published release found yet in $slug."
+                    }
+                )
+            }
+
+            val tagName = location.substringAfterLast("/releases/tag/").substringBefore("?").trim()
+            val cleanRemoteVersion = tagName.removePrefix("v").removePrefix("V").trim()
+            if (cleanRemoteVersion.isEmpty()) {
+                return OtaCheckResult.Error(
+                    if (isCzech) "Nepodařilo se přečíst verzi vydání." else "Could not parse release version."
+                )
+            }
+
+            if (!isRemoteNewer(cleanRemoteVersion, BuildConfig.VERSION_NAME)) {
+                return OtaCheckResult.UpToDate(BuildConfig.VERSION_NAME)
+            }
+
+            // Inspect expanded_assets HTML fragment to find the exact .apk download link
+            var apkUrl = "https://github.com/$slug/releases/download/$tagName/LingoWords_$tagName.apk"
+            var apkName = "LingoWords_$tagName.apk"
+            try {
+                val assetsUrl = URL("https://github.com/$slug/releases/expanded_assets/$tagName")
+                val assetsConn = (assetsUrl.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 6000
+                    readTimeout = 6000
+                    setRequestProperty("User-Agent", "LingoWords-Android/${BuildConfig.VERSION_NAME}")
+                }
+                if (assetsConn.responseCode in 200..299) {
+                    val html = assetsConn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+                    val apkHrefMatch = Regex("""href="(/[^"]+/releases/download/[^"]+\.apk)"""").find(html)
+                    val relHref = apkHrefMatch?.groupValues?.getOrNull(1)
+                    if (!relHref.isNullOrBlank()) {
+                        apkUrl = "https://github.com$relHref"
+                        apkName = relHref.substringAfterLast("/")
+                    }
+                }
+                assetsConn.disconnect()
+            } catch (_: Exception) {
+            }
+
+            OtaCheckResult.UpdateAvailable(
+                OtaReleaseInfo(
+                    tagName = tagName,
+                    versionName = cleanRemoteVersion,
+                    title = "LingoWords $tagName",
+                    changelog = if (isCzech) {
+                        "Nová verze LingoWords $tagName je připravena ke stažení a instalaci."
+                    } else {
+                        "New LingoWords $tagName update is ready to download and install."
+                    },
+                    apkDownloadUrl = apkUrl,
+                    apkFileName = apkName,
+                    apkSizeBytes = 0L,
+                    publishedAt = ""
+                )
+            )
         } catch (e: Exception) {
             OtaCheckResult.Error(
                 if (isCzech) {
@@ -209,7 +321,6 @@ object OtaUpdater {
         val updatesDir = File(context.cacheDir, "updates").apply {
             if (!exists()) mkdirs()
         }
-        // Clean previous APKs in cache to keep storage tidy
         updatesDir.listFiles()?.forEach { old ->
             if (old.isFile) old.delete()
         }
