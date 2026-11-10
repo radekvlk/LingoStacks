@@ -57,7 +57,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import cz.slovickaspeak.app.data.FriendProgress
+import cz.slovickaspeak.app.data.LanguageCompleteStats
 import cz.slovickaspeak.app.data.ProgressStateHolder
+import cz.slovickaspeak.app.model.LearningLanguage
+import cz.slovickaspeak.app.model.StudyDirection
 import cz.slovickaspeak.app.ui.theme.*
 import kotlinx.coroutines.delay
 
@@ -2231,6 +2234,315 @@ fun OtaUpdateModalDialog(
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun AppleCompleteStatsDialog(
+    progressState: ProgressStateHolder,
+    onOpenLeaderboard: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val strings = rememberAppStrings()
+    val englishStats = remember(progressState.srsRevision, progressState.studyDirection) {
+        progressState.getLanguageCompleteStats(LearningLanguage.ENGLISH)
+    }
+    val spanishStats = remember(progressState.srsRevision, progressState.studyDirection) {
+        progressState.getLanguageCompleteStats(LearningLanguage.SPANISH)
+    }
+    val activeStats = if (progressState.selectedLanguage == LearningLanguage.SPANISH) spanishStats else englishStats
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = SurfaceBg,
+            border = BorderStroke(0.5.dp, CardBorderGray),
+            modifier = Modifier
+                .fillMaxWidth(0.94f)
+                .fillMaxHeight(0.88f)
+                .shadow(24.dp, RoundedCornerShape(28.dp), spotColor = Color.Black.copy(alpha = 0.18f))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = if (strings.isCzech) "📊 Kompletní statistika" else "📊 Complete Statistics",
+                            fontSize = 21.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextDark
+                        )
+                        Text(
+                            text = if (strings.isCzech) {
+                                "Celkem ${progressState.totalAttempts} pokusů • Přesnost ${progressState.accuracyPercent} %"
+                            } else {
+                                "${progressState.totalAttempts} total attempts • ${progressState.accuracyPercent}% accuracy"
+                            },
+                            fontSize = 12.sp,
+                            color = TextMuted,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(CardSurface)
+                            .clickable(onClick = onDismiss),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = null,
+                            tint = TextMuted,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    AllStatisticsSectionCard(
+                        strings = strings,
+                        progressState = progressState
+                    )
+
+                    listOf(englishStats, spanishStats).forEach { langStats ->
+                        CompleteLanguageMasteryCard(
+                            strings = strings,
+                            stats = langStats
+                        )
+                    }
+
+                    CompleteCefrBreakdownCard(
+                        strings = strings,
+                        stats = activeStats
+                    )
+
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = CardSurface,
+                        border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.7f)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable {
+                                onDismiss()
+                                onOpenLeaderboard()
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (strings.isCzech) "🏆 Otevřít denní žebříček" else "🏆 Open Daily Leaderboard",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = AppleBlue
+                            )
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = AppleBlue,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CompleteLanguageMasteryCard(
+    strings: UiStrings,
+    stats: LanguageCompleteStats
+) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = CardSurface,
+        border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${stats.language.flagEmoji} ${stats.language.localizedTitle(strings.isCzech)}",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextDark
+                )
+                Text(
+                    text = if (strings.isCzech) "${stats.totalWords} slovíček" else "${stats.totalWords} words",
+                    fontSize = 12.sp,
+                    color = TextMuted,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            MasteryProgressBarRow(
+                label = StudyDirection.NATIVE_TO_FOREIGN.shortLabel(stats.language),
+                current = stats.activeMasteredCount,
+                total = stats.totalWords,
+                colors = listOf(AppleBlue, AppleIndigo)
+            )
+
+            MasteryProgressBarRow(
+                label = StudyDirection.FOREIGN_TO_NATIVE.shortLabel(stats.language),
+                current = stats.passiveMasteredCount,
+                total = stats.totalWords,
+                colors = listOf(AppleGreen, Color(0xFF34C759))
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = SurfaceBg,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = if (strings.isCzech) "⏰ K zopakování: ${stats.dueForReviewCount}" else "⏰ Due review: ${stats.dueForReviewCount}",
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = AppleBlue,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp)
+                    )
+                }
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = SurfaceBg,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = if (strings.isCzech) "🔁 Procvičit: ${stats.needsPracticeCount}" else "🔁 Needs review: ${stats.needsPracticeCount}",
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (stats.needsPracticeCount > 0) AppleOrange else TextMuted,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CompleteCefrBreakdownCard(
+    strings: UiStrings,
+    stats: LanguageCompleteStats
+) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = CardSurface,
+        border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = if (strings.isCzech) {
+                    "🎓 Úrovně A1–C2 (${stats.language.localizedTitle(true)})"
+                } else {
+                    "🎓 CEFR Levels A1–C2 (${stats.language.localizedTitle(false)})"
+                },
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextDark
+            )
+
+            stats.levelStats.forEach { levelStat ->
+                MasteryProgressBarRow(
+                    label = "${levelStat.level.label} • ${levelStat.level.localizedDescription(strings.isCzech)}",
+                    current = levelStat.masteredCount,
+                    total = levelStat.totalCount,
+                    colors = listOf(AppleIndigo, ApplePurple)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MasteryProgressBarRow(
+    label: String,
+    current: Int,
+    total: Int,
+    colors: List<Color>
+) {
+    val safeTotal = total.coerceAtLeast(1)
+    val fraction = (current.toFloat() / safeTotal.toFloat()).coerceIn(0f, 1f)
+    val pct = (fraction * 100f).toInt()
+    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextDark,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = "$current / $total ($pct %)",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextMuted
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(50))
+                .background(SurfaceBg)
+        ) {
+            if (current > 0) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(fraction.coerceAtLeast(0.02f))
+                        .clip(RoundedCornerShape(50))
+                        .background(Brush.horizontalGradient(colors = colors))
+                )
             }
         }
     }

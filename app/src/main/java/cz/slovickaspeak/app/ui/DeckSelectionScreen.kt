@@ -8,6 +8,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -58,6 +59,7 @@ fun DeckSelectionScreen(
     val studyDirection = progressState.studyDirection
     var showSettingsDialog by remember { mutableStateOf(false) }
     var settingsInitialTab by remember { mutableIntStateOf(0) }
+    var showCompleteStatsDialog by remember { mutableStateOf(false) }
     val dailyGoalWords = progressState.dailyGoalWords
     val completedTodayWords = progressState.todayCompletedWords
 
@@ -81,6 +83,17 @@ fun DeckSelectionScreen(
             progressState = progressState,
             initialTab = settingsInitialTab,
             onDismiss = { showSettingsDialog = false }
+        )
+    }
+
+    if (showCompleteStatsDialog) {
+        AppleCompleteStatsDialog(
+            progressState = progressState,
+            onOpenLeaderboard = {
+                settingsInitialTab = 1
+                showSettingsDialog = true
+            },
+            onDismiss = { showCompleteStatsDialog = false }
         )
     }
 
@@ -160,7 +173,8 @@ fun DeckSelectionScreen(
                             },
                             onSelectDirection = { direction ->
                                 progressState.updateStudyDirection(direction)
-                            }
+                            },
+                            onOpenStats = { showCompleteStatsDialog = true }
                         )
                     }
                 }
@@ -247,7 +261,8 @@ fun DeckSelectionScreen(
  },
  onSelectDirection = { direction ->
  progressState.updateStudyDirection(direction)
- }
+ },
+ onOpenStats = { showCompleteStatsDialog = true }
  )
  }
 
@@ -542,7 +557,8 @@ private fun DeckGoalIndicatorCard(
     goalProgressFraction: Float,
     onSelectLanguage: (LearningLanguage) -> Unit,
     onSelectLevel: (CefrLevel?) -> Unit,
-    onSelectDirection: (StudyDirection) -> Unit
+    onSelectDirection: (StudyDirection) -> Unit,
+    onOpenStats: () -> Unit
 ) {
     var languageDropdownExpanded by remember { mutableStateOf(false) }
     var levelDropdownExpanded by remember { mutableStateOf(false) }
@@ -665,60 +681,72 @@ private fun DeckGoalIndicatorCard(
                 }
             }
 
-            // Clean single-line row for Today Words progress & remaining count
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = if (strings.isCzech) {
-                        "Dnes: $completedTodayWords / $dailyGoalWords slov"
-                    } else {
-                        "Today: $completedTodayWords / $dailyGoalWords words"
-                    },
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isGoalReached) AppleGreen else TextDark,
-                    maxLines = 1
-                )
-
-                val remaining = (dailyGoalWords - completedTodayWords).coerceAtLeast(0)
-                Text(
-                    text = when {
-                        isGoalReached -> if (strings.isCzech) "Cíl splněn! 🎉" else "Goal reached! 🎉"
-                        strings.isCzech -> "zbývá $remaining"
-                        else -> "$remaining left"
-                    },
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (isGoalReached) AppleGreen else AppleBlue,
-                    maxLines = 1
-                )
-            }
-
-            Box(
+            // Clickable progress strip + bar opening Complete Statistics without altering visual design
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(12.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(SurfaceBg)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onOpenStats
+                    ),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // Clean single-line row for Today Words progress & remaining count
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (strings.isCzech) {
+                            "Dnes: $completedTodayWords / $dailyGoalWords slov"
+                        } else {
+                            "Today: $completedTodayWords / $dailyGoalWords words"
+                        },
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isGoalReached) AppleGreen else TextDark,
+                        maxLines = 1
+                    )
+
+                    val remaining = (dailyGoalWords - completedTodayWords).coerceAtLeast(0)
+                    Text(
+                        text = when {
+                            isGoalReached -> if (strings.isCzech) "Cíl splněn! 🎉" else "Goal reached! 🎉"
+                            strings.isCzech -> "zbývá $remaining"
+                            else -> "$remaining left"
+                        },
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isGoalReached) AppleGreen else AppleBlue,
+                        maxLines = 1
+                    )
+                }
+
                 Box(
                     modifier = Modifier
-                        .fillMaxHeight()
-                        .fillMaxWidth(goalProgressFraction.coerceIn(0f, 1f))
+                        .fillMaxWidth()
+                        .height(12.dp)
                         .clip(RoundedCornerShape(50))
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = if (isGoalReached) {
-                                    listOf(AppleGreen, Color(0xFF34C759))
-                                } else {
-                                    listOf(AppleBlue, AppleIndigo)
-                                }
+                        .background(SurfaceBg)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(goalProgressFraction.coerceIn(0f, 1f))
+                            .clip(RoundedCornerShape(50))
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = if (isGoalReached) {
+                                        listOf(AppleGreen, Color(0xFF34C759))
+                                    } else {
+                                        listOf(AppleBlue, AppleIndigo)
+                                    }
+                                )
                             )
-                        )
-                )
+                    )
+                }
             }
         }
     }

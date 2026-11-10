@@ -57,6 +57,22 @@ data class WordSrsStat(
     val dueAtMillis: Long  // Timestamp when the word is due for review
 )
 
+data class CefrLevelStat(
+    val level: cz.slovickaspeak.app.model.CefrLevel,
+    val masteredCount: Int,
+    val totalCount: Int
+)
+
+data class LanguageCompleteStats(
+    val language: cz.slovickaspeak.app.model.LearningLanguage,
+    val totalWords: Int,
+    val activeMasteredCount: Int,
+    val passiveMasteredCount: Int,
+    val dueForReviewCount: Int,
+    val needsPracticeCount: Int,
+    val levelStats: List<CefrLevelStat>
+)
+
 class ProgressStateHolder(context: Context) {
     private val appContext = context.applicationContext
     private val prefs = context.getSharedPreferences("slovicka_speak_prefs", Context.MODE_PRIVATE)
@@ -222,6 +238,19 @@ class ProgressStateHolder(context: Context) {
     private fun srsKey(wordId: String, isReversed: Boolean): String =
         if (isReversed) "${wordId}__rev" else wordId
 
+    private fun isWordMastered(wordId: String, useReversed: Boolean): Boolean {
+        val key = srsKey(wordId, useReversed)
+        val stat = wordSrsMap[key]
+        return (stat != null && stat.box >= 1 && key !in needsReviewWordIds) ||
+            (!useReversed && stat == null && wordId in masteredWordIds && key !in needsReviewWordIds)
+    }
+
+    private fun isWordNeedsReview(wordId: String, useReversed: Boolean, now: Long): Boolean {
+        val key = srsKey(wordId, useReversed)
+        val stat = wordSrsMap[key]
+        return key in needsReviewWordIds || (stat != null && (stat.box == 0 || stat.dueAtMillis <= now))
+    }
+
     fun getWordSrsStat(wordId: String, isReversed: Boolean = false): WordSrsStat? {
         @Suppress("UNUSED_EXPRESSION")
         srsRevision
@@ -232,12 +261,7 @@ class ProgressStateHolder(context: Context) {
         @Suppress("UNUSED_EXPRESSION")
         srsRevision
         val useReversed = studyDirection == cz.slovickaspeak.app.model.StudyDirection.FOREIGN_TO_NATIVE
-        return deck.words.count { word ->
-            val key = srsKey(word.id, useReversed)
-            val stat = wordSrsMap[key]
-            (stat != null && stat.box >= 1 && key !in needsReviewWordIds) ||
-                    (!useReversed && stat == null && word.id in masteredWordIds && key !in needsReviewWordIds)
-        }
+        return deck.words.count { word -> isWordMastered(word.id, useReversed) }
     }
 
     fun getDeckNeedsReviewCount(deck: cz.slovickaspeak.app.model.VocabDeck): Int {
@@ -245,11 +269,52 @@ class ProgressStateHolder(context: Context) {
         srsRevision
         val now = System.currentTimeMillis()
         val useReversed = studyDirection == cz.slovickaspeak.app.model.StudyDirection.FOREIGN_TO_NATIVE
-        return deck.words.count { word ->
-            val key = srsKey(word.id, useReversed)
-            val stat = wordSrsMap[key]
-            key in needsReviewWordIds || (stat != null && (stat.box == 0 || stat.dueAtMillis <= now))
+        return deck.words.count { word -> isWordNeedsReview(word.id, useReversed, now) }
+    }
+
+    fun getLanguageCompleteStats(language: cz.slovickaspeak.app.model.LearningLanguage): LanguageCompleteStats {
+        @Suppress("UNUSED_EXPRESSION")
+        srsRevision
+        val now = System.currentTimeMillis()
+        val decks = BuiltInVocabulary.decksForLanguage(language)
+        val useReversedForLevels = studyDirection == cz.slovickaspeak.app.model.StudyDirection.FOREIGN_TO_NATIVE
+
+        var totalWords = 0
+        var activeMastered = 0
+        var passiveMastered = 0
+        var dueCount = 0
+        var practiceCount = 0
+
+        val levelStats = cz.slovickaspeak.app.model.CefrLevel.entries.map { level ->
+            val levelWords = decks.filter { it.level == level }.flatMap { it.words }
+            val levelMastered = levelWords.count { isWordMastered(it.id, useReversedForLevels) }
+            CefrLevelStat(level = level, masteredCount = levelMastered, totalCount = levelWords.size)
         }
+
+        decks.forEach { deck ->
+            deck.words.forEach { word ->
+                totalWords++
+                if (isWordMastered(word.id, useReversed = false)) activeMastered++
+                if (isWordMastered(word.id, useReversed = true)) passiveMastered++
+                val activeKey = srsKey(word.id, useReversedForLevels)
+                val stat = wordSrsMap[activeKey]
+                if (activeKey in needsReviewWordIds || (stat != null && stat.box == 0)) {
+                    practiceCount++
+                } else if (stat != null && stat.dueAtMillis <= now) {
+                    dueCount++
+                }
+            }
+        }
+
+        return LanguageCompleteStats(
+            language = language,
+            totalWords = totalWords,
+            activeMasteredCount = activeMastered,
+            passiveMasteredCount = passiveMastered,
+            dueForReviewCount = dueCount,
+            needsPracticeCount = practiceCount,
+            levelStats = levelStats
+        )
     }
 
     /**
@@ -661,9 +726,25 @@ class ProgressStateHolder(context: Context) {
         refreshFromCloud()
     }
 
+    private fun formatDefaultDisplayName(displayName: String, email: String): String {
+        val raw = displayName.trim().ifEmpty {
+            email.substringBefore("@").replace(Regex("[._-]+"), " ").trim()
+        }
+        val parts = raw.split(Regex("\\s+")).filter { it.isNotBlank() }
+        if (parts.isEmpty()) return email.substringBefore("@").ifEmpty { "User" }
+        val firstName = parts.first().replaceFirstChar { it.uppercase() }
+        if (parts.size >= 2) {
+            val surnameInitial = parts.last().firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()
+            if (surnameInitial != null) {
+                return "$firstName $surnameInitial."
+            }
+        }
+        return firstName
+    }
+
     fun signInWithGoogle(displayName: String, email: String) {
         val cleanEmail = email.trim().lowercase(Locale.US)
-        val cleanName = displayName.trim().ifEmpty { cleanEmail.substringBefore("@") }
+        val cleanName = formatDefaultDisplayName(displayName, cleanEmail)
         val codeSuffix = abs(cleanEmail.hashCode()) % 9000 + 1000
         val profile = GoogleUserProfile(
             displayName = cleanName,
