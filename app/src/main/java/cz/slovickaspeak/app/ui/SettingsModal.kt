@@ -39,7 +39,9 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -592,6 +594,8 @@ private fun AppVersionSectionCard(
     val versionName = progressState.appVersionName
     val available = progressState.availableOtaRelease
     val isChecking = progressState.isCheckingOta
+    val uriHandler = LocalUriHandler.current
+    val githubReleasesUrl = "https://github.com/${progressState.otaRepoSlug}/releases/latest"
     var editingRepo by remember { mutableStateOf(false) }
     var repoInput by remember(progressState.otaRepoSlug) { mutableStateOf(progressState.otaRepoSlug) }
 
@@ -688,6 +692,27 @@ private fun AppVersionSectionCard(
                             )
                         }
                     }
+
+                    Text(
+                        text = if (strings.isCzech) {
+                            "🔗 Stáhnout z GitHubu: $githubReleasesUrl"
+                        } else {
+                            "🔗 Download on GitHub: $githubReleasesUrl"
+                        },
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = AppleBlue,
+                        textDecoration = TextDecoration.Underline,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable {
+                                try {
+                                    uriHandler.openUri(githubReleasesUrl)
+                                } catch (_: Exception) {
+                                }
+                            }
+                            .padding(vertical = 2.dp)
+                    )
 
                     if (editingRepo) {
                         OutlinedTextField(
@@ -1519,6 +1544,7 @@ fun OtaUpdateModalDialog(
     val progress = progressState.otaDownloadFraction
     val downloadedApk = progressState.downloadedOtaApkFile
     val needsPerm = progressState.otaNeedsInstallPermission
+    val uriHandler = LocalUriHandler.current
     val sizeMb = if (release.apkSizeBytes > 0) {
         String.format(java.util.Locale.US, "%.1f MB", release.apkSizeBytes / (1024f * 1024f))
     } else {
@@ -1709,6 +1735,28 @@ fun OtaUpdateModalDialog(
                             color = Color.White
                         )
                     }
+
+                    Text(
+                        text = if (strings.isCzech) {
+                            "🔗 Otevřít stažení přímo na GitHubu (${release.tagName})"
+                        } else {
+                            "🔗 Download directly on GitHub (${release.tagName})"
+                        },
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = AppleBlue,
+                        textDecoration = TextDecoration.Underline,
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable {
+                                try {
+                                    uriHandler.openUri(release.apkDownloadUrl)
+                                } catch (_: Exception) {
+                                }
+                            }
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
                 }
             }
         }

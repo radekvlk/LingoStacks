@@ -26,7 +26,9 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -110,6 +112,7 @@ fun DeckSelectionScreen(
                         DeckHeaderRow(
                             strings = strings,
                             versionName = progressState.appVersionName,
+                            githubRepoSlug = progressState.otaRepoSlug,
                             onOpenLeaderboard = {
                                 settingsInitialTab = 1
                                 showSettingsDialog = true
@@ -195,6 +198,7 @@ fun DeckSelectionScreen(
  DeckHeaderRow(
  strings = strings,
  versionName = progressState.appVersionName,
+ githubRepoSlug = progressState.otaRepoSlug,
  onOpenLeaderboard = {
  settingsInitialTab = 1
  showSettingsDialog = true
@@ -331,9 +335,13 @@ private fun OtaUpdateBannerCard(
 private fun DeckHeaderRow(
     strings: UiStrings,
     versionName: String,
+    githubRepoSlug: String,
     onOpenLeaderboard: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
+    val uriHandler = LocalUriHandler.current
+    val githubReleasesUrl = "https://github.com/$githubRepoSlug/releases/latest"
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -360,6 +368,27 @@ private fun DeckHeaderRow(
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = AppleBlue,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = AppleGreen.copy(alpha = 0.14f),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .clickable {
+                            try {
+                                uriHandler.openUri(githubReleasesUrl)
+                            } catch (_: Exception) {
+                            }
+                        }
+                ) {
+                    Text(
+                        text = "GitHub ↗",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AppleGreenDark,
+                        textDecoration = TextDecoration.Underline,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                     )
                 }
