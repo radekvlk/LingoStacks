@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -491,30 +492,37 @@ private fun DeckHeaderRow(
 @Composable
 private fun FilterDropdownPill(
     label: String,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = SurfaceBg,
-        border = BorderStroke(0.5.dp, CardBorderGray),
-        modifier = Modifier
+        border = BorderStroke(0.75.dp, CardBorderGray.copy(alpha = 0.85f)),
+        modifier = modifier
+            .height(36.dp)
             .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
         ) {
             Text(
                 text = label,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextDark
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextDark,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = "▾",
-                fontSize = 12.sp,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 color = AppleBlue
             )
@@ -549,18 +557,19 @@ private fun DeckGoalIndicatorCard(
             .shadow(6.dp, RoundedCornerShape(22.dp), spotColor = Color.Black.copy(alpha = 0.05f))
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Learning Language Dropdown
-                Box {
+                Box(modifier = Modifier.weight(1f)) {
                     FilterDropdownPill(
                         label = "${selectedLanguage.flagEmoji} ${selectedLanguage.localizedTitle(strings.isCzech)}",
+                        modifier = Modifier.fillMaxWidth(),
                         onClick = { languageDropdownExpanded = true }
                     )
 
@@ -585,10 +594,40 @@ private fun DeckGoalIndicatorCard(
                     }
                 }
 
-                // CEFR Level Dropdown
-                Box {
+                // Study Direction Dropdown (CZ -> EN / EN -> CZ / Mix)
+                Box(modifier = Modifier.weight(1f)) {
                     FilterDropdownPill(
-                        label = selectedLevel?.let { it.label } ?: strings.allLevelsLabel,
+                        label = studyDirection.shortLabel(selectedLanguage),
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { directionDropdownExpanded = true }
+                    )
+
+                    DropdownMenu(
+                        expanded = directionDropdownExpanded,
+                        onDismissRequest = { directionDropdownExpanded = false }
+                    ) {
+                        StudyDirection.entries.forEach { dir ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = dir.localizedDescription(strings.isCzech, selectedLanguage),
+                                        fontWeight = if (studyDirection == dir) FontWeight.Bold else FontWeight.Medium
+                                    )
+                                },
+                                onClick = {
+                                    onSelectDirection(dir)
+                                    directionDropdownExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // CEFR Level Dropdown (compact A1-C2 label on pill, full description in menu)
+                Box(modifier = Modifier.weight(1f)) {
+                    FilterDropdownPill(
+                        label = selectedLevel?.label ?: "A1–C2",
+                        modifier = Modifier.fillMaxWidth(),
                         onClick = { levelDropdownExpanded = true }
                     )
 
@@ -619,47 +658,6 @@ private fun DeckGoalIndicatorCard(
                                 onClick = {
                                     onSelectLevel(level)
                                     levelDropdownExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Study Direction Row (CZ -> EN / EN -> CZ / Mix)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = if (strings.isCzech) "Směr učení" else "Study direction",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = TextMuted
-                )
-
-                Box {
-                    FilterDropdownPill(
-                        label = studyDirection.shortLabel(selectedLanguage),
-                        onClick = { directionDropdownExpanded = true }
-                    )
-
-                    DropdownMenu(
-                        expanded = directionDropdownExpanded,
-                        onDismissRequest = { directionDropdownExpanded = false }
-                    ) {
-                        StudyDirection.entries.forEach { dir ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = dir.localizedDescription(strings.isCzech, selectedLanguage),
-                                        fontWeight = if (studyDirection == dir) FontWeight.Bold else FontWeight.Medium
-                                    )
-                                },
-                                onClick = {
-                                    onSelectDirection(dir)
-                                    directionDropdownExpanded = false
                                 }
                             )
                         }
