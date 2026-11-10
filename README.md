@@ -36,8 +36,8 @@ Moderní Android aplikace v designu **Cupertino Glass** pro aktivní procvičov�
 
 ## ⬇️ Stažení a instalace (Android 8.0+)
 
-Nejnovější instalační balíček **`LingoWords.apk`** najdete vždy v sekci [**Releases**](../../releases/latest).
-Po instalaci verze `v1.6.0+` se aplikace o budoucích aktualizacích hlásí sama přímo uvnitř.
+Nejnovější instalační balíček **`LingoWords.apk`** najdete vždy v sekci [**Releases**](https://github.com/radekvlk/LingoWords/releases/latest).
+Další aktualizace probíhá OTA přímo v aplikaci.
 
 ---
 
