@@ -52,3 +52,11 @@ Další aktualizace probíhá OTA přímo v aplikaci.
 - **Jazyk & UI:** Kotlin, Jetpack Compose, Material 3
 - **Minimální Android:** Android 8.0 (API 26) • **Target SDK:** Android 15 (API 35)
 - **Oprávnění:** `RECORD_AUDIO` (hlasové procvičování), `INTERNET` (synchronizace žebříčku a OTA), `REQUEST_INSTALL_PACKAGES` (přímá instalace OTA aktualizace)
+
+---
+
+## 📄 Autorská práva (*All Rights Reserved*)
+
+**© 2026 Radek Vlk — Všechna práva vyhrazena (*All Rights Reserved*).**
+
+Zdrojový kód je zveřejněn výhradně pro nahlédnutí a ověření bezpečnosti aplikace (*source-available*). Bez předchozího písemného souhlasu autora není dovoleno kód ani jeho části kopírovat, upravovat, dále šířit ani vydávat jako vlastní nebo odvozenou aplikaci.
