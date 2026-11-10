@@ -726,10 +726,17 @@ class ProgressStateHolder(context: Context) {
         refreshFromCloud()
     }
 
+    private fun normalizeKnownLeaderboardName(rawName: String): String {
+        val trimmed = rawName.trim()
+        return if (trimmed.equals("Sichyngrova", ignoreCase = true)) "Lenka S." else trimmed
+    }
+
     private fun formatDefaultDisplayName(displayName: String, email: String): String {
         val raw = displayName.trim().ifEmpty {
             email.substringBefore("@").replace(Regex("[._-]+"), " ").trim()
         }
+        val mappedKnown = normalizeKnownLeaderboardName(raw)
+        if (mappedKnown != raw) return mappedKnown
         val parts = raw.split(Regex("\\s+")).filter { it.isNotBlank() }
         if (parts.isEmpty()) return email.substringBefore("@").ifEmpty { "User" }
         val firstName = parts.first().replaceFirstChar { it.uppercase() }
@@ -984,7 +991,7 @@ class ProgressStateHolder(context: Context) {
                     val data = JSONObject(msgStr)
                     val code = data.optString("code", "").uppercase(Locale.US)
                     val email = data.optString("email", "").trim()
-                    val name = data.optString("name", "").trim()
+                    val name = normalizeKnownLeaderboardName(data.optString("name", ""))
                     // Only accept real users who have connected an email account
                     if (code.isBlank() || !email.contains("@") || name.isBlank() || name.startsWith("Hráč (")) continue
 
@@ -1045,11 +1052,21 @@ class ProgressStateHolder(context: Context) {
     }
 
     private fun loadSavedUser(): GoogleUserProfile? {
-        val name = prefs.getString("google_name", null) ?: return null
+        val rawName = prefs.getString("google_name", null) ?: return null
         val email = prefs.getString("google_email", null) ?: return null
         if (!email.contains("@")) return null
         val code = prefs.getString("google_code", "SLOV-4821") ?: "SLOV-4821"
-        return GoogleUserProfile(name, email, code)
+        val migrated = prefs.getBoolean("lenka_name_migrated_v1", false)
+        val effectiveName = if (!migrated && rawName.trim().equals("Sichyngrova", ignoreCase = true)) {
+            prefs.edit()
+                .putString("google_name", "Lenka S.")
+                .putBoolean("lenka_name_migrated_v1", true)
+                .apply()
+            "Lenka S."
+        } else {
+            rawName
+        }
+        return GoogleUserProfile(effectiveName, email, code)
     }
 
     private fun loadSavedFriends(): List<FriendProgress> {
@@ -1062,7 +1079,7 @@ class ProgressStateHolder(context: Context) {
             val parts = line.split("|")
             if (parts.size >= 7) {
                 val id = parts[0]
-                val name = parts[1]
+                val name = normalizeKnownLeaderboardName(parts[1])
                 val code = parts[2]
                 // Filter out any previously saved demo entries
                 if (id.startsWith("demo_") ||
