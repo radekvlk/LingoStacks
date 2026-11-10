@@ -129,6 +129,7 @@ fun FlashcardSessionScreen(
     val isReversedCardState by rememberUpdatedState(isReversedCard)
 
     var feedbackState by remember { mutableStateOf(CardFeedbackState.NEUTRAL) }
+    var isTransitioningCard by remember { mutableStateOf(false) }
     var showHintTranslation by remember { mutableStateOf(false) }
     var usedHintOnCurrentCard by remember { mutableStateOf(false) }
     val wordsNeedingSecondConfirmation = remember(dailyGoalWords) { mutableStateListOf<String>() }
@@ -146,6 +147,7 @@ fun FlashcardSessionScreen(
 
     val currentWordState by rememberUpdatedState(currentWord)
     val feedbackStateUpdated by rememberUpdatedState(feedbackState)
+    val isTransitioningUpdated by rememberUpdatedState(isTransitioningCard)
     val hasMicPermState by rememberUpdatedState(hasMicPermission)
     val micAutoState by rememberUpdatedState(micAutoEnabled)
 
@@ -237,8 +239,9 @@ fun FlashcardSessionScreen(
         keepScreenActive()
         val word = currentWordState ?: return
         val currentState = feedbackStateUpdated
-        if (currentState != CardFeedbackState.NEUTRAL && currentState != CardFeedbackState.SPOKEN_WRONG_FLASH) return
+        if (isTransitioningUpdated || (currentState != CardFeedbackState.NEUTRAL && currentState != CardFeedbackState.SPOKEN_WRONG_FLASH)) return
 
+        isTransitioningCard = true
         wrongWordDebounceJob?.cancel()
         wrongFlashResetJob?.cancel()
         lastFlashedWrongWord = null
@@ -343,11 +346,13 @@ fun FlashcardSessionScreen(
                 progressState.recordSessionCompleted()
                 onSessionFinished(results.toList())
             } else {
-                currentIndex += 1
+                // Reset feedback & hint SYNCHRONOUSLY with currentIndex so incoming card NEVER flashes previous revealed answer
+                feedbackState = CardFeedbackState.NEUTRAL
                 showHintTranslation = false
                 usedHintOnCurrentCard = false
                 lastHeardText = null
                 lastFlashedWrongWord = null
+                currentIndex += 1
 
                 // 2. Next card enters from the OPPOSITE direction smoothly on GPU layer
                 offsetX.snapTo(-exitTargetX * 0.55f)
@@ -367,7 +372,7 @@ fun FlashcardSessionScreen(
                 // 3. ONLY AFTER the next card has completely arrived in the center:
                 // Settle timestamp, enable speech acceptance, and start listening cleanly once TTS finishes!
                 cardActiveTimestamp = SystemClock.uptimeMillis()
-                feedbackState = CardFeedbackState.NEUTRAL
+                isTransitioningCard = false
                 keepScreenActive()
                 val nextIsReversed = when (progressState.studyDirection) {
                     StudyDirection.NATIVE_TO_FOREIGN -> false
@@ -387,7 +392,8 @@ fun FlashcardSessionScreen(
         val word = currentWordState
         val state = feedbackStateUpdated
         val expectCzech = isReversedCardState
-        val canAcceptSpeech = state == CardFeedbackState.NEUTRAL || state == CardFeedbackState.SPOKEN_WRONG_FLASH
+        val canAcceptSpeech = !isTransitioningUpdated &&
+                (state == CardFeedbackState.NEUTRAL || state == CardFeedbackState.SPOKEN_WRONG_FLASH)
         if (word != null && canAcceptSpeech && candidates.isNotEmpty()) {
             val matched = WordMatcher.matches(candidates, word, isFinal, expectCzech = expectCzech)
             if (matched != null) {
@@ -503,8 +509,8 @@ fun FlashcardSessionScreen(
         val configuration = LocalConfiguration.current
         val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE ||
                 (configuration.screenWidthDp > configuration.screenHeightDp)
-        val isCardInteractive = feedbackState == CardFeedbackState.NEUTRAL ||
-                feedbackState == CardFeedbackState.SPOKEN_WRONG_FLASH
+        val isCardInteractive = !isTransitioningCard &&
+                (feedbackState == CardFeedbackState.NEUTRAL || feedbackState == CardFeedbackState.SPOKEN_WRONG_FLASH)
 
         val isTranslationRevealed = showHintTranslation ||
                 (feedbackState != CardFeedbackState.NEUTRAL && feedbackState != CardFeedbackState.SPOKEN_WRONG_FLASH)
