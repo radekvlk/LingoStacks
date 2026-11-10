@@ -126,6 +126,15 @@ fun FlashcardSessionScreen(
     val results = remember(dailyGoalWords) { mutableStateListOf<CardAttemptResult>() }
     var showGoalPicker by remember { mutableStateOf(false) }
     var showRecentWordsPanel by remember { mutableStateOf(false) }
+    var toggleFeedbackPopup by remember { mutableStateOf<String?>(null) }
+    var toggleFeedbackSeq by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(toggleFeedbackSeq) {
+        if (toggleFeedbackPopup != null) {
+            delay(1900L)
+            toggleFeedbackPopup = null
+        }
+    }
 
     val currentWord = sessionQueue.getOrNull(currentIndex)
     val nextWord = sessionQueue.getOrNull(currentIndex + 1)
@@ -256,6 +265,7 @@ fun FlashcardSessionScreen(
 
         isTransitioningCard = true
         showRecentWordsPanel = false
+        toggleFeedbackPopup = null
         wrongWordDebounceJob?.cancel()
         wrongFlashResetJob?.cancel()
         lastFlashedWrongWord = null
@@ -562,9 +572,38 @@ fun FlashcardSessionScreen(
         val handleReplayWordText: (String) -> Unit = { wordText ->
             speechControllerRef?.speakEnglish(wordText)
         }
+        val handleToggleAutoPronounce: () -> Unit = {
+            val next = !progressState.autoPronounceEnabled
+            progressState.setAutoPronounce(next)
+            showRecentWordsPanel = false
+            toggleFeedbackPopup = when {
+                next && strings.isCzech -> "🔊 Výslovnost po odpovědi zapnuta — správné slovo se vždy přečte"
+                next -> "🔊 Auto pronunciation ON — speaks word after each answer"
+                strings.isCzech -> "🔇 Výslovnost po odpovědi vypnuta — přečte se jen při Nevím"
+                else -> "🔇 Auto pronunciation OFF — speaks only on Unknown"
+            }
+            toggleFeedbackSeq += 1
+        }
+        val handleTogglePauseWhileSpeaking: () -> Unit = {
+            val next = !progressState.pauseCardWhileSpeaking
+            progressState.updatePauseCardWhileSpeaking(next)
+            showRecentWordsPanel = false
+            toggleFeedbackPopup = when {
+                next && strings.isCzech -> "👁️ Zobrazení slova zapnuto — mezi kartami se ukáže slovo s přepisem"
+                next -> "👁️ Word display ON — shows word & phonetics between cards"
+                strings.isCzech -> "🙈 Zobrazení slova vypnuto — rychlý přechod rovnou na další kartu"
+                else -> "🙈 Word display OFF — fast jump straight to next card"
+            }
+            toggleFeedbackSeq += 1
+        }
+        val handleToggleRecentWordsPanel: () -> Unit = {
+            toggleFeedbackPopup = null
+            showRecentWordsPanel = !showRecentWordsPanel
+        }
         val handleReopenPreviousWord: (VocabWord) -> Unit = reopen@{ targetWord ->
             if (isTransitioningUpdated) return@reopen
             showRecentWordsPanel = false
+            toggleFeedbackPopup = null
             if (currentWordState?.id == targetWord.id) return@reopen
 
             isTransitioningCard = true
@@ -614,6 +653,9 @@ fun FlashcardSessionScreen(
         val handleDragDelta: (Float) -> Unit = { delta ->
             if (showRecentWordsPanel) {
                 showRecentWordsPanel = false
+            }
+            if (toggleFeedbackPopup != null) {
+                toggleFeedbackPopup = null
             }
             keepScreenActive()
             if (isCardInteractive) {
@@ -764,18 +806,14 @@ fun FlashcardSessionScreen(
                         onToggleHint = handleToggleHint,
                         onPlayAudio = handlePlayAudio,
                         autoPronounceEnabled = progressState.autoPronounceEnabled,
-                        onToggleAutoPronounce = {
-                            progressState.setAutoPronounce(!progressState.autoPronounceEnabled)
-                        },
+                        onToggleAutoPronounce = handleToggleAutoPronounce,
                         pauseWhileSpeaking = progressState.pauseCardWhileSpeaking,
-                        onTogglePauseWhileSpeaking = {
-                            progressState.updatePauseCardWhileSpeaking(!progressState.pauseCardWhileSpeaking)
-                        },
+                        onTogglePauseWhileSpeaking = handleTogglePauseWhileSpeaking,
+                        toggleFeedbackText = toggleFeedbackPopup,
+                        onDismissToggleFeedback = { toggleFeedbackPopup = null },
                         recentResults = results,
                         showRecentWordsPanel = showRecentWordsPanel,
-                        onToggleRecentWordsPanel = {
-                            showRecentWordsPanel = !showRecentWordsPanel
-                        },
+                        onToggleRecentWordsPanel = handleToggleRecentWordsPanel,
                         onReplayRecentWord = handleReplayWordText,
                         onReopenRecentWord = handleReopenPreviousWord,
                         onDragDelta = handleDragDelta,
@@ -863,18 +901,14 @@ fun FlashcardSessionScreen(
                     onToggleHint = handleToggleHint,
                     onPlayAudio = handlePlayAudio,
                     autoPronounceEnabled = progressState.autoPronounceEnabled,
-                    onToggleAutoPronounce = {
-                        progressState.setAutoPronounce(!progressState.autoPronounceEnabled)
-                    },
+                    onToggleAutoPronounce = handleToggleAutoPronounce,
                     pauseWhileSpeaking = progressState.pauseCardWhileSpeaking,
-                    onTogglePauseWhileSpeaking = {
-                        progressState.updatePauseCardWhileSpeaking(!progressState.pauseCardWhileSpeaking)
-                    },
+                    onTogglePauseWhileSpeaking = handleTogglePauseWhileSpeaking,
+                    toggleFeedbackText = toggleFeedbackPopup,
+                    onDismissToggleFeedback = { toggleFeedbackPopup = null },
                     recentResults = results,
                     showRecentWordsPanel = showRecentWordsPanel,
-                    onToggleRecentWordsPanel = {
-                        showRecentWordsPanel = !showRecentWordsPanel
-                    },
+                    onToggleRecentWordsPanel = handleToggleRecentWordsPanel,
                     onReplayRecentWord = handleReplayWordText,
                     onReopenRecentWord = handleReopenPreviousWord,
                     onDragDelta = handleDragDelta,
@@ -1631,6 +1665,8 @@ private fun Flashcard3DStackArea(
     onToggleAutoPronounce: () -> Unit = {},
     pauseWhileSpeaking: Boolean = true,
     onTogglePauseWhileSpeaking: () -> Unit = {},
+    toggleFeedbackText: String? = null,
+    onDismissToggleFeedback: () -> Unit = {},
     recentResults: List<CardAttemptResult> = emptyList(),
     showRecentWordsPanel: Boolean = false,
     onToggleRecentWordsPanel: () -> Unit = {},
@@ -1723,6 +1759,8 @@ private fun Flashcard3DStackArea(
             onToggleAutoPronounce = onToggleAutoPronounce,
             pauseWhileSpeaking = pauseWhileSpeaking,
             onTogglePauseWhileSpeaking = onTogglePauseWhileSpeaking,
+            toggleFeedbackText = toggleFeedbackText,
+            onDismissToggleFeedback = onDismissToggleFeedback,
             recentResults = recentResults,
             showRecentWordsPanel = showRecentWordsPanel,
             onToggleRecentWordsPanel = onToggleRecentWordsPanel,
@@ -2048,7 +2086,7 @@ private fun CardCornerToggleIcon(
                 imageVector = if (isEnabled) enabledIcon else disabledIcon,
                 contentDescription = contentDescription,
                 tint = if (isEnabled) AppleBlue else TextMuted,
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(20.dp)
             )
         }
     }
@@ -2072,6 +2110,8 @@ private fun SwipeableVocabCard(
     onToggleAutoPronounce: () -> Unit = {},
     pauseWhileSpeaking: Boolean = true,
     onTogglePauseWhileSpeaking: () -> Unit = {},
+    toggleFeedbackText: String? = null,
+    onDismissToggleFeedback: () -> Unit = {},
     recentResults: List<CardAttemptResult> = emptyList(),
     showRecentWordsPanel: Boolean = false,
     onToggleRecentWordsPanel: () -> Unit = {},
@@ -2285,7 +2325,7 @@ private fun SwipeableVocabCard(
                             onClick = onToggleAutoPronounce
                         )
                         CardCornerToggleIcon(
-                            isEnabled = showRecentWordsPanel,
+                            isEnabled = !showRecentWordsPanel,
                             enabledIcon = Icons.Default.History,
                             disabledIcon = Icons.Default.History,
                             contentDescription = if (strings.isCzech) {
@@ -2561,6 +2601,48 @@ private fun SwipeableVocabCard(
                             onSelectWord = onReopenRecentWord
                         )
                     }
+                }
+            }
+
+            AnimatedVisibility(
+                visible = !showRecentWordsPanel && !toggleFeedbackText.isNullOrBlank(),
+                enter = scaleIn(
+                    initialScale = 0.90f,
+                    animationSpec = spring(
+                        dampingRatio = 0.72f,
+                        stiffness = Spring.StiffnessMedium
+                    )
+                ),
+                exit = scaleOut(
+                    targetScale = 0.92f,
+                    animationSpec = tween(120)
+                ),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = cardVertPadding + 42.dp, start = 14.dp, end = 14.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = CardElevatedSurface,
+                    border = BorderStroke(0.8.dp, AppleBlue.copy(alpha = 0.35f)),
+                    shadowElevation = 0.dp,
+                    modifier = Modifier
+                        .softRoundedShadow(
+                            cornerRadius = 16.dp,
+                            maxAlpha = 0.12f,
+                            spreadDp = 10.dp,
+                            offsetYDp = 4.dp
+                        )
+                        .clickable { onDismissToggleFeedback() }
+                ) {
+                    Text(
+                        text = toggleFeedbackText ?: "",
+                        fontSize = 12.5.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextDark,
+                        lineHeight = 17.sp,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp)
+                    )
                 }
             }
         }

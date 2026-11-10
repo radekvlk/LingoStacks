@@ -59,6 +59,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import cz.slovickaspeak.app.data.FriendProgress
 import cz.slovickaspeak.app.data.LanguageCompleteStats
+import cz.slovickaspeak.app.data.LeaderboardPeriod
 import cz.slovickaspeak.app.data.ProgressStateHolder
 import cz.slovickaspeak.app.model.LearningLanguage
 import cz.slovickaspeak.app.model.StudyDirection
@@ -289,10 +290,11 @@ fun AppleFullSettingsDialog(
                             onTileClick = { showCompleteStatsInModal = true }
                         )
 
-                        // 2. Daily Leaderboard
+                        // 2. Fair Daily & Weekly XP Leaderboard
                         DailyLeaderboardSectionCard(
                             strings = strings,
                             leaderboard = progressState.dailyLeaderboard,
+                            weeklyLeaderboard = progressState.weeklyLeaderboard,
                             isSignedIn = progressState.googleUser != null,
                             isSyncing = progressState.isSyncingCloud,
                             onRefresh = { progressState.refreshFromCloud() }
@@ -341,11 +343,16 @@ fun AppleFullSettingsDialog(
 fun DailyLeaderboardSectionCard(
     strings: UiStrings = rememberAppStrings(),
     leaderboard: List<FriendProgress>,
+    weeklyLeaderboard: List<FriendProgress> = leaderboard,
     isSignedIn: Boolean = true,
     isSyncing: Boolean,
     onRefresh: () -> Unit
 ) {
-    val maxWordsToday = leaderboard.maxOfOrNull { it.todayCompleted }?.coerceAtLeast(10) ?: 10
+    var selectedPeriod by remember { mutableStateOf(LeaderboardPeriod.TODAY) }
+    val activeEntries = if (selectedPeriod == LeaderboardPeriod.TODAY) leaderboard else weeklyLeaderboard
+    val maxPeriodXp = activeEntries.maxOfOrNull {
+        if (selectedPeriod == LeaderboardPeriod.TODAY) it.todayXp else it.weeklyXp
+    }?.coerceAtLeast(10) ?: 10
     var expandedEntryId by remember { mutableStateOf<String?>(null) }
 
     Surface(
@@ -365,7 +372,7 @@ fun DailyLeaderboardSectionCard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = strings.leaderboardTitle,
+                        text = if (strings.isCzech) "🏆 Žebříček" else "🏆 Leaderboard",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = TextDark
@@ -377,10 +384,10 @@ fun DailyLeaderboardSectionCard(
                             } else {
                                 "Available after signing in"
                             }
-                            strings.isCzech -> "Klepni na hráče pro detail celkového pokroku"
-                            else -> "Tap a player for full overall progress"
+                            strings.isCzech -> "🎙️ +2 XP hlasem  •  👉 +1 XP swipe  •  🎯 +5 XP cíl"
+                            else -> "🎙️ +2 XP spoken  •  👉 +1 XP swipe  •  🎯 +5 XP goal"
                         },
-                        fontSize = 11.sp,
+                        fontSize = 10.5.sp,
                         color = TextMuted
                     )
                 }
@@ -397,6 +404,18 @@ fun DailyLeaderboardSectionCard(
                         )
                     }
                 }
+            }
+
+            if (isSignedIn) {
+                AppleSegmentedControl(
+                    options = listOf(
+                        LeaderboardPeriod.TODAY to (if (strings.isCzech) "📅 Dnes" else "📅 Today"),
+                        LeaderboardPeriod.WEEK to (if (strings.isCzech) "🗓️ Tento týden" else "🗓️ This Week")
+                    ),
+                    selectedValue = selectedPeriod,
+                    onSelect = { selectedPeriod = it },
+                    fontSize = 12.5.sp
+                )
             }
 
             if (!isSignedIn) {
@@ -429,9 +448,9 @@ fun DailyLeaderboardSectionCard(
                             )
                             Text(
                                 text = if (strings.isCzech) {
-                                    "Ostatní účastníky a denní porovnání zobrazíme, jakmile se níže přihlásíš svým Google účtem."
+                                    "Ostatní účastníky a férové denní i týdenní porovnání zobrazíme, jakmile se níže přihlásíš svým Google účtem."
                                 } else {
-                                    "Other learners and daily rankings will appear once you sign in with your Google account below."
+                                    "Other learners and fair daily/weekly rankings will appear once you sign in with your Google account below."
                                 },
                                 fontSize = 12.sp,
                                 color = TextMuted,
@@ -443,7 +462,7 @@ fun DailyLeaderboardSectionCard(
                 return@Column
             }
 
-            if (leaderboard.isEmpty()) {
+            if (activeEntries.isEmpty()) {
                 Surface(
                     shape = RoundedCornerShape(14.dp),
                     color = SurfaceBg,
@@ -458,7 +477,7 @@ fun DailyLeaderboardSectionCard(
                 }
             }
 
-            leaderboard.forEachIndexed { index, entry ->
+            activeEntries.forEachIndexed { index, entry ->
                 val isExpanded = expandedEntryId == entry.id
                 val chevronRotation by animateFloatAsState(
                     targetValue = if (isExpanded) 180f else 0f,
@@ -474,7 +493,11 @@ fun DailyLeaderboardSectionCard(
                 val langFlag = if (entry.languageCode == "es") "🇪🇸" else "🇬🇧"
                 val dailyGoal = entry.dailyGoal.coerceAtLeast(1)
                 val dailyGoalMet = entry.todayCompleted >= dailyGoal
-                val dailyBarFraction = (entry.todayCompleted.toFloat() / maxWordsToday.toFloat()).coerceIn(0.03f, 1f)
+                val periodXp = if (selectedPeriod == LeaderboardPeriod.TODAY) entry.todayXp else entry.weeklyXp
+                val periodWords = if (selectedPeriod == LeaderboardPeriod.TODAY) entry.todayCompleted else entry.weeklyCompleted
+                val barFraction = (periodXp.toFloat() / maxPeriodXp.toFloat()).coerceIn(0.03f, 1f)
+                val isWeeklyPeriod = selectedPeriod == LeaderboardPeriod.WEEK
+                val isHighlightGreen = if (isWeeklyPeriod) index == 0 && periodXp > 0 else dailyGoalMet
                 val catalogTotal = entry.catalogWordCount.coerceAtLeast(1)
                 val overallPercent = ((entry.masteredCount.toFloat() / catalogTotal.toFloat()) * 100f)
                     .toInt()
@@ -530,8 +553,13 @@ fun DailyLeaderboardSectionCard(
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
+                                    val subLine = if (isWeeklyPeriod) {
+                                        "🔥 ${entry.streakDays}d  •  🎯 ${entry.accuracyPercent}%  •  $periodWords ${if (strings.isCzech) "slov/týd." else "words/wk"}"
+                                    } else {
+                                        "🔥 ${entry.streakDays}d  •  🎯 ${entry.accuracyPercent}%  •  $periodWords/$dailyGoal ${if (strings.isCzech) "slov" else "words"}"
+                                    }
                                     Text(
-                                        text = "🔥 ${entry.streakDays}d  •  📚 ${entry.masteredCount} ($overallPercent%)",
+                                        text = subLine,
                                         fontSize = 10.sp,
                                         color = TextMuted,
                                         maxLines = 1,
@@ -547,16 +575,16 @@ fun DailyLeaderboardSectionCard(
                                 Surface(
                                     shape = RoundedCornerShape(50),
                                     color = when {
-                                        dailyGoalMet -> AppleGreen
-                                        entry.todayCompleted > 0 -> AppleBlue
+                                        isHighlightGreen -> AppleGreen
+                                        periodXp > 0 -> AppleBlue
                                         else -> CardSurface
                                     }
                                 ) {
                                     Text(
-                                        text = if (dailyGoalMet) "${entry.todayCompleted}/$dailyGoal ✓" else "${entry.todayCompleted}/$dailyGoal",
+                                        text = "$periodXp XP",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (entry.todayCompleted > 0) Color.White else TextMuted,
+                                        color = if (periodXp > 0) Color.White else TextMuted,
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                     )
                                 }
@@ -572,7 +600,7 @@ fun DailyLeaderboardSectionCard(
                             }
                         }
 
-                        // Thin daily bar
+                        // Thin relative XP progress bar
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -583,9 +611,9 @@ fun DailyLeaderboardSectionCard(
                             Box(
                                 modifier = Modifier
                                     .fillMaxHeight()
-                                    .fillMaxWidth(dailyBarFraction)
+                                    .fillMaxWidth(barFraction)
                                     .clip(RoundedCornerShape(50))
-                                    .background(if (dailyGoalMet) AppleGreen else AppleBlue)
+                                    .background(if (isHighlightGreen) AppleGreen else AppleBlue)
                             )
                         }
 

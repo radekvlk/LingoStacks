@@ -31,6 +31,11 @@ data class GoogleUserProfile(
     val inviteCode: String
 )
 
+enum class LeaderboardPeriod {
+    TODAY,
+    WEEK
+}
+
 data class FriendProgress(
     val id: String,
     val displayName: String,
@@ -47,7 +52,10 @@ data class FriendProgress(
     val accuracyPercent: Int = 0,
     val catalogWordCount: Int = 0,
     val languageCode: String = "en",
-    val lastActiveDate: String = ""
+    val lastActiveDate: String = "",
+    val todayXp: Int = todayCompleted,
+    val weeklyCompleted: Int = todayCompleted,
+    val weeklyXp: Int = todayCompleted
 )
 
 data class WordSrsStat(
@@ -144,6 +152,14 @@ class ProgressStateHolder(context: Context) {
     private val yesterdayKey: String
         get() = dateKeyForOffsetDays(-1)
 
+    private fun currentWeekStartKey(): String {
+        val cal = Calendar.getInstance()
+        val dow = cal.get(Calendar.DAY_OF_WEEK)
+        val daysSinceMonday = (dow - Calendar.MONDAY + 7) % 7
+        if (daysSinceMonday > 0) cal.add(Calendar.DAY_OF_YEAR, -daysSinceMonday)
+        return SimpleDateFormat("yyyy-MM-dd", Locale.US).format(cal.time)
+    }
+
     var dailyGoalWords by mutableIntStateOf(prefs.getInt("daily_goal", 20).coerceIn(5, 200))
         private set
 
@@ -205,6 +221,34 @@ class ProgressStateHolder(context: Context) {
 
     var todayCompletedWords by mutableIntStateOf(loadTodayCompleted())
         private set
+
+    var todayBaseXp by mutableIntStateOf(loadTodayBaseXp())
+        private set
+
+    val todayXp: Int
+        get() = todayBaseXp + if (todayCompletedWords >= dailyGoalWords) 5 else 0
+
+    // Maps "yyyy-MM-dd" -> Pair(wordsCompleted, dailyTotalXp) for the active Mon-Sun week
+    private val weeklyDailyStats = loadWeeklyDailyStats().apply {
+        val today = todayKey
+        val existingToday = this[today]
+        val computedTodayXp = todayXp
+        if (existingToday == null || existingToday.first < todayCompletedWords || existingToday.second < computedTodayXp) {
+            this[today] = maxOf(todayCompletedWords, existingToday?.first ?: 0) to maxOf(computedTodayXp, existingToday?.second ?: 0)
+        }
+    }
+
+    val weeklyCompletedWords: Int
+        get() {
+            val weekStart = currentWeekStartKey()
+            return weeklyDailyStats.entries.sumOf { (date, pair) -> if (date >= weekStart) pair.first else 0 }
+        }
+
+    val weeklyXp: Int
+        get() {
+            val weekStart = currentWeekStartKey()
+            return weeklyDailyStats.entries.sumOf { (date, pair) -> if (date >= weekStart) pair.second else 0 }
+        }
 
     var totalAttempts by mutableIntStateOf(prefs.getInt("total_attempts", 0))
         private set
@@ -467,57 +511,72 @@ class ProgressStateHolder(context: Context) {
     }
 
     val dailyLeaderboard: List<FriendProgress>
-        get() {
-            val user = googleUser
-            if (user == null || !user.email.contains("@")) {
-                return emptyList()
-            }
+        get() = buildLeaderboard(LeaderboardPeriod.TODAY)
 
-            val isCs = isCzechLocale()
-            val youTag = if (isCs) "Vy" else "You"
-            val currentLastActive = prefs.getString("last_study_date", null)
-                ?: if (todayCompletedWords > 0) todayKey else ""
+    val weeklyLeaderboard: List<FriendProgress>
+        get() = buildLeaderboard(LeaderboardPeriod.WEEK)
 
-            val meList = listOf(
-                FriendProgress(
-                    id = "me_${user.inviteCode}",
-                    displayName = "${user.displayName} ($youTag)",
-                    emailOrCode = user.inviteCode,
-                    todayCompleted = todayCompletedWords,
-                    dailyGoal = dailyGoalWords,
-                    streakDays = streakDays,
-                    totalSpoken = totalSpokenCorrect,
-                    statusText = if (isCs) "Váš dnešní výkon" else "Your progress today",
-                    isCurrentUser = true,
-                    masteredCount = getActiveLanguageMasteredCount(),
-                    totalCorrectCount = totalCorrect,
-                    completedSessions = completedSessions,
-                    accuracyPercent = accuracyPercent,
-                    catalogWordCount = getActiveLanguageCatalogCount(),
-                    languageCode = selectedLanguage.code,
-                    lastActiveDate = currentLastActive
-                )
-            )
-
-            val myCode = user?.inviteCode ?: ""
-            val myEmail = user?.email ?: ""
-
-            // Exclude any legacy demo/anonymous entries
-            val realOthers = friends.filter { friend ->
-                !friend.id.startsWith("demo_") &&
-                        !friend.displayName.startsWith("Hráč (") &&
-                        !friend.displayName.equals("Petra Nováková", ignoreCase = true) &&
-                        !friend.displayName.equals("Martin Dvořák", ignoreCase = true) &&
-                        !friend.emailOrCode.equals(myCode, ignoreCase = true) &&
-                        !friend.emailOrCode.equals(myEmail, ignoreCase = true)
-            }
-
-            return (meList + realOthers).sortedWith(
-                compareByDescending<FriendProgress> { it.todayCompleted }
-                    .thenByDescending { it.masteredCount }
-                    .thenByDescending { it.totalSpoken }
-            )
+    private fun buildLeaderboard(period: LeaderboardPeriod): List<FriendProgress> {
+        val user = googleUser
+        if (user == null || !user.email.contains("@")) {
+            return emptyList()
         }
+
+        val isCs = isCzechLocale()
+        val youTag = if (isCs) "Vy" else "You"
+        val currentLastActive = prefs.getString("last_study_date", null)
+            ?: if (todayCompletedWords > 0) todayKey else ""
+
+        val meList = listOf(
+            FriendProgress(
+                id = "me_${user.inviteCode}",
+                displayName = "${user.displayName} ($youTag)",
+                emailOrCode = user.inviteCode,
+                todayCompleted = todayCompletedWords,
+                dailyGoal = dailyGoalWords,
+                streakDays = streakDays,
+                totalSpoken = totalSpokenCorrect,
+                statusText = if (isCs) "Váš dnešní výkon" else "Your progress today",
+                isCurrentUser = true,
+                masteredCount = getActiveLanguageMasteredCount(),
+                totalCorrectCount = totalCorrect,
+                completedSessions = completedSessions,
+                accuracyPercent = accuracyPercent,
+                catalogWordCount = getActiveLanguageCatalogCount(),
+                languageCode = selectedLanguage.code,
+                lastActiveDate = currentLastActive,
+                todayXp = todayXp,
+                weeklyCompleted = weeklyCompletedWords,
+                weeklyXp = weeklyXp
+            )
+        )
+
+        val myCode = user.inviteCode
+        val myEmail = user.email
+
+        // Exclude any legacy demo/anonymous entries
+        val realOthers = friends.filter { friend ->
+            !friend.id.startsWith("demo_") &&
+                    !friend.displayName.startsWith("Hráč (") &&
+                    !friend.displayName.equals("Petra Nováková", ignoreCase = true) &&
+                    !friend.displayName.equals("Martin Dvořák", ignoreCase = true) &&
+                    !friend.emailOrCode.equals(myCode, ignoreCase = true) &&
+                    !friend.emailOrCode.equals(myEmail, ignoreCase = true)
+        }
+
+        val comparator = when (period) {
+            LeaderboardPeriod.TODAY -> compareByDescending<FriendProgress> { it.todayXp }
+                .thenByDescending { it.accuracyPercent }
+                .thenByDescending { it.streakDays }
+                .thenByDescending { it.todayCompleted }
+            LeaderboardPeriod.WEEK -> compareByDescending<FriendProgress> { it.weeklyXp }
+                .thenByDescending { it.accuracyPercent }
+                .thenByDescending { it.streakDays }
+                .thenByDescending { it.weeklyCompleted }
+        }
+
+        return (meList + realOthers).sortedWith(comparator)
+    }
 
     init {
         ioExecutor.execute { OtaUpdater.cleanupCachedUpdates(appContext) }
@@ -567,6 +626,54 @@ class ProgressStateHolder(context: Context) {
         }
     }
 
+    private fun loadTodayBaseXp(): Int {
+        val currentDay = todayKey
+        val savedDate = prefs.getString("today_xp_date", null)
+        val savedXp = prefs.getInt("today_base_xp", -1)
+        return when {
+            savedDate == currentDay && savedXp >= 0 -> savedXp
+            savedDate == null && todayCompletedWords > 0 -> {
+                // Graceful migration for users who studied earlier today prior to XP scoring
+                prefs.edit()
+                    .putString("today_xp_date", currentDay)
+                    .putInt("today_base_xp", todayCompletedWords)
+                    .apply()
+                todayCompletedWords
+            }
+            else -> {
+                prefs.edit()
+                    .putString("today_xp_date", currentDay)
+                    .putInt("today_base_xp", 0)
+                    .apply()
+                0
+            }
+        }
+    }
+
+    private fun loadWeeklyDailyStats(): MutableMap<String, Pair<Int, Int>> {
+        val weekStart = currentWeekStartKey()
+        val raw = prefs.getString("weekly_daily_log_v1", null) ?: return mutableMapOf()
+        val result = mutableMapOf<String, Pair<Int, Int>>()
+        raw.split("\n").forEach { line ->
+            val parts = line.split("|")
+            if (parts.size >= 3) {
+                val date = parts[0]
+                if (date >= weekStart) {
+                    val words = parts[1].toIntOrNull() ?: 0
+                    val xp = parts[2].toIntOrNull() ?: words
+                    result[date] = words to xp
+                }
+            }
+        }
+        return result
+    }
+
+    private fun updateTodayInWeeklyLog() {
+        val weekStart = currentWeekStartKey()
+        weeklyDailyStats.keys.removeAll { it < weekStart }
+        weeklyDailyStats[todayKey] = todayCompletedWords to todayXp
+    }
+
     private fun loadInitialStreakDays(): Int {
         val lastStudy = prefs.getString("last_study_date", null) ?: return if (prefs.getInt("today_completed", 0) > 0) 1 else 0
         val currentDay = todayKey
@@ -585,10 +692,13 @@ class ProgressStateHolder(context: Context) {
      */
     fun checkNewDayRollover(alsoRefreshCloud: Boolean = false) {
         val currentDay = todayKey
+        val weekStart = currentWeekStartKey()
         val prevDay = yesterdayKey
         val savedDate = prefs.getString("today_date", null)
         if (savedDate != currentDay) {
             todayCompletedWords = 0
+            todayBaseXp = 0
+            weeklyDailyStats.keys.removeAll { it < weekStart }
             val lastStudy = prefs.getString("last_study_date", null)
             if (lastStudy != currentDay && lastStudy != prevDay) {
                 streakDays = 0
@@ -596,14 +706,23 @@ class ProgressStateHolder(context: Context) {
             prefs.edit()
                 .putString("today_date", currentDay)
                 .putInt("today_completed", 0)
+                .putString("today_xp_date", currentDay)
+                .putInt("today_base_xp", 0)
                 .putInt("streak_days", streakDays)
                 .apply()
         }
-        // Reset yesterday's todayCompleted count on cached friend cards when day rolls over
+        // Reset yesterday's todayCompleted/todayXp on cached friend cards when day rolls over
         for (i in friends.indices) {
             val f = friends[i]
-            if (f.lastActiveDate.isNotEmpty() && f.lastActiveDate != currentDay && f.todayCompleted > 0) {
-                friends[i] = f.copy(todayCompleted = 0)
+            val resetDaily = f.lastActiveDate.isNotEmpty() && f.lastActiveDate != currentDay && (f.todayCompleted > 0 || f.todayXp > 0)
+            val resetWeekly = f.lastActiveDate.isNotEmpty() && f.lastActiveDate < weekStart && (f.weeklyCompleted > 0 || f.weeklyXp > 0)
+            if (resetDaily || resetWeekly) {
+                friends[i] = f.copy(
+                    todayCompleted = if (resetDaily) 0 else f.todayCompleted,
+                    todayXp = if (resetDaily) 0 else f.todayXp,
+                    weeklyCompleted = if (resetWeekly) 0 else f.weeklyCompleted,
+                    weeklyXp = if (resetWeekly) 0 else f.weeklyXp
+                )
             }
         }
         if (alsoRefreshCloud) {
@@ -614,6 +733,7 @@ class ProgressStateHolder(context: Context) {
     fun updateDailyGoal(newGoal: Int) {
         val clamped = newGoal.coerceIn(5, 200)
         dailyGoalWords = clamped
+        updateTodayInWeeklyLog()
         prefs.edit().putInt("daily_goal", clamped).apply()
         saveStats()
         pushMyProgressToCloud()
@@ -720,6 +840,8 @@ class ProgressStateHolder(context: Context) {
                     prefs.edit().putString("last_study_date", currentDay).apply()
                 }
                 todayCompletedWords += 1
+                todayBaseXp += if (result.method == AnswerMethod.SPOKEN_CORRECT) 2 else 1
+                updateTodayInWeeklyLog()
                 needsReviewWordIds.remove(srsWordKey)
                 if (!isReversed) {
                     masteredWordIds.add(result.word.id)
@@ -902,6 +1024,9 @@ class ProgressStateHolder(context: Context) {
             put("email", email.lowercase(Locale.US))
             put("date", todayKey)
             put("todayCompleted", todayCompletedWords)
+            put("todayXp", todayXp)
+            put("weeklyCompleted", weeklyCompletedWords)
+            put("weeklyXp", weeklyXp)
             put("dailyGoal", dailyGoalWords)
             put("streakDays", streakDays)
             put("totalSpoken", totalSpokenCorrect)
@@ -969,11 +1094,23 @@ class ProgressStateHolder(context: Context) {
                     val myCode = (googleUser?.inviteCode ?: "").uppercase(Locale.US)
                     val myRemote = if (myCode.isNotEmpty()) latestByCode[myCode] else null
                     if (myRemote != null && myRemote.lastActiveDate == todayKey) {
+                        var updatedLocal = false
                         if (myRemote.todayCompleted > todayCompletedWords) {
                             todayCompletedWords = myRemote.todayCompleted
+                            updatedLocal = true
+                        }
+                        if (myRemote.todayXp > todayXp) {
+                            val goalBonus = if (todayCompletedWords >= dailyGoalWords) 5 else 0
+                            todayBaseXp = (myRemote.todayXp - goalBonus).coerceAtLeast(todayCompletedWords)
+                            updatedLocal = true
+                        }
+                        if (updatedLocal) {
+                            updateTodayInWeeklyLog()
                             prefs.edit()
                                 .putString("today_date", todayKey)
                                 .putInt("today_completed", todayCompletedWords)
+                                .putString("today_xp_date", todayKey)
+                                .putInt("today_base_xp", todayBaseXp)
                                 .apply()
                         }
                     }
@@ -1021,12 +1158,17 @@ class ProgressStateHolder(context: Context) {
     }
 
     private fun fetchTopicEntries(topic: String, outMap: MutableMap<String, FriendProgress>) {
-        val url = URL("https://ntfy.sh/$topic/json?poll=1&since=72h")
+        val url = URL("https://ntfy.sh/$topic/json?poll=1&since=7d")
         val conn = (url.openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = 5000
             readTimeout = 5000
         }
+        val currentDay = todayKey
+        val weekStart = currentWeekStartKey()
+        // Track max per-day values per user across Mon..Today so older clients also get accurate weekly sums
+        val weekDailyByCode = mutableMapOf<String, MutableMap<String, Pair<Int, Int>>>()
+
         BufferedReader(InputStreamReader(conn.inputStream, Charsets.UTF_8)).use { reader ->
             var line: String?
             while (reader.readLine().also { line = it } != null) {
@@ -1044,10 +1186,26 @@ class ProgressStateHolder(context: Context) {
                     // Only accept real users who have connected an email account
                     if (code.isBlank() || !email.contains("@") || name.isBlank() || name.startsWith("Hráč (")) continue
 
-                    val currentDay = todayKey
                     val date = data.optString("date", "")
-                    val todayVal = if (date == currentDay) data.optInt("todayCompleted", 0) else 0
                     val goalVal = data.optInt("dailyGoal", 20).coerceAtLeast(1)
+                    val msgCompleted = data.optInt("todayCompleted", 0)
+                    val fallbackDayXp = msgCompleted + if (msgCompleted >= goalVal) 5 else 0
+                    val msgXp = data.optInt("todayXp", fallbackDayXp)
+
+                    if (date >= weekStart && date.length == 10) {
+                        val userDays = weekDailyByCode.getOrPut(code) { mutableMapOf() }
+                        val prevDay = userDays[date]
+                        userDays[date] = maxOf(msgCompleted, prevDay?.first ?: 0) to maxOf(msgXp, prevDay?.second ?: 0)
+                    }
+
+                    val todayVal = if (date == currentDay) msgCompleted else 0
+                    val todayXpVal = if (date == currentDay) msgXp else 0
+                    val explicitWeeklyCompleted = if (date >= weekStart) data.optInt("weeklyCompleted", msgCompleted) else 0
+                    val explicitWeeklyXp = if (date >= weekStart) data.optInt("weeklyXp", msgXp) else 0
+                    val summedDays = weekDailyByCode[code]?.values
+                    val weeklyWordsVal = maxOf(explicitWeeklyCompleted, summedDays?.sumOf { it.first } ?: 0)
+                    val weeklyXpVal = maxOf(explicitWeeklyXp, summedDays?.sumOf { it.second } ?: 0)
+
                     val streakVal = data.optInt("streakDays", 0)
                     val spokenVal = data.optInt("totalSpoken", 0)
                     val masteredVal = data.optInt("masteredCount", spokenVal)
@@ -1073,7 +1231,10 @@ class ProgressStateHolder(context: Context) {
                         accuracyPercent = accuracyVal,
                         catalogWordCount = catalogVal,
                         languageCode = langCode,
-                        lastActiveDate = lastActive
+                        lastActiveDate = lastActive,
+                        todayXp = todayXpVal,
+                        weeklyCompleted = weeklyWordsVal,
+                        weeklyXp = weeklyXpVal
                     )
                 } catch (_: Exception) {
                 }
@@ -1086,9 +1247,15 @@ class ProgressStateHolder(context: Context) {
         val serializedSrs = wordSrsMap.values.joinToString("\n") {
             "${it.wordId}|${it.box}|${it.lapses}|${it.dueAtMillis}"
         }
+        val serializedWeeklyLog = weeklyDailyStats.entries.joinToString("\n") { (date, pair) ->
+            "$date|${pair.first}|${pair.second}"
+        }
         prefs.edit()
             .putString("today_date", todayKey)
             .putInt("today_completed", todayCompletedWords)
+            .putString("today_xp_date", todayKey)
+            .putInt("today_base_xp", todayBaseXp)
+            .putString("weekly_daily_log_v1", serializedWeeklyLog)
             .putInt("total_attempts", totalAttempts)
             .putInt("total_correct", totalCorrect)
             .putInt("total_spoken", totalSpokenCorrect)
@@ -1124,6 +1291,7 @@ class ProgressStateHolder(context: Context) {
             return emptyList()
         }
         val currentDay = todayKey
+        val weekStart = currentWeekStartKey()
         return raw.split("\n").mapNotNull { line ->
             val parts = line.split("|")
             if (parts.size >= 7) {
@@ -1141,7 +1309,12 @@ class ProgressStateHolder(context: Context) {
                 } else {
                     val savedLastActive = parts.getOrNull(13).orEmpty()
                     val savedToday = parts[3].toIntOrNull() ?: 0
-                    val effectiveToday = if (savedLastActive.isNotEmpty() && savedLastActive != currentDay) 0 else savedToday
+                    val isSameDay = savedLastActive.isEmpty() || savedLastActive == currentDay
+                    val isSameWeek = savedLastActive.isEmpty() || savedLastActive >= weekStart
+                    val effectiveToday = if (isSameDay) savedToday else 0
+                    val effectiveTodayXp = if (isSameDay) (parts.getOrNull(14)?.toIntOrNull() ?: effectiveToday) else 0
+                    val effectiveWeeklyCompleted = if (isSameWeek) (parts.getOrNull(15)?.toIntOrNull() ?: savedToday) else 0
+                    val effectiveWeeklyXp = if (isSameWeek) (parts.getOrNull(16)?.toIntOrNull() ?: effectiveTodayXp) else 0
                     val spoken = parts[6].toIntOrNull() ?: 0
                     FriendProgress(
                         id = id,
@@ -1157,7 +1330,10 @@ class ProgressStateHolder(context: Context) {
                         accuracyPercent = parts.getOrNull(10)?.toIntOrNull() ?: 0,
                         catalogWordCount = parts.getOrNull(11)?.toIntOrNull() ?: 1430,
                         languageCode = parts.getOrNull(12)?.ifEmpty { "en" } ?: "en",
-                        lastActiveDate = savedLastActive
+                        lastActiveDate = savedLastActive,
+                        todayXp = effectiveTodayXp,
+                        weeklyCompleted = effectiveWeeklyCompleted,
+                        weeklyXp = effectiveWeeklyXp
                     )
                 }
             } else null
@@ -1168,7 +1344,7 @@ class ProgressStateHolder(context: Context) {
         val serialized = friends
             .filter { !it.id.startsWith("demo_") }
             .joinToString("\n") {
-                "${it.id}|${it.displayName}|${it.emailOrCode}|${it.todayCompleted}|${it.dailyGoal}|${it.streakDays}|${it.totalSpoken}|${it.masteredCount}|${it.totalCorrectCount}|${it.completedSessions}|${it.accuracyPercent}|${it.catalogWordCount}|${it.languageCode}|${it.lastActiveDate}"
+                "${it.id}|${it.displayName}|${it.emailOrCode}|${it.todayCompleted}|${it.dailyGoal}|${it.streakDays}|${it.totalSpoken}|${it.masteredCount}|${it.totalCorrectCount}|${it.completedSessions}|${it.accuracyPercent}|${it.catalogWordCount}|${it.languageCode}|${it.lastActiveDate}|${it.todayXp}|${it.weeklyCompleted}|${it.weeklyXp}"
             }
         prefs.edit().putString("friends_serialized", serialized).apply()
     }
