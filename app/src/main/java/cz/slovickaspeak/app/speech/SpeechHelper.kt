@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -25,6 +26,49 @@ object WordMatcher {
 
     private val leadingArticles = Regex("^(a|an|the|to|be|is|are|i|you|we|they|he|she|it|el|la|los|las|un|una|unos|unas|yo|tu|ella|nosotros|ellos)\\s+")
     private val combiningMarksRegex = Regex("\\p{InCombiningDiacriticalMarks}+")
+    private val commonContractions = mapOf(
+        "i'm" to "i am",
+        "im" to "i am",
+        "you're" to "you are",
+        "youre" to "you are",
+        "he's" to "he is",
+        "she's" to "she is",
+        "it's" to "it is",
+        "we're" to "we are",
+        "they're" to "they are",
+        "theyre" to "they are",
+        "i've" to "i have",
+        "ive" to "i have",
+        "you've" to "you have",
+        "youve" to "you have",
+        "we've" to "we have",
+        "weve" to "we have",
+        "they've" to "they have",
+        "theyve" to "they have",
+        "don't" to "do not",
+        "dont" to "do not",
+        "doesn't" to "does not",
+        "doesnt" to "does not",
+        "didn't" to "did not",
+        "didnt" to "did not",
+        "can't" to "cannot",
+        "cant" to "cannot",
+        "won't" to "will not",
+        "wont" to "will not",
+        "isn't" to "is not",
+        "isnt" to "is not",
+        "aren't" to "are not",
+        "arent" to "are not",
+        "wasn't" to "was not",
+        "wasnt" to "was not",
+        "weren't" to "were not",
+        "werent" to "were not",
+        "haven't" to "have not",
+        "havent" to "have not",
+        "hasn't" to "has not",
+        "hasnt" to "has not",
+        "let's" to "let us"
+    )
 
     private val digitToWord = mapOf(
         "0" to "zero",
@@ -216,14 +260,24 @@ object WordMatcher {
     fun normalize(input: String, stripLeadingForeignArticles: Boolean = true): String {
         val rawWords = stripAccents(input)
             .lowercase(Locale.US)
-            .replace("'", "")
-            .replace(Regex("[^a-z0-9\\s]"), " ")
+            .replace("’", "'")
+            .replace(Regex("[^a-z0-9'\\s]"), " ")
             .replace(Regex("\\s+"), " ")
             .trim()
             .split(" ")
             .filter { it.isNotEmpty() }
 
-        val joined = rawWords.joinToString(" ")
+        val expandedWords = if (stripLeadingForeignArticles) {
+            rawWords.flatMap { token ->
+                val expanded = commonContractions[token]
+                (expanded?.split(" ") ?: listOf(token.replace("'", "")))
+                    .filter { it.isNotEmpty() }
+            }
+        } else {
+            rawWords.map { it.replace("'", "") }.filter { it.isNotEmpty() }
+        }
+
+        val joined = expandedWords.joinToString(" ")
         return if (stripLeadingForeignArticles) {
             joined.replace(leadingArticles, "").trim()
         } else {
@@ -291,7 +345,7 @@ object WordMatcher {
         var prevChar = ' '
         for (ch in s) {
             val mapped = when (ch) {
-                'w', 'v' -> 'p'
+                'w', 'v' -> 'v'
                 'z' -> 's'
                 'c', 'q' -> 'k'
                 'y' -> 'i'
@@ -304,6 +358,41 @@ object WordMatcher {
             if (mapped != prevChar) {
                 sb.append(mapped)
                 prevChar = mapped
+            }
+        }
+        return sb.toString()
+    }
+
+    /**
+     * Consonant skeleton ignoring vowels, for short Czech-accented English words on final results
+     * (e.g. "cup" -> "kap"/"cop", "run" -> "ran", "ask" -> "esk"/"usk").
+     */
+    private fun consonantSkeleton(word: String): String {
+        val norm = digitToWord[word.lowercase(Locale.US)] ?: word.lowercase(Locale.US)
+        val base = norm
+            .replace("ph", "f")
+            .replace("sh", "s")
+            .replace("ch", "c")
+            .replace("th", "t")
+            .replace("qu", "k")
+            .replace("ck", "k")
+            .replace("gh", "")
+        val sb = StringBuilder()
+        var prev = ' '
+        for (ch in base) {
+            if (ch !in 'a'..'z' || ch in "aeiouyh") continue
+            val mapped = when (ch) {
+                'w', 'v' -> 'v'
+                'z' -> 's'
+                'c', 'q' -> 'k'
+                'd' -> 't'
+                'b' -> 'p'
+                'g', 'j' -> 'k'
+                else -> ch
+            }
+            if (mapped != prev) {
+                sb.append(mapped)
+                prev = mapped
             }
         }
         return sb.toString()
@@ -339,13 +428,38 @@ object WordMatcher {
                 .filter { it.isNotEmpty() }
                 .distinct()
         } else {
-            val primaryParts = targetWord.english.split("/", ";").map { it.trim() }
-            val variantParts = targetWord.acceptedVariants.flatMap { it.split("/", ";").map { p -> p.trim() } }
-            (primaryParts + variantParts)
+            val cleanPrimary = targetWord.english.replace(Regex("\\s*\\(.*?\\)"), " ").trim()
+            val primaryParts = cleanPrimary.split("/", ";", ",").map { it.trim() }
+            val variantParts = targetWord.acceptedVariants.flatMap {
+                it.replace(Regex("\\s*\\(.*?\\)"), " ").split("/", ";", ",").map { p -> p.trim() }
+            }
+            (listOf(cleanPrimary) + primaryParts + variantParts)
                 .map { normalize(it, stripLeadingForeignArticles = true) }
                 .filter { it.isNotEmpty() }
                 .distinct()
         }
+    }
+
+    /**
+     * Builds unstripped surface biasing phrases for Android 13+ EXTRA_BIASING_STRINGS
+     * so on-device/cloud ASR prioritizes the active vocabulary card over random homophones.
+     */
+    fun extractBiasingStrings(targetWord: VocabWord, expectCzech: Boolean): List<String> {
+        val raw = if (expectCzech) {
+            val cleaned = targetWord.czech.replace(Regex("\\s*\\(.*?\\)"), " ").trim()
+            cleaned.split("/", ";", ",", "–", " - ")
+        } else {
+            val primary = targetWord.english.replace(Regex("\\s*\\(.*?\\)"), " ")
+                .split("/", ";", ",")
+            val variants = targetWord.acceptedVariants.flatMap {
+                it.replace(Regex("\\s*\\(.*?\\)"), " ").split("/", ";", ",")
+            }
+            primary + variants
+        }
+        return raw.map { it.trim() }
+            .filter { it.length >= 2 }
+            .distinct()
+            .take(10)
     }
 
     /**
@@ -463,12 +577,27 @@ object WordMatcher {
         // TIER 3: Grammatical inflections (EN/ES suffixes OR Czech stem declensions)
         for (target in rawTargets) {
             if (expectCzech) {
-                if (target.length >= 4 && !target.contains(" ")) {
+                val targetWords = target.split(" ").filter { it.isNotEmpty() }
+                if (targetWords.size == 1 && target.length >= 4) {
                     val stemLen = (target.length - 2).coerceAtLeast(3)
                     val targetStem = target.take(stemLen)
                     for (cand in parsedCandidates) {
                         if (cand.words.any { it.length >= stemLen && it.startsWith(targetStem) }) {
                             return matchedDisplay
+                        }
+                    }
+                } else if (targetWords.size >= 2) {
+                    val meaningfulTokens = targetWords.filter { it.length >= 2 }
+                    if (meaningfulTokens.isNotEmpty()) {
+                        for (cand in parsedCandidates) {
+                            val allTokensMatched = meaningfulTokens.all { tw ->
+                                val stemLen = if (tw.length >= 4) (tw.length - 2).coerceAtLeast(3) else tw.length
+                                val stem = tw.take(stemLen)
+                                cand.words.any { cw ->
+                                    cw == tw || (cw.length >= stemLen && cw.startsWith(stem))
+                                }
+                            }
+                            if (allTokensMatched) return matchedDisplay
                         }
                     }
                 }
@@ -531,6 +660,24 @@ object WordMatcher {
                                 levenshtein(candPhonetic, targetPhonetic) <= 1
                             ) {
                                 return matchedDisplay
+                            }
+                        }
+
+                        if (!expectCzech && isFinal && !target.contains(" ")) {
+                            val targetCons = consonantSkeleton(target)
+                            if (targetCons.length >= 2) {
+                                val candCons = consonantSkeleton(phrase)
+                                if (candCons == targetCons && abs(phrase.length - target.length) <= 1) {
+                                    return matchedDisplay
+                                }
+                                if (cand.words.any { cw ->
+                                        cw.length >= 2 &&
+                                            abs(cw.length - target.length) <= 1 &&
+                                            consonantSkeleton(cw) == targetCons
+                                    }
+                                ) {
+                                    return matchedDisplay
+                                }
                             }
                         }
 
@@ -619,6 +766,11 @@ class SpeechSessionController(
 
     @Volatile
     var listenInCzech: Boolean = false
+
+    @Volatile
+    var currentTargetBiasStrings: List<String> = emptyList()
+
+    private var consecutiveEmptyNoMatch = 0
 
     private var isCurrentlyListening = false
     private var isStartingListen = false
@@ -1081,16 +1233,27 @@ class SpeechSessionController(
                         consecutiveErrors = 0
                         val capturedPartials = accumulatedPartialsInCycle.toList()
                         accumulatedPartialsInCycle.clear()
-                        if (error == SpeechRecognizer.ERROR_NO_MATCH && capturedPartials.isNotEmpty()) {
+                        if (capturedPartials.isNotEmpty()) {
+                            consecutiveEmptyNoMatch = 0
                             finalHeardCallback(capturedPartials)
+                        } else if (error == SpeechRecognizer.ERROR_NO_MATCH) {
+                            consecutiveEmptyNoMatch += 1
+                            if (consecutiveEmptyNoMatch >= 4) {
+                                // Unresponsive engine returning repeated empty NO_MATCH: switch between Google & Default
+                                consecutiveEmptyNoMatch = 0
+                                useDefaultFallbackRecognizer = !useDefaultFallbackRecognizer
+                                recreateRecognizerAndListen()
+                                return
+                            }
                         }
                         if (shouldStayListening && !isPausedForTts && !isPausedForTransition) {
-                            scheduleListenRestart(130L)
+                            scheduleListenRestart(180L)
                         }
                         return
                     }
 
                     accumulatedPartialsInCycle.clear()
+                    consecutiveEmptyNoMatch = 0
                     consecutiveErrors += 1
 
                     if (error == SpeechRecognizer.ERROR_AUDIO) {
@@ -1137,10 +1300,11 @@ class SpeechSessionController(
                     accumulatedPartialsInCycle.clear()
 
                     if (combined.isNotEmpty()) {
+                        consecutiveEmptyNoMatch = 0
                         finalHeardCallback(combined)
                     }
                     if (shouldStayListening && !isPausedForTts && !isPausedForTransition) {
-                        scheduleListenRestart(130L)
+                        scheduleListenRestart(180L)
                     }
                 }
 
@@ -1203,8 +1367,16 @@ class SpeechSessionController(
         } catch (_: Throwable) {
         }
 
+        val biasList = currentTargetBiasStrings
+        val isShortTarget = !listenInCzech && (biasList.firstOrNull()?.split(Regex("\\s+"))?.size ?: 1) <= 2
+        val languageModel = if (isShortTarget) {
+            RecognizerIntent.LANGUAGE_MODEL_WEB_SEARCH
+        } else {
+            RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+        }
+
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, languageModel)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, localeTag)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, localeTag)
             putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, true)
@@ -1216,6 +1388,12 @@ class SpeechSessionController(
             putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 10)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 1500L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 800L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1100L)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && biasList.isNotEmpty()) {
+                putStringArrayListExtra(RecognizerIntent.EXTRA_BIASING_STRINGS, ArrayList(biasList.take(10)))
+            }
         }
         try {
             recognizer.startListening(intent)

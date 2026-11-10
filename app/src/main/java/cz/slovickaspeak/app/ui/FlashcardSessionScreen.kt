@@ -184,7 +184,11 @@ fun FlashcardSessionScreen(
         }
     }
 
-    fun triggerWrongSpokenFlash(heardSnippet: String, targetWordToPronounce: VocabWord? = null) {
+    fun triggerWrongSpokenFlash(
+        heardSnippet: String,
+        targetWordToPronounce: VocabWord? = null,
+        pronounceCorrection: Boolean = true
+    ) {
         keepScreenActive()
         val now = SystemClock.uptimeMillis()
         // Ignore stale audio that finished decoding from the previous card transition (within 450ms)
@@ -204,7 +208,7 @@ fun FlashcardSessionScreen(
         lastFlashedWrongWord = heardSnippet
         feedbackState = CardFeedbackState.SPOKEN_WRONG_FLASH
 
-        if (progressState.autoPronounceEnabled && !isReversedCardState && targetWordToPronounce != null) {
+        if (pronounceCorrection && progressState.autoPronounceEnabled && !isReversedCardState && targetWordToPronounce != null) {
             speechControllerRef?.speakEnglish(targetWordToPronounce.english)
         }
 
@@ -402,13 +406,13 @@ fun FlashcardSessionScreen(
                     wrongWordDebounceJob?.cancel()
 
                     if (isFinal) {
-                        triggerWrongSpokenFlash(snippet, targetWordToPronounce = word)
+                        triggerWrongSpokenFlash(snippet, targetWordToPronounce = word, pronounceCorrection = true)
                     } else if (!WordMatcher.isPrefixOfTarget(candidates, word, expectCzech = expectCzech)) {
                         // Only flash UI after a quiet 950ms pause if the session is still open in a noisy room;
-                        // NEVER cancels the recognizer so mid-word speech is never interrupted!
+                        // NEVER cancels the recognizer or triggers TTS so mid-word speech is never interrupted!
                         wrongWordDebounceJob = coroutineScope.launch {
                             delay(950L)
-                            triggerWrongSpokenFlash(snippet, targetWordToPronounce = word)
+                            triggerWrongSpokenFlash(snippet, targetWordToPronounce = word, pronounceCorrection = false)
                         }
                     }
                 }
@@ -462,6 +466,11 @@ fun FlashcardSessionScreen(
     LaunchedEffect(currentWord?.id, isReversedCard, speechControllerRef) {
         val controller = speechControllerRef ?: return@LaunchedEffect
         controller.listenInCzech = isReversedCard
+        controller.currentTargetBiasStrings = if (currentWord != null) {
+            WordMatcher.extractBiasingStrings(currentWord, expectCzech = isReversedCard)
+        } else {
+            emptyList()
+        }
         if (isReversedCard && progressState.autoPronounceEnabled && currentWord != null) {
             delay(180L)
             controller.speakEnglish(currentWord.english) {
