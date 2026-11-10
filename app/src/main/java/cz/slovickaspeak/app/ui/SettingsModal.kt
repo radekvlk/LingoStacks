@@ -751,9 +751,9 @@ private fun AppVersionSectionCard(
 
                     Text(
                         text = if (strings.isCzech) {
-                            "🔗 Stáhnout z GitHubu: $githubReleasesUrl"
+                            "🔗 Stáhnout nejnovější verzi na GitHubu ↗"
                         } else {
-                            "🔗 Download on GitHub: $githubReleasesUrl"
+                            "🔗 Download latest version on GitHub ↗"
                         },
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
