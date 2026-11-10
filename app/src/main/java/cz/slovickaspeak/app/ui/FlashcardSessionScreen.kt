@@ -208,11 +208,7 @@ fun FlashcardSessionScreen(
         }
     }
 
-    fun triggerWrongSpokenFlash(
-        heardSnippet: String,
-        targetWordToPronounce: VocabWord? = null,
-        pronounceCorrection: Boolean = true
-    ) {
+    fun triggerWrongSpokenFlash(heardSnippet: String) {
         keepScreenActive()
         val now = SystemClock.uptimeMillis()
         // Ignore stale audio that finished decoding from the previous card transition (within 450ms)
@@ -231,10 +227,6 @@ fun FlashcardSessionScreen(
         lastHeardText = heardSnippet
         lastFlashedWrongWord = heardSnippet
         feedbackState = CardFeedbackState.SPOKEN_WRONG_FLASH
-
-        if (pronounceCorrection && progressState.autoPronounceEnabled && !isReversedCardState && targetWordToPronounce != null) {
-            speechControllerRef?.speakEnglish(targetWordToPronounce.english)
-        }
 
         wrongFlashResetJob = coroutineScope.launch {
             // Subtle iOS horizontal error shake on GPU layer
@@ -456,13 +448,13 @@ fun FlashcardSessionScreen(
                     wrongWordDebounceJob?.cancel()
 
                     if (isFinal) {
-                        triggerWrongSpokenFlash(snippet, targetWordToPronounce = word, pronounceCorrection = true)
+                        triggerWrongSpokenFlash(snippet)
                     } else if (!WordMatcher.isPrefixOfTarget(candidates, word, expectCzech = expectCzech)) {
                         // Wait well past Android's 1100ms complete-silence window + ASR finalization latency
                         // before flashing red on a non-final partial (prevents red-then-green flash before onResults).
                         wrongWordDebounceJob = coroutineScope.launch {
                             delay(2200L)
-                            triggerWrongSpokenFlash(snippet, targetWordToPronounce = word, pronounceCorrection = false)
+                            triggerWrongSpokenFlash(snippet)
                         }
                     }
                 }

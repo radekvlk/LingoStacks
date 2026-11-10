@@ -1132,9 +1132,9 @@ private fun AutoPronounceSectionCard(
                 )
                 Text(
                     text = if (strings.isCzech)
-                        "Po vyslovení slova zopakuje nahlas správnou výslovnost (při správném i chybném pokusu)."
+                        "Po vyřešení karty nahlas zopakuje správnou výslovnost (i při volbě Nevím)."
                     else
-                        "Repeats correct pronunciation out loud after each voice attempt (both correct and wrong).",
+                        "Repeats correct pronunciation out loud after finishing each card (and on Unknown).",
                     fontSize = 12.sp,
                     color = TextMuted,
                     lineHeight = 16.sp
