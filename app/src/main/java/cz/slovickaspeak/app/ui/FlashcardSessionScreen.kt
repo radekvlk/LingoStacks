@@ -46,8 +46,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -62,6 +66,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cz.slovickaspeak.app.model.AnswerMethod
@@ -130,6 +135,9 @@ fun FlashcardSessionScreen(
 
     var feedbackState by remember { mutableStateOf(CardFeedbackState.NEUTRAL) }
     var isTransitioningCard by remember { mutableStateOf(false) }
+    var readbackWord by remember { mutableStateOf<VocabWord?>(null) }
+    var readbackIsCorrect by remember { mutableStateOf(true) }
+    var readbackIsReversed by remember { mutableStateOf(false) }
     var showHintTranslation by remember { mutableStateOf(false) }
     var usedHintOnCurrentCard by remember { mutableStateOf(false) }
     val wordsNeedingSecondConfirmation = remember(dailyGoalWords) { mutableStateListOf<String>() }
@@ -269,46 +277,51 @@ fun FlashcardSessionScreen(
             val exitTargetX = if (isCorrect) 1050f else -1050f
             var speechFinished = !shouldPronounce
 
-            // Start pronunciation immediately in parallel so card animation NEVER freezes mid-flight
+            // Start pronunciation immediately in parallel so card exit glides smoothly without any freeze
             if (shouldPronounce) {
                 speechControllerRef?.speakEnglish(word.english) {
                     speechFinished = true
                 }
             }
 
-            if (shouldPronounce && progressState.pauseCardWhileSpeaking) {
-                // Keep card centered & readable with the revealed translation while TTS pronounces it aloud
-                if (abs(offsetX.value) > 1f) {
-                    offsetX.animateTo(0f, tween(durationMillis = 130, easing = FastOutSlowInEasing))
-                }
-                val holdStart = SystemClock.uptimeMillis()
-                while (!speechFinished && SystemClock.uptimeMillis() - holdStart < 2400L) {
-                    delay(40L)
-                }
-                val elapsedHold = SystemClock.uptimeMillis() - holdStart
-                if (elapsedHold < 750L) {
-                    delay(750L - elapsedHold)
-                } else {
-                    delay(220L)
-                }
-            } else if (method == AnswerMethod.SPOKEN_CORRECT) {
-                // Fast mode: brief celebratory pulse before gliding off-screen
-                cardScale.animateTo(1.045f, tween(80, easing = FastOutSlowInEasing))
-                cardScale.animateTo(1.0f, tween(80, easing = FastOutSlowInEasing))
-                delay(70L)
+            if (method == AnswerMethod.SPOKEN_CORRECT) {
+                // Quick pulse before gliding off-screen
+                cardScale.animateTo(1.035f, tween(60, easing = FastOutSlowInEasing))
+                cardScale.animateTo(1.0f, tween(60, easing = FastOutSlowInEasing))
             }
 
-            // 1. Current card immediately glides off-screen smoothly on GPU layer (zero mid-air freeze)
+            // 1. Current card ALWAYS glides off-screen smoothly right away (never snaps back or freezes)
             launch {
-                cardAlpha.animateTo(0f, tween(durationMillis = 195, easing = FastOutSlowInEasing))
+                cardAlpha.animateTo(0f, tween(durationMillis = 185, easing = FastOutSlowInEasing))
             }
             launch {
-                cardScale.animateTo(0.95f, tween(durationMillis = 210, easing = FastOutSlowInEasing))
+                cardScale.animateTo(0.94f, tween(durationMillis = 195, easing = FastOutSlowInEasing))
             }
             offsetX.animateTo(
                 targetValue = exitTargetX,
-                animationSpec = tween(durationMillis = 215, easing = FastOutSlowInEasing)
+                animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
             )
+
+            // 2. If enabled in settings, pop a compact bounce readback card in the vacated center while TTS speaks
+            val shouldShowReadbackOverlay = shouldPronounce && progressState.pauseCardWhileSpeaking
+            if (shouldShowReadbackOverlay) {
+                readbackIsCorrect = isCorrect
+                readbackIsReversed = cardWasReversed
+                readbackWord = word
+                val holdStart = SystemClock.uptimeMillis()
+                val dynamicMaxWaitMs = (2000L + word.english.length * 60L).coerceIn(2000L, 4500L)
+                while (!speechFinished && SystemClock.uptimeMillis() - holdStart < dynamicMaxWaitMs) {
+                    delay(40L)
+                }
+                val elapsedHold = SystemClock.uptimeMillis() - holdStart
+                if (elapsedHold < 2000L) {
+                    delay(2000L - elapsedHold)
+                } else {
+                    delay(220L)
+                }
+                readbackWord = null
+                delay(115L)
+            }
 
             val attempt = CardAttemptResult(
                 word = word,
@@ -527,10 +540,8 @@ fun FlashcardSessionScreen(
         val isCardInteractive = !isTransitioningCard &&
                 (feedbackState == CardFeedbackState.NEUTRAL || feedbackState == CardFeedbackState.SPOKEN_WRONG_FLASH)
 
-        val isTranslationRevealed = showHintTranslation ||
-                (progressState.pauseCardWhileSpeaking &&
-                    feedbackState != CardFeedbackState.NEUTRAL &&
-                    feedbackState != CardFeedbackState.SPOKEN_WRONG_FLASH)
+        // Word translation only reveals on card front via Hint button (answered feedback uses the bounce readback overlay)
+        val isTranslationRevealed = showHintTranslation
 
         val handleToggleHint: () -> Unit = {
             showHintTranslation = !showHintTranslation
@@ -695,6 +706,9 @@ fun FlashcardSessionScreen(
                         onDragDelta = handleDragDelta,
                         onDragEnd = handleDragEnd,
                         isReversed = isReversedCard,
+                        readbackWord = readbackWord,
+                        readbackIsCorrect = readbackIsCorrect,
+                        readbackIsReversed = readbackIsReversed,
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth()
@@ -776,6 +790,9 @@ fun FlashcardSessionScreen(
                     onDragDelta = handleDragDelta,
                     onDragEnd = handleDragEnd,
                     isReversed = isReversedCard,
+                    readbackWord = readbackWord,
+                    readbackIsCorrect = readbackIsCorrect,
+                    readbackIsReversed = readbackIsReversed,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
@@ -1540,7 +1557,10 @@ private fun Flashcard3DStackArea(
     onDragDelta: (Float) -> Unit,
     onDragEnd: () -> Unit,
     modifier: Modifier = Modifier,
-    isReversed: Boolean = false
+    isReversed: Boolean = false,
+    readbackWord: VocabWord? = null,
+    readbackIsCorrect: Boolean = true,
+    readbackIsReversed: Boolean = false
 ) {
     Box(
         modifier = modifier,
@@ -1571,7 +1591,7 @@ private fun Flashcard3DStackArea(
                 shape = RoundedCornerShape(34.dp),
                 color = CardSurface,
                 border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
-                shadowElevation = 6.dp,
+                shadowElevation = 0.dp,
                 modifier = Modifier
                     .fillMaxWidth()
                     .fillMaxHeight(0.97f)
@@ -1582,6 +1602,7 @@ private fun Flashcard3DStackArea(
                         translationY = (14f - 12f * prog) * density
                         alpha = 0.78f + 0.22f * prog
                     }
+                    .softRoundedShadow(cornerRadius = 34.dp, maxAlpha = 0.06f, spreadDp = 10.dp, offsetYDp = 4.dp)
             ) {}
         }
 
@@ -1603,6 +1624,127 @@ private fun Flashcard3DStackArea(
             onDragEnd = onDragEnd,
             isReversed = isReversed
         )
+
+        // Compact Cupertino bounce card displaying spoken word + phonetic after card exits
+        // Uses pure scaleIn/scaleOut (no alpha fade layer) + explicit RoundedCornerShape shadow so shadow corners stay rounded from frame 0
+        AnimatedVisibility(
+            visible = readbackWord != null,
+            enter = scaleIn(
+                initialScale = 0.76f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMedium
+                )
+            ),
+            exit = scaleOut(
+                targetScale = 0.85f,
+                animationSpec = tween(110)
+            )
+        ) {
+            readbackWord?.let { rw ->
+                WordPronounceReadbackBubble(
+                    strings = strings,
+                    word = rw,
+                    isCorrect = readbackIsCorrect,
+                    isReversed = readbackIsReversed
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WordPronounceReadbackBubble(
+    strings: UiStrings,
+    word: VocabWord,
+    isCorrect: Boolean,
+    isReversed: Boolean
+) {
+    val accentColor = if (isCorrect) AppleGreen else AppleRed
+    val pillBg = if (isCorrect) AppleGreenTint else AppleRedTint
+    val primaryText = if (isReversed) {
+        word.czech.replace(Regex("\\s*\\(.*?\\)"), "").split("/", ";", ",").firstOrNull()?.trim().orEmpty().ifEmpty { word.czech }
+    } else {
+        word.english
+    }
+    val secondaryText = if (isReversed) word.english else word.czech
+    val statusBadge = when {
+        isCorrect && strings.isCzech -> "Výslovnost"
+        isCorrect -> "Pronunciation"
+        strings.isCzech -> "Zapamatuj si"
+        else -> "Remember this"
+    }
+
+    Surface(
+        shape = RoundedCornerShape(26.dp),
+        color = CardElevatedSurface,
+        border = BorderStroke(1.dp, accentColor.copy(alpha = 0.35f)),
+        shadowElevation = 0.dp,
+        modifier = Modifier
+            .fillMaxWidth(0.84f)
+            .padding(horizontal = 8.dp)
+            .softRoundedShadow(cornerRadius = 26.dp, maxAlpha = 0.16f, spreadDp = 18.dp, offsetYDp = 7.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 22.dp, vertical = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(50),
+                color = pillBg
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = statusBadge,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = accentColor
+                    )
+                }
+            }
+
+            Text(
+                text = primaryText,
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextDark,
+                textAlign = TextAlign.Center,
+                lineHeight = 31.sp
+            )
+
+            if (word.phonetic.isNotBlank()) {
+                Text(
+                    text = word.phonetic,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = AppleBlue,
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            if (secondaryText.isNotBlank()) {
+                Text(
+                    text = secondaryText,
+                    fontSize = 13.5.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = TextMuted,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
     }
 }
 
@@ -1747,6 +1889,29 @@ private fun LiveSpeechBanner(
     }
 }
 
+private fun Modifier.softRoundedShadow(
+    cornerRadius: Dp,
+    maxAlpha: Float = 0.11f,
+    spreadDp: Dp = 16.dp,
+    offsetYDp: Dp = 6.dp,
+    layers: Int = 6
+): Modifier = drawBehind {
+    val baseRadius = cornerRadius.toPx()
+    val maxSpread = spreadDp.toPx()
+    val offsetY = offsetYDp.toPx()
+    for (i in layers downTo 1) {
+        val fraction = i.toFloat() / layers.toFloat()
+        val extra = maxSpread * fraction
+        val layerAlpha = (maxAlpha / layers) * (1.6f - fraction * 0.85f)
+        drawRoundRect(
+            color = Color.Black.copy(alpha = layerAlpha.coerceIn(0f, maxAlpha)),
+            topLeft = Offset(-extra * 0.5f, -extra * 0.3f + offsetY * fraction),
+            size = Size(size.width + extra, size.height + extra),
+            cornerRadius = CornerRadius(baseRadius + extra * 0.5f, baseRadius + extra * 0.5f)
+        )
+    }
+}
+
 @Composable
 private fun SwipeableVocabCard(
     strings: UiStrings,
@@ -1804,7 +1969,7 @@ private fun SwipeableVocabCard(
             if (feedbackState == CardFeedbackState.NEUTRAL && !showLeftSwipeBadge && !showRightSwipeBadge) 1.dp else 2.5.dp,
             cardBorder
         ),
-        shadowElevation = 14.dp,
+        shadowElevation = 0.dp,
         modifier = Modifier
             .fillMaxWidth()
             .fillMaxHeight(0.97f)
@@ -1818,6 +1983,7 @@ private fun SwipeableVocabCard(
                 scaleY = s
                 alpha = alphaProvider()
             }
+            .softRoundedShadow(cornerRadius = 34.dp, maxAlpha = 0.11f, spreadDp = 16.dp, offsetYDp = 6.dp)
             .pointerInput(word.id) {
                 detectHorizontalDragGestures(
                     onDragEnd = { onDragEnd() },
