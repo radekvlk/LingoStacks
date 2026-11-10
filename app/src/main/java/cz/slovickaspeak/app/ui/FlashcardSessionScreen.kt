@@ -1452,35 +1452,44 @@ private fun BottomControlBar(
     onToggleMic: () -> Unit,
     onSwipeKnow: () -> Unit
 ) {
-    // Continuous breathing animation ("dýchání ikony") when listening is active
-    val infiniteTransition = rememberInfiniteTransition(label = "micBreathing")
-    val breathScale by infiniteTransition.animateFloat(
-        initialValue = 1.0f,
-        targetValue = 1.14f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "breathScale"
-    )
-    val outerHaloScale by infiniteTransition.animateFloat(
-        initialValue = 1.0f,
-        targetValue = 1.38f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "outerHaloScale"
-    )
-    val outerHaloAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.28f,
-        targetValue = 0.06f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "outerHaloAlpha"
-    )
+    // Continuous breathing animation runs ONLY when mic is active (0 Hz GPU idle when paused)
+    val breathScale: Float
+    val outerHaloScale: Float
+    val outerHaloAlpha: Float
+    if (micAutoEnabled) {
+        val infiniteTransition = rememberInfiniteTransition(label = "micBreathing")
+        breathScale = infiniteTransition.animateFloat(
+            initialValue = 1.0f,
+            targetValue = 1.14f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1200, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "breathScale"
+        ).value
+        outerHaloScale = infiniteTransition.animateFloat(
+            initialValue = 1.0f,
+            targetValue = 1.38f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1200, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "outerHaloScale"
+        ).value
+        outerHaloAlpha = infiniteTransition.animateFloat(
+            initialValue = 0.28f,
+            targetValue = 0.06f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1200, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "outerHaloAlpha"
+        ).value
+    } else {
+        breathScale = 1.0f
+        outerHaloScale = 1.0f
+        outerHaloAlpha = 0f
+    }
 
     val activeMicScale = if (micAutoEnabled) {
         (breathScale + rmsLevel * 0.22f).coerceAtMost(1.35f)

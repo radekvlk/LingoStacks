@@ -96,8 +96,10 @@ object OtaUpdater {
             val url = URL("https://api.github.com/repos/$slug/releases/latest")
             val conn = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
+                useCaches = false
                 connectTimeout = 7000
                 readTimeout = 7000
+                setRequestProperty("Cache-Control", "no-cache")
                 setRequestProperty("Accept", "application/vnd.github+json")
                 setRequestProperty("User-Agent", "LingoWords-Android/${BuildConfig.VERSION_NAME}")
             }
@@ -200,9 +202,11 @@ object OtaUpdater {
             val latestUrl = URL("https://github.com/$slug/releases/latest")
             val conn = (latestUrl.openConnection() as HttpURLConnection).apply {
                 instanceFollowRedirects = false
+                useCaches = false
                 requestMethod = "HEAD"
                 connectTimeout = 7000
                 readTimeout = 7000
+                setRequestProperty("Cache-Control", "no-cache")
                 setRequestProperty("User-Agent", "LingoWords-Android/${BuildConfig.VERSION_NAME}")
             }
             val code = conn.responseCode

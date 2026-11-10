@@ -70,12 +70,16 @@ fun AppleFullSettingsDialog(
     var manualGoogleEmail by remember { mutableStateOf("radek.vlk@gmail.com") }
     var manualGoogleName by remember { mutableStateOf("Radek Vlk") }
 
-    // Automatically sync cloud leaderboard when opened and every 12 seconds while open
+    // Sync cloud leaderboard ONLY while Leaderboard tab is open and user is signed in (battery saver)
     LaunchedEffect(Unit) {
-        progressState.pushMyProgressToCloud()
-        while (true) {
-            progressState.refreshFromCloud()
-            delay(12000L)
+        progressState.pushMyProgressToCloud(force = true)
+    }
+    LaunchedEffect(selectedTab, progressState.googleUser) {
+        if (selectedTab == 1 && progressState.googleUser != null) {
+            while (true) {
+                progressState.refreshFromCloud()
+                delay(30_000L)
+            }
         }
     }
 

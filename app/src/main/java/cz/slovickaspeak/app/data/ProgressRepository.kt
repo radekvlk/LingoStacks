@@ -99,7 +99,8 @@ class ProgressStateHolder(context: Context) {
     var otaBannerDismissed by mutableStateOf(false)
         private set
 
-    private var lastOtaCheckMillis = 0L
+    private var lastOtaCheckMillis = prefs.getLong("last_ota_check_millis", 0L)
+    private var lastCloudPushMillis = 0L
 
     private fun dateKeyForOffsetDays(offsetDays: Int): String {
         val cal = Calendar.getInstance()
@@ -611,7 +612,7 @@ class ProgressStateHolder(context: Context) {
         }
         srsRevision += 1
         saveStats()
-        pushMyProgressToCloud()
+        pushMyProgressToCloud(force = false)
     }
 
     fun recordSessionCompleted() {
@@ -704,9 +705,12 @@ class ProgressStateHolder(context: Context) {
      * Publishes the user's current progress to the cloud ONLY if the user has connected
      * a real account (googleUser != null with email), so the leaderboard only contains real connected people.
      */
-    fun pushMyProgressToCloud() {
+    fun pushMyProgressToCloud(force: Boolean = true) {
         val user = googleUser ?: return
         if (!user.email.contains("@")) return
+        val now = System.currentTimeMillis()
+        if (!force && now - lastCloudPushMillis < 25_000L) return
+        lastCloudPushMillis = now
 
         val code = user.inviteCode
         val name = user.displayName
@@ -762,6 +766,9 @@ class ProgressStateHolder(context: Context) {
      */
     fun refreshFromCloud() {
         checkNewDayRollover(alsoRefreshCloud = false)
+        // Battery saver: skip cloud network calls when not signed in
+        val user = googleUser
+        if (user == null || !user.email.contains("@")) return
         if (isSyncingCloud) return
         isSyncingCloud = true
 
@@ -1006,7 +1013,9 @@ class ProgressStateHolder(context: Context) {
     fun checkForOtaUpdate(manual: Boolean = false) {
         if (isCheckingOta || isDownloadingOta) return
         val now = System.currentTimeMillis()
-        if (!manual && now - lastOtaCheckMillis < 30 * 60_000L) return
+        // Battery & radio optimization: check automatically at most once every 4 hours (even across restarts/resumes)
+        // and skip if we already detected a newer release waiting to be installed.
+        if (!manual && (availableOtaRelease != null || now - lastOtaCheckMillis < 4L * 3600_000L)) return
 
         val slug = otaRepoSlug
         val isCs = isCzechLocale()
@@ -1019,11 +1028,16 @@ class ProgressStateHolder(context: Context) {
             val result = OtaUpdater.checkLatestRelease(slug, isCs)
             mainHandler.post {
                 isCheckingOta = false
-                lastOtaCheckMillis = System.currentTimeMillis()
+                val checkedAt = System.currentTimeMillis()
+                lastOtaCheckMillis = checkedAt
+                prefs.edit().putLong("last_ota_check_millis", checkedAt).apply()
                 when (result) {
                     is OtaCheckResult.UpdateAvailable -> {
+                        val prevVersion = availableOtaRelease?.versionName
                         availableOtaRelease = result.release
-                        otaBannerDismissed = false
+                        if (prevVersion != result.release.versionName) {
+                            otaBannerDismissed = false
+                        }
                         otaStatusMessage = if (isCs) {
                             "Nová verze v${result.release.versionName} je připravena!"
                         } else {
