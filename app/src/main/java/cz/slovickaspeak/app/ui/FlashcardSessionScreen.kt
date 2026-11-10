@@ -7,8 +7,10 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.StartOffset
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
@@ -58,6 +60,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
@@ -2653,49 +2656,49 @@ private fun BottomControlBar(
     onToggleMic: () -> Unit,
     onSwipeKnow: () -> Unit
 ) {
-    // Continuous breathing animation runs ONLY when mic is active (0 Hz GPU idle when paused)
+    // Calm breathing + smooth outward fading ripples ONLY when mic is active (no jittery RMS shake on the icon)
+    val smoothRms by animateFloatAsState(
+        targetValue = if (micAutoEnabled) rmsLevel.coerceIn(0f, 1f) else 0f,
+        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+        label = "smoothMicRms"
+    )
     val breathScale: Float
-    val outerHaloScale: Float
-    val outerHaloAlpha: Float
+    val wave1Progress: Float
+    val wave2Progress: Float
     if (micAutoEnabled) {
         val infiniteTransition = rememberInfiniteTransition(label = "micBreathing")
         breathScale = infiniteTransition.animateFloat(
             initialValue = 1.0f,
-            targetValue = 1.14f,
+            targetValue = 1.04f,
             animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 1200, easing = FastOutSlowInEasing),
+                animation = tween(durationMillis = 1600, easing = FastOutSlowInEasing),
                 repeatMode = RepeatMode.Reverse
             ),
             label = "breathScale"
         ).value
-        outerHaloScale = infiniteTransition.animateFloat(
-            initialValue = 1.0f,
-            targetValue = 1.38f,
+        wave1Progress = infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
             animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 1200, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
+                animation = tween(durationMillis = 2200, easing = LinearOutSlowInEasing),
+                repeatMode = RepeatMode.Restart
             ),
-            label = "outerHaloScale"
+            label = "micWave1"
         ).value
-        outerHaloAlpha = infiniteTransition.animateFloat(
-            initialValue = 0.28f,
-            targetValue = 0.06f,
+        wave2Progress = infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
             animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 1200, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
+                animation = tween(durationMillis = 2200, easing = LinearOutSlowInEasing),
+                repeatMode = RepeatMode.Restart,
+                initialStartOffset = StartOffset(1100)
             ),
-            label = "outerHaloAlpha"
+            label = "micWave2"
         ).value
     } else {
         breathScale = 1.0f
-        outerHaloScale = 1.0f
-        outerHaloAlpha = 0f
-    }
-
-    val activeMicScale = if (micAutoEnabled) {
-        (breathScale + rmsLevel * 0.22f).coerceAtMost(1.35f)
-    } else {
-        1.0f
+        wave1Progress = 0f
+        wave2Progress = 0f
     }
 
     Surface(
@@ -2709,7 +2712,7 @@ private fun BottomControlBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 14.dp),
+                .padding(horizontal = 24.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -2756,38 +2759,42 @@ private fun BottomControlBar(
                 }
             }
 
-            // Center Enlarged Circular Microphone Button
+            // Center Enlarged Circular Microphone Button with smooth outward fading ripples
             Box(
-                modifier = Modifier.size(76.dp),
+                modifier = Modifier
+                    .size(80.dp)
+                    .drawBehind {
+                        if (micAutoEnabled) {
+                            val buttonRadius = 32.dp.toPx()
+                            val maxExtraRadius = 22.dp.toPx()
+                            val intensity = 0.34f + smoothRms * 0.14f
+                            listOf(wave1Progress, wave2Progress).forEach { p ->
+                                val fade = (1f - p) * (1f - p)
+                                val r = buttonRadius * 0.85f + (buttonRadius * 0.15f + maxExtraRadius) * p
+                                val fillAlpha = (intensity * fade).coerceIn(0f, 1f)
+                                val ringAlpha = (intensity * 1.15f * fade).coerceIn(0f, 1f)
+                                drawCircle(
+                                    color = AppleBlue.copy(alpha = fillAlpha * 0.55f),
+                                    radius = r
+                                )
+                                drawCircle(
+                                    color = AppleIndigo.copy(alpha = ringAlpha * 0.7f),
+                                    radius = r,
+                                    style = Stroke(width = 1.5.dp.toPx())
+                                )
+                            }
+                        }
+                    },
                 contentAlignment = Alignment.Center
             ) {
-                if (micAutoEnabled) {
-                    // Outer breathing halo
-                    Box(
-                        modifier = Modifier
-                            .size(66.dp)
-                            .scale(outerHaloScale)
-                            .clip(CircleShape)
-                            .background(AppleBlue.copy(alpha = outerHaloAlpha))
-                    )
-                    // Inner breathing halo
-                    Box(
-                        modifier = Modifier
-                            .size(66.dp)
-                            .scale(breathScale * 1.08f)
-                            .clip(CircleShape)
-                            .background(AppleIndigo.copy(alpha = 0.16f))
-                    )
-                }
-
                 Box(
                     modifier = Modifier
-                        .size(66.dp)
-                        .scale(activeMicScale)
+                        .size(64.dp)
+                        .scale(breathScale)
                         .shadow(
-                            elevation = if (micAutoEnabled) 12.dp else 6.dp,
+                            elevation = if (micAutoEnabled) 10.dp else 6.dp,
                             shape = CircleShape,
-                            spotColor = if (micAutoEnabled) AppleBlue.copy(alpha = 0.45f) else Color.Black.copy(alpha = 0.2f)
+                            spotColor = if (micAutoEnabled) AppleBlue.copy(alpha = 0.42f) else Color.Black.copy(alpha = 0.2f)
                         )
                         .clip(CircleShape)
                         .background(
@@ -2804,9 +2811,7 @@ private fun BottomControlBar(
                         imageVector = if (micAutoEnabled) Icons.Default.Mic else Icons.Default.MicOff,
                         contentDescription = null,
                         tint = Color.White,
-                        modifier = Modifier
-                            .size(31.dp)
-                            .scale(if (micAutoEnabled) breathScale else 1f)
+                        modifier = Modifier.size(30.dp)
                     )
                 }
             }
