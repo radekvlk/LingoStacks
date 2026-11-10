@@ -40,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import cz.slovickaspeak.app.data.DeckMemorySummary
 import cz.slovickaspeak.app.model.CefrLevel
 import cz.slovickaspeak.app.model.LearningLanguage
 import cz.slovickaspeak.app.model.StudyDirection
@@ -197,13 +198,11 @@ fun DeckSelectionScreen(
                         )
                     }
  items(filteredDecks, key = { it.id }) { deck ->
- val masteredCount = progressState.getDeckMasteredCount(deck)
- val needsReviewCount = progressState.getDeckNeedsReviewCount(deck)
+ val memorySummary = progressState.getDeckMemorySummary(deck)
  DeckCard(
  deck = deck,
  strings = strings,
- masteredCount = masteredCount,
- needsReviewCount = needsReviewCount,
+ memorySummary = memorySummary,
  onClick = { onSelectDeck(deck) }
  )
  }
@@ -268,13 +267,11 @@ fun DeckSelectionScreen(
  }
 
  items(filteredDecks, key = { it.id }) { deck ->
- val masteredCount = progressState.getDeckMasteredCount(deck)
- val needsReviewCount = progressState.getDeckNeedsReviewCount(deck)
+ val memorySummary = progressState.getDeckMemorySummary(deck)
  DeckCard(
  deck = deck,
  strings = strings,
- masteredCount = masteredCount,
- needsReviewCount = needsReviewCount,
+ memorySummary = memorySummary,
  onClick = { onSelectDeck(deck) }
  )
  }
@@ -885,11 +882,12 @@ private fun LevelFilterChip(
 private fun DeckCard(
     deck: VocabDeck,
     strings: UiStrings,
-    masteredCount: Int = 0,
-    needsReviewCount: Int = 0,
+    memorySummary: DeckMemorySummary,
     onClick: () -> Unit
 ) {
     val levelColor = Color(deck.level.colorHex)
+    val learnedAnyCount = memorySummary.learnedAnyCount
+    val needsReviewCount = memorySummary.needsReviewCount
 
     Surface(
         shape = RoundedCornerShape(22.dp),
@@ -939,13 +937,13 @@ private fun DeckCard(
                         )
                     }
                     Text(
-                        text = if (masteredCount > 0) {
-                            if (strings.isCzech) "Naučeno $masteredCount / ${deck.words.size}" else "Learned $masteredCount / ${deck.words.size}"
+                        text = if (learnedAnyCount > 0) {
+                            if (strings.isCzech) "Naučeno $learnedAnyCount / ${deck.words.size}" else "Learned $learnedAnyCount / ${deck.words.size}"
                         } else {
                             strings.wordsInDeck(deck.words.size)
                         },
                         fontSize = 12.sp,
-                        color = if (masteredCount > 0) AppleGreen else TextMuted,
+                        color = if (learnedAnyCount > 0) AppleGreen else TextMuted,
                         fontWeight = FontWeight.Medium
                     )
                     if (needsReviewCount > 0) {
@@ -976,6 +974,9 @@ private fun DeckCard(
                     fontSize = 13.sp,
                     color = TextMuted
                 )
+
+                Spacer(modifier = Modifier.height(4.dp))
+                DeckMemoryProgressRow(summary = memorySummary)
             }
 
             Box(
@@ -992,6 +993,62 @@ private fun DeckCard(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun DeckMemoryProgressRow(summary: DeckMemorySummary) {
+    val pct = summary.progressPercent
+    val pctColor = when {
+        summary.needsReviewCount > 0 && summary.learnedAnyCount == 0 -> AppleRed
+        pct >= 80 -> AppleGreen
+        summary.learnedAnyCount > 0 -> AppleBlue
+        else -> TextMuted
+    }
+    val minSegmentWeight = maxOf(2f, summary.totalCount * 0.035f)
+    val segments = buildList {
+        if (summary.masteredCount > 0) {
+            add(AppleGreen to summary.masteredCount.toFloat().coerceAtLeast(minSegmentWeight))
+        }
+        if (summary.learningCount > 0) {
+            add(AppleBlue to summary.learningCount.toFloat().coerceAtLeast(minSegmentWeight))
+        }
+        if (summary.needsReviewCount > 0) {
+            add(AppleRed to summary.needsReviewCount.toFloat().coerceAtLeast(minSegmentWeight))
+        }
+        if (summary.unseenCount > 0 || isEmpty()) {
+            add(SurfaceBg to summary.unseenCount.toFloat().coerceAtLeast(1f))
+        }
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .height(6.dp)
+                .clip(RoundedCornerShape(50)),
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            segments.forEach { (color, segWeight) ->
+                Box(
+                    modifier = Modifier
+                        .weight(segWeight)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(50))
+                        .background(color)
+                )
+            }
+        }
+        Text(
+            text = "$pct %",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = pctColor
+        )
     }
 }
 

@@ -247,6 +247,12 @@ fun AppleFullSettingsDialog(
                             onToggleAutoPronounce = { progressState.setAutoPronounce(it) }
                         )
 
+                        CardExitSpeedSectionCard(
+                            strings = strings,
+                            pauseWhileSpeaking = progressState.pauseCardWhileSpeaking,
+                            onSelectPauseWhileSpeaking = { progressState.updatePauseCardWhileSpeaking(it) }
+                        )
+
                         StudyReminderSectionCard(
                             strings = strings,
                             reminderEnabled = progressState.studyReminderEnabled,
@@ -1094,6 +1100,85 @@ private fun AutoPronounceSectionCard(
                     uncheckedTrackColor = CardBorderGray
                 )
             )
+        }
+    }
+}
+
+@Composable
+private fun CardExitSpeedSectionCard(
+    strings: UiStrings,
+    pauseWhileSpeaking: Boolean,
+    onSelectPauseWhileSpeaking: (Boolean) -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = CardSurface,
+        border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = if (strings.isCzech) "📖 Zobrazení slova po odpovědi" else "📖 Word Display After Answer",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextDark
+            )
+            Text(
+                text = if (strings.isCzech) {
+                    "Zvolte, zda má karta počkat s odhaleným slovem, než ho hlas dočte, nebo odjet ihned."
+                } else {
+                    "Choose whether the card stays visible with the word while spoken aloud, or slides away immediately."
+                },
+                fontSize = 12.sp,
+                color = TextMuted,
+                lineHeight = 16.sp
+            )
+
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = SurfaceBg,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    val options = listOf(
+                        true to (if (strings.isCzech) "Číst při výslovnosti" else "Hold & read"),
+                        false to (if (strings.isCzech) "Rychle bez ukázání" else "Fast, no reveal")
+                    )
+                    options.forEach { (isHoldMode, label) ->
+                        val selected = pauseWhileSpeaking == isHoldMode
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (selected) CardElevatedSurface else Color.Transparent,
+                            border = if (selected) BorderStroke(1.dp, if (isDarkThemeActive) AppleBlue.copy(alpha = 0.6f) else Color.Black.copy(alpha = 0.08f)) else null,
+                            shadowElevation = if (selected) 2.dp else 0.dp,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { onSelectPauseWhileSpeaking(isHoldMode) }
+                        ) {
+                            Text(
+                                text = label,
+                                color = if (selected) AppleBlue else TextMuted,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                fontSize = 12.5.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .padding(vertical = 9.dp, horizontal = 6.dp)
+                                    .wrapContentWidth(Alignment.CenterHorizontally)
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

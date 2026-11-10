@@ -276,8 +276,23 @@ fun FlashcardSessionScreen(
                 }
             }
 
-            if (method == AnswerMethod.SPOKEN_CORRECT) {
-                // Card was in center: give a crisp celebratory pulse so the green flash registers smoothly
+            if (shouldPronounce && progressState.pauseCardWhileSpeaking) {
+                // Keep card centered & readable with the revealed translation while TTS pronounces it aloud
+                if (abs(offsetX.value) > 1f) {
+                    offsetX.animateTo(0f, tween(durationMillis = 130, easing = FastOutSlowInEasing))
+                }
+                val holdStart = SystemClock.uptimeMillis()
+                while (!speechFinished && SystemClock.uptimeMillis() - holdStart < 2400L) {
+                    delay(40L)
+                }
+                val elapsedHold = SystemClock.uptimeMillis() - holdStart
+                if (elapsedHold < 750L) {
+                    delay(750L - elapsedHold)
+                } else {
+                    delay(220L)
+                }
+            } else if (method == AnswerMethod.SPOKEN_CORRECT) {
+                // Fast mode: brief celebratory pulse before gliding off-screen
                 cardScale.animateTo(1.045f, tween(80, easing = FastOutSlowInEasing))
                 cardScale.animateTo(1.0f, tween(80, easing = FastOutSlowInEasing))
                 delay(70L)
@@ -513,7 +528,9 @@ fun FlashcardSessionScreen(
                 (feedbackState == CardFeedbackState.NEUTRAL || feedbackState == CardFeedbackState.SPOKEN_WRONG_FLASH)
 
         val isTranslationRevealed = showHintTranslation ||
-                (feedbackState != CardFeedbackState.NEUTRAL && feedbackState != CardFeedbackState.SPOKEN_WRONG_FLASH)
+                (progressState.pauseCardWhileSpeaking &&
+                    feedbackState != CardFeedbackState.NEUTRAL &&
+                    feedbackState != CardFeedbackState.SPOKEN_WRONG_FLASH)
 
         val handleToggleHint: () -> Unit = {
             showHintTranslation = !showHintTranslation

@@ -73,6 +73,20 @@ data class LanguageCompleteStats(
     val levelStats: List<CefrLevelStat>
 )
 
+data class DeckMemorySummary(
+    val totalCount: Int,
+    val masteredCount: Int,
+    val learningCount: Int,
+    val needsReviewCount: Int
+) {
+    val unseenCount: Int
+        get() = (totalCount - masteredCount - learningCount - needsReviewCount).coerceAtLeast(0)
+    val learnedAnyCount: Int
+        get() = masteredCount + learningCount
+    val progressPercent: Int
+        get() = if (totalCount == 0) 0 else ((learnedAnyCount.toFloat() / totalCount) * 100f).roundToInt()
+}
+
 class ProgressStateHolder(context: Context) {
     private val appContext = context.applicationContext
     private val prefs = context.getSharedPreferences("slovicka_speak_prefs", Context.MODE_PRIVATE)
@@ -139,6 +153,9 @@ class ProgressStateHolder(context: Context) {
         private set
 
     var autoPronounceEnabled by mutableStateOf(prefs.getBoolean("auto_pronounce_enabled", true))
+        private set
+
+    var pauseCardWhileSpeaking by mutableStateOf(prefs.getBoolean("pause_card_while_speaking", true))
         private set
 
     var studyReminderEnabled by mutableStateOf(prefs.getBoolean("study_reminder_enabled", false))
@@ -270,6 +287,32 @@ class ProgressStateHolder(context: Context) {
         val now = System.currentTimeMillis()
         val useReversed = studyDirection == cz.slovickaspeak.app.model.StudyDirection.FOREIGN_TO_NATIVE
         return deck.words.count { word -> isWordNeedsReview(word.id, useReversed, now) }
+    }
+
+    fun getDeckMemorySummary(deck: cz.slovickaspeak.app.model.VocabDeck): DeckMemorySummary {
+        @Suppress("UNUSED_EXPRESSION")
+        srsRevision
+        val now = System.currentTimeMillis()
+        val useReversed = studyDirection == cz.slovickaspeak.app.model.StudyDirection.FOREIGN_TO_NATIVE
+        var mastered = 0
+        var learning = 0
+        var needsReview = 0
+
+        for (word in deck.words) {
+            val key = srsKey(word.id, useReversed)
+            val stat = wordSrsMap[key]
+            when {
+                isWordNeedsReview(word.id, useReversed, now) -> needsReview++
+                stat != null && stat.box >= 4 -> mastered++
+                (stat != null && stat.box in 1..3) || (!useReversed && stat == null && word.id in masteredWordIds) -> learning++
+            }
+        }
+        return DeckMemorySummary(
+            totalCount = deck.words.size,
+            masteredCount = mastered,
+            learningCount = learning,
+            needsReviewCount = needsReview
+        )
     }
 
     fun getLanguageCompleteStats(language: cz.slovickaspeak.app.model.LearningLanguage): LanguageCompleteStats {
@@ -585,6 +628,11 @@ class ProgressStateHolder(context: Context) {
     fun setAutoPronounce(enabled: Boolean) {
         autoPronounceEnabled = enabled
         prefs.edit().putBoolean("auto_pronounce_enabled", enabled).apply()
+    }
+
+    fun updatePauseCardWhileSpeaking(enabled: Boolean) {
+        pauseCardWhileSpeaking = enabled
+        prefs.edit().putBoolean("pause_card_while_speaking", enabled).apply()
     }
 
     fun updateStudyReminder(
