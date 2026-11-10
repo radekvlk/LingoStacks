@@ -2,6 +2,16 @@
 
 Moderní Android aplikace v designu **Cupertino Glass** pro aktivní procvičování angličtiny a španělštiny hlasem, gesty a chytrou metodou opakování (*Spaced Repetition*).
 
+## 📸 Ukázky z aplikace
+
+<p align="center">
+  <img src="docs/screenshots/01_home.png" alt="Domovská obrazovka" width="180" />
+  <img src="docs/screenshots/02_flashcard.png" alt="Hlasové procvičování a paměťový kontext" width="180" />
+  <img src="docs/screenshots/03_flashcard_hint.png" alt="Odhalení překladu a výslovnosti" width="180" />
+  <img src="docs/screenshots/04_settings.png" alt="Nastavení" width="180" />
+  <img src="docs/screenshots/05_stats.png" alt="Statistiky a denní žebříček" width="180" />
+</p>
+
 ## ✨ Hlavní funkce
 
 - **🎙️ Nepřetržité rozpoznávání hlasu (`SpeechRecognizer`):**
