@@ -2129,14 +2129,25 @@ fun OtaUpdateModalDialog(
 
                     Text(
                         text = if (strings.isCzech) {
-                            "🔗 Otevřít stažení přímo na GitHubu (${release.tagName})"
+                            "Tip: Pokud Play Protect zobrazí varování (aplikace mimo Obchod Play), klepni na Více informací → Přesto nainstalovat."
                         } else {
-                            "🔗 Download directly on GitHub (${release.tagName})"
+                            "Tip: If Play Protect warns about an app outside Play Store, tap More details → Install anyway."
                         },
                         fontSize = 11.sp,
+                        color = TextMuted,
+                        lineHeight = 15.sp,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+
+                    Text(
+                        text = if (strings.isCzech) {
+                            "Otevřít stažení přímo na GitHubu (${release.tagName}) ↗"
+                        } else {
+                            "Download directly on GitHub (${release.tagName}) ↗"
+                        },
+                        fontSize = 11.5.sp,
                         fontWeight = FontWeight.Medium,
                         color = AppleBlue,
-                        textDecoration = TextDecoration.Underline,
                         modifier = Modifier
                             .align(Alignment.CenterHorizontally)
                             .clip(RoundedCornerShape(6.dp))

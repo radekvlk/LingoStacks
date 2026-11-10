@@ -67,14 +67,25 @@ object OtaUpdater {
         val csMatch = csPattern.find(trimmed)?.groupValues?.getOrNull(1)?.trim()
         val enMatch = enPattern.find(trimmed)?.groupValues?.getOrNull(1)?.trim()
 
-        if (!csMatch.isNullOrBlank() || !enMatch.isNullOrBlank()) {
-            return if (isCzech) {
+        val rawSelected = if (!csMatch.isNullOrBlank() || !enMatch.isNullOrBlank()) {
+            if (isCzech) {
                 csMatch.orEmpty().ifBlank { enMatch.orEmpty() }
             } else {
                 enMatch.orEmpty().ifBlank { csMatch.orEmpty() }
             }
+        } else {
+            trimmed
         }
-        return trimmed
+
+        // Strip Markdown headings/bold markers so release notes read cleanly inside native Text
+        return rawSelected.lines()
+            .filterNot { it.trim().startsWith("### ") }
+            .joinToString("\n") { line ->
+                line.replace("**", "")
+                    .replace("`", "")
+                    .replace(Regex("^\\s*-\\s+"), "• ")
+            }
+            .trim()
     }
 
     /**

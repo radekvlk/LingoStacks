@@ -5,6 +5,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -23,8 +24,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -324,6 +331,88 @@ private fun OtaUpdateBannerCard(
 }
 
 @Composable
+private fun LingoWordsHeaderMark(
+    modifier: Modifier = Modifier
+) {
+    Canvas(modifier = modifier.size(36.dp)) {
+        val w = size.width
+        val h = size.height
+        val corner = CornerRadius(w * 0.14f, w * 0.14f)
+        val cardW = w * 0.52f
+        val cardH = h * 0.72f
+
+        // Back frosted glass flashcard (tilted -13 deg, without circular wrapper)
+        rotate(degrees = -13f, pivot = Offset(w * 0.42f, h * 0.50f)) {
+            drawRoundRect(
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        AppleBlue.copy(alpha = 0.28f),
+                        AppleIndigo.copy(alpha = 0.38f)
+                    )
+                ),
+                topLeft = Offset(w * 0.15f, h * 0.12f),
+                size = Size(cardW, cardH),
+                cornerRadius = corner
+            )
+            drawRoundRect(
+                color = AppleBlue.copy(alpha = 0.45f),
+                topLeft = Offset(w * 0.15f, h * 0.12f),
+                size = Size(cardW, cardH),
+                cornerRadius = corner,
+                style = Stroke(width = 1.dp.toPx())
+            )
+        }
+
+        // Front white flashcard + 4-point star emblem (tilted +4 deg)
+        rotate(degrees = 4f, pivot = Offset(w * 0.56f, h * 0.54f)) {
+            drawRoundRect(
+                color = Color(0x22002B66),
+                topLeft = Offset(w * 0.31f, h * 0.20f),
+                size = Size(cardW, cardH),
+                cornerRadius = corner
+            )
+            drawRoundRect(
+                color = Color.White,
+                topLeft = Offset(w * 0.30f, h * 0.16f),
+                size = Size(cardW, cardH),
+                cornerRadius = corner
+            )
+            drawRoundRect(
+                color = CardBorderGray.copy(alpha = 0.75f),
+                topLeft = Offset(w * 0.30f, h * 0.16f),
+                size = Size(cardW, cardH),
+                cornerRadius = corner,
+                style = Stroke(width = 0.75.dp.toPx())
+            )
+
+            val cx = w * 0.56f
+            val cy = h * 0.52f
+            val r = w * 0.21f
+            val ri = w * 0.052f
+            val starPath = Path().apply {
+                moveTo(cx, cy - r)
+                lineTo(cx + ri, cy - ri)
+                lineTo(cx + r, cy)
+                lineTo(cx + ri, cy + ri)
+                lineTo(cx, cy + r)
+                lineTo(cx - ri, cy + ri)
+                lineTo(cx - r, cy)
+                lineTo(cx - ri, cy - ri)
+                close()
+            }
+            drawPath(
+                path = starPath,
+                brush = Brush.linearGradient(
+                    colors = listOf(Color(0xFF007AFF), Color(0xFF5856D6)),
+                    start = Offset(cx - r, cy - r),
+                    end = Offset(cx + r, cy + r)
+                )
+            )
+        }
+    }
+}
+
+@Composable
 private fun DeckHeaderRow(
     strings: UiStrings,
     onOpenLeaderboard: () -> Unit,
@@ -334,17 +423,14 @@ private fun DeckHeaderRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = strings.appHeaderSubtitle,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = AppleBlue,
-                letterSpacing = 1.1.sp
-            )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            LingoWordsHeaderMark()
             Text(
                 text = strings.appHeaderTitle,
-                fontSize = 32.sp,
+                fontSize = 30.sp,
                 fontWeight = FontWeight.Bold,
                 color = TextDark,
                 letterSpacing = (-0.5).sp
