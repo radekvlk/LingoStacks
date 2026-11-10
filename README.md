@@ -39,6 +39,9 @@ Moderní Android aplikace v designu **Cupertino Glass** pro aktivní procvičov�
 Nejnovější instalační balíček **`LingoWords.apk`** najdete vždy v sekci [**Releases**](https://github.com/radekvlk/LingoWords/releases/latest).
 Další aktualizace probíhá OTA přímo v aplikaci.
 
+> [!NOTE]
+> **Varování Google Play Protect při instalaci:** Při instalaci aplikace mimo Obchod Play může Android zobrazit varování *(„Nebezpečná aplikace zablokována“ / „Harmful app blocked“)*. **Není potřeba se toho obávat** — hláška se objevuje automaticky jen proto, že aplikace používá mikrofon pro hlasové učení a přímé OTA aktualizace z GitHubu a není distribuována přes Obchod Play. Veškerý zdrojový kód aplikace je veřejně dostupný zde v repozitáři. Pro pokračování stačí v okně klepnout na **Více informací → Přesto nainstalovat** (*More details → Install anyway*).
+
 ---
 
 ## 🛠️ Technické informace
