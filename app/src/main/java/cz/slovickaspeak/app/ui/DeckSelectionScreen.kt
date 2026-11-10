@@ -141,9 +141,8 @@ fun DeckSelectionScreen(
                             dailyGoalWords = dailyGoalWords,
                             isGoalReached = isGoalReached,
                             goalProgressFraction = goalProgressFraction,
-                            onOpenSettings = {
-                                settingsInitialTab = 0
-                                showSettingsDialog = true
+                            onSelectLanguage = { lang ->
+                                progressState.updateSelectedLanguage(lang)
                             },
                             onSelectLevel = { level ->
                                 progressState.updateSelectedCefrLevel(level)
@@ -225,9 +224,8 @@ fun DeckSelectionScreen(
  dailyGoalWords = dailyGoalWords,
  isGoalReached = isGoalReached,
  goalProgressFraction = goalProgressFraction,
- onOpenSettings = {
- settingsInitialTab = 0
- showSettingsDialog = true
+ onSelectLanguage = { lang ->
+ progressState.updateSelectedLanguage(lang)
  },
  onSelectLevel = { level ->
  progressState.updateSelectedCefrLevel(level)
@@ -395,6 +393,40 @@ private fun DeckHeaderRow(
 }
 
 @Composable
+private fun FilterDropdownPill(
+    label: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = SurfaceBg,
+        border = BorderStroke(0.5.dp, CardBorderGray),
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = label,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextDark
+            )
+            Text(
+                text = "▾",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = AppleBlue
+            )
+        }
+    }
+}
+
+@Composable
 private fun DeckGoalIndicatorCard(
     strings: UiStrings,
     selectedLanguage: LearningLanguage,
@@ -403,9 +435,10 @@ private fun DeckGoalIndicatorCard(
     dailyGoalWords: Int,
     isGoalReached: Boolean,
     goalProgressFraction: Float,
-    onOpenSettings: () -> Unit,
+    onSelectLanguage: (LearningLanguage) -> Unit,
     onSelectLevel: (CefrLevel?) -> Unit
 ) {
+    var languageDropdownExpanded by remember { mutableStateOf(false) }
     var levelDropdownExpanded by remember { mutableStateOf(false) }
 
     Surface(
@@ -425,92 +458,74 @@ private fun DeckGoalIndicatorCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Current Language Pill (Tap opens settings if user wants to switch)
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = SurfaceBg,
-                    border = BorderStroke(0.5.dp, CardBorderGray),
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .clickable { onOpenSettings() }
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                // Learning Language Dropdown
+                Box {
+                    FilterDropdownPill(
+                        label = "${selectedLanguage.flagEmoji} ${selectedLanguage.localizedTitle(strings.isCzech)}",
+                        onClick = { languageDropdownExpanded = true }
+                    )
+
+                    DropdownMenu(
+                        expanded = languageDropdownExpanded,
+                        onDismissRequest = { languageDropdownExpanded = false }
                     ) {
-                        Text(
-                            text = "${selectedLanguage.flagEmoji} ${selectedLanguage.localizedTitle(strings.isCzech)}",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextDark
-                        )
+                        LearningLanguage.entries.forEach { lang ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = "${lang.flagEmoji} ${lang.localizedTitle(strings.isCzech)}",
+                                        fontWeight = if (selectedLanguage == lang) FontWeight.Bold else FontWeight.Medium
+                                    )
+                                },
+                                onClick = {
+                                    onSelectLanguage(lang)
+                                    languageDropdownExpanded = false
+                                }
+                            )
+                        }
                     }
                 }
 
                 // CEFR Level Dropdown
                 Box {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = SurfaceBg,
-                            border = BorderStroke(0.5.dp, CardBorderGray),
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .clickable { levelDropdownExpanded = true }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Text(
-                                    text = selectedLevel?.let { it.label } ?: strings.allLevelsLabel,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextDark
-                                )
-                                Text(
-                                    text = "▾",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = AppleBlue
-                                )
-                            }
-                        }
+                    FilterDropdownPill(
+                        label = selectedLevel?.let { it.label } ?: strings.allLevelsLabel,
+                        onClick = { levelDropdownExpanded = true }
+                    )
 
-                        DropdownMenu(
-                            expanded = levelDropdownExpanded,
-                            onDismissRequest = { levelDropdownExpanded = false }
-                        ) {
+                    DropdownMenu(
+                        expanded = levelDropdownExpanded,
+                        onDismissRequest = { levelDropdownExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = strings.allLevelsLabel,
+                                    fontWeight = if (selectedLevel == null) FontWeight.Bold else FontWeight.Medium
+                                )
+                            },
+                            onClick = {
+                                onSelectLevel(null)
+                                levelDropdownExpanded = false
+                            }
+                        )
+                        CefrLevel.entries.forEach { level ->
                             DropdownMenuItem(
                                 text = {
                                     Text(
-                                        text = strings.allLevelsLabel,
-                                        fontWeight = if (selectedLevel == null) FontWeight.Bold else FontWeight.Medium
+                                        text = "${level.label} • ${level.localizedDescription(strings.isCzech)}",
+                                        fontWeight = if (selectedLevel == level) FontWeight.Bold else FontWeight.Medium
                                     )
                                 },
                                 onClick = {
-                                    onSelectLevel(null)
+                                    onSelectLevel(level)
                                     levelDropdownExpanded = false
                                 }
                             )
-                            CefrLevel.entries.forEach { level ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            text = "${level.label} • ${level.localizedDescription(strings.isCzech)}",
-                                            fontWeight = if (selectedLevel == level) FontWeight.Bold else FontWeight.Medium
-                                        )
-                                    },
-                                    onClick = {
-                                        onSelectLevel(level)
-                                        levelDropdownExpanded = false
-                                    }
-                                )
-                            }
                         }
                     }
                 }
+            }
 
             // Clean single-line row for Today Words progress & remaining count
             Row(

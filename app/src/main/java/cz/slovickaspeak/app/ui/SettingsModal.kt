@@ -248,17 +248,18 @@ fun AppleFullSettingsDialog(
                             onSelectLevel = { progressState.updateSelectedCefrLevel(it) }
                         )
 
-                        AllStatisticsSectionCard(
-                            strings = strings,
-                            progressState = progressState
-                        )
-
                         AppVersionSectionCard(
                             strings = strings,
                             progressState = progressState
                         )
                     } else {
-                        // 1. Daily Leaderboard
+                        // 1. Overall Personal Statistics
+                        AllStatisticsSectionCard(
+                            strings = strings,
+                            progressState = progressState
+                        )
+
+                        // 2. Daily Leaderboard
                         DailyLeaderboardSectionCard(
                             strings = strings,
                             leaderboard = progressState.dailyLeaderboard,
