@@ -651,12 +651,12 @@ fun FlashcardSessionScreen(
                 }
             }
         } else {
-            // Portrait (na vysku): Plne roztazene pres celou sirku podle zadani
+            // Portrait (na vysku): Plne roztazene pres celou sirku + kompaktni Memory & Context pod kartou
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                    .padding(horizontal = 18.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 AppleSessionTopBar(
@@ -672,7 +672,7 @@ fun FlashcardSessionScreen(
                     onOpenSettings = { showGoalPicker = true }
                 )
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 LiveSpeechBanner(
                     strings = strings,
@@ -685,7 +685,7 @@ fun FlashcardSessionScreen(
                     rmsLevel = rmsLevel
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Flashcard3DStackArea(
                     strings = strings,
@@ -707,7 +707,7 @@ fun FlashcardSessionScreen(
                         .fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 WordMemoryInsightsCard(
                     strings = strings,
@@ -723,7 +723,7 @@ fun FlashcardSessionScreen(
                     showSentence = configuration.screenHeightDp >= 640
                 )
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 BottomControlBar(
                     strings = strings,
@@ -895,81 +895,137 @@ private fun WordMemoryInsightsCard(
     }
 
     Surface(
-        shape = RoundedCornerShape(if (compact) 18.dp else 20.dp),
+        shape = RoundedCornerShape(if (compact) 16.dp else 20.dp),
         color = CardSurface,
         border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(4.dp, RoundedCornerShape(if (compact) 18.dp else 20.dp), spotColor = Color.Black.copy(alpha = 0.04f))
+            .shadow(4.dp, RoundedCornerShape(if (compact) 16.dp else 20.dp), spotColor = Color.Black.copy(alpha = 0.04f))
     ) {
         Column(
             modifier = Modifier.padding(
-                horizontal = if (compact) 12.dp else 14.dp,
-                vertical = if (compact) 9.dp else 12.dp
+                horizontal = if (compact) 11.dp else 14.dp,
+                vertical = if (compact) 7.dp else 12.dp
             ),
-            verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 10.dp)
+            verticalArrangement = Arrangement.spacedBy(if (compact) 5.dp else 10.dp)
         ) {
-            // Header: Pametovy stav + SRS indikátor
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            if (compact) {
+                // Ultra-compact Portrait header: ikona + nazev + 5 SRS dílků v jednom řádku + štítek
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Psychology,
-                        contentDescription = null,
-                        tint = statusColor,
-                        modifier = Modifier.size(if (compact) 16.dp else 18.dp)
-                    )
-                    Text(
-                        text = if (strings.isCzech) "Paměť & Kontext" else "Memory & Context",
-                        fontSize = if (compact) 12.sp else 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextDark
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Psychology,
+                            contentDescription = null,
+                            tint = statusColor,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Text(
+                            text = if (strings.isCzech) "Paměť" else "Memory",
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextDark
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(3.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        for (step in 1..5) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(4.dp)
+                                    .clip(RoundedCornerShape(50))
+                                    .background(if (step <= boxLevel) statusColor else SurfaceBg)
+                            )
+                        }
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = statusColor.copy(alpha = 0.13f)
+                    ) {
+                        Text(
+                            text = statusLabel,
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = statusColor,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            } else {
+                // Full Landscape header: Pametovy stav + SRS indikátor
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Psychology,
+                            contentDescription = null,
+                            tint = statusColor,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = if (strings.isCzech) "Paměť & Kontext" else "Memory & Context",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextDark
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = statusColor.copy(alpha = 0.13f)
+                    ) {
+                        Text(
+                            text = statusLabel,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = statusColor,
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
+                        )
+                    }
                 }
 
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = statusColor.copy(alpha = 0.13f)
+                // 5-segment Leitner memory progress bar + optional lapses note
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
-                    Text(
-                        text = statusLabel,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = statusColor,
-                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
-                    )
-                }
-            }
-
-            // 5-segment Leitner memory progress bar + optional lapses note
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(5.dp)
-            ) {
-                for (step in 1..5) {
-                    val active = step <= boxLevel
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(if (compact) 4.dp else 6.dp)
-                            .clip(RoundedCornerShape(50))
-                            .background(if (active) statusColor else SurfaceBg)
-                    )
-                }
-                if (lapses > 0) {
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = if (strings.isCzech) "Chyby: $lapses" else "Lapses: $lapses",
-                        fontSize = 11.sp,
-                        color = TextMuted
-                    )
+                    for (step in 1..5) {
+                        val active = step <= boxLevel
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(if (active) statusColor else SurfaceBg)
+                        )
+                    }
+                    if (lapses > 0) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if (strings.isCzech) "Chyby: $lapses" else "Lapses: $lapses",
+                            fontSize = 11.sp,
+                            color = TextMuted
+                        )
+                    }
                 }
             }
 
@@ -980,7 +1036,7 @@ private fun WordMemoryInsightsCard(
                 }
 
                 Surface(
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(12.dp),
                     color = SurfaceBg,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -989,18 +1045,21 @@ private fun WordMemoryInsightsCard(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { onSpeakSentence(word.exampleSentence) }
-                                .padding(horizontal = 11.dp, vertical = if (compact) 7.dp else 10.dp),
+                                .padding(
+                                    horizontal = 10.dp,
+                                    vertical = if (compact) 5.dp else 10.dp
+                                ),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = "“${word.exampleSentence}”",
-                                    fontSize = if (compact) 12.sp else 13.sp,
+                                    fontSize = if (compact) 11.5.sp else 13.sp,
                                     fontStyle = FontStyle.Italic,
                                     color = TextDark,
-                                    lineHeight = if (compact) 16.sp else 18.sp,
-                                    maxLines = if (compact) 2 else 4,
+                                    lineHeight = if (compact) 15.sp else 18.sp,
+                                    maxLines = if (compact) 1 else 4,
                                     overflow = TextOverflow.Ellipsis
                                 )
                                 if (!compact && (word.phonetic.isNotBlank() || word.acceptedVariants.isNotEmpty())) {
@@ -1023,7 +1082,7 @@ private fun WordMemoryInsightsCard(
                             }
                             Box(
                                 modifier = Modifier
-                                    .size(if (compact) 28.dp else 32.dp)
+                                    .size(if (compact) 24.dp else 32.dp)
                                     .clip(CircleShape)
                                     .background(AppleBlueTint),
                                 contentAlignment = Alignment.Center
@@ -1032,49 +1091,70 @@ private fun WordMemoryInsightsCard(
                                     imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                                     contentDescription = null,
                                     tint = AppleBlue,
-                                    modifier = Modifier.size(if (compact) 15.dp else 17.dp)
+                                    modifier = Modifier.size(if (compact) 13.dp else 17.dp)
                                 )
                             }
                         }
                     } else if (didMask) {
-                        Column(
-                            modifier = Modifier.padding(horizontal = 11.dp, vertical = if (compact) 7.dp else 10.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Text(
-                                text = if (strings.isCzech) {
-                                    "Kontextová nápověda (${language.localizedTitle(true).lowercase()})"
-                                } else {
-                                    "Context clue (${language.localizedTitle(false)})"
-                                },
-                                fontSize = 10.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = AppleBlue
-                            )
-                            Text(
-                                text = "“$maskedSentence”",
-                                fontSize = if (compact) 12.sp else 13.sp,
-                                fontStyle = FontStyle.Italic,
-                                color = TextDark,
-                                lineHeight = if (compact) 16.sp else 18.sp,
-                                maxLines = if (compact) 2 else 4,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                        if (compact) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Lightbulb,
+                                    contentDescription = null,
+                                    tint = AppleBlue,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Text(
+                                    text = "“$maskedSentence”",
+                                    fontSize = 11.5.sp,
+                                    fontStyle = FontStyle.Italic,
+                                    color = TextDark,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        } else {
+                            Column(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Text(
+                                    text = if (strings.isCzech) {
+                                        "Kontextová nápověda (${language.localizedTitle(true).lowercase()})"
+                                    } else {
+                                        "Context clue (${language.localizedTitle(false)})"
+                                    },
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = AppleBlue
+                                )
+                                Text(
+                                    text = "“$maskedSentence”",
+                                    fontSize = 13.sp,
+                                    fontStyle = FontStyle.Italic,
+                                    color = TextDark,
+                                    lineHeight = 18.sp
+                                )
+                            }
                         }
                     } else {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { onRevealHint() }
-                                .padding(horizontal = 11.dp, vertical = if (compact) 7.dp else 10.dp),
+                                .padding(horizontal = 10.dp, vertical = if (compact) 5.dp else 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Lightbulb,
                                 contentDescription = null,
                                 tint = AppleOrange,
-                                modifier = Modifier.size(15.dp)
+                                modifier = Modifier.size(14.dp)
                             )
                             Text(
                                 text = if (strings.isCzech) {
@@ -1082,7 +1162,7 @@ private fun WordMemoryInsightsCard(
                                 } else {
                                     "Reveal translation and example sentence"
                                 },
-                                fontSize = if (compact) 12.sp else 12.5.sp,
+                                fontSize = if (compact) 11.5.sp else 12.5.sp,
                                 color = TextMuted
                             )
                         }
@@ -1667,10 +1747,34 @@ private fun SwipeableVocabCard(
                 )
             }
     ) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val isUltraCompactCard = maxHeight < 290.dp
+            val isCompactCard = maxHeight < 350.dp
+            val cardVertPadding = when {
+                isUltraCompactCard -> 10.dp
+                isCompactCard -> 12.dp
+                else -> 14.dp
+            }
+            val emojiBoxSize = when {
+                isUltraCompactCard -> 50.dp
+                isCompactCard -> 64.dp
+                else -> 84.dp
+            }
+            val emojiFontSize = when {
+                isUltraCompactCard -> 27.sp
+                isCompactCard -> 34.sp
+                else -> 44.sp
+            }
+            val hintSlotMinHeight = when {
+                isUltraCompactCard -> 46.dp
+                isCompactCard -> 54.dp
+                else -> 64.dp
+            }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 20.dp, vertical = 14.dp),
+                .padding(horizontal = 18.dp, vertical = cardVertPadding),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
@@ -1753,22 +1857,21 @@ private fun SwipeableVocabCard(
                 }
             }
 
-            // 2. Middle Content (Weighted so it is centered and NEVER collides with bottom slot!)
+            // 2. Middle Content (Weighted + height-adaptive so Czech prompt is NEVER clipped)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(vertical = 4.dp),
+                    .padding(vertical = 2.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // 3D Glass Emoji Container (adapted for fold/compact screens: 88.dp)
                 Surface(
-                    shape = RoundedCornerShape(26.dp),
+                    shape = RoundedCornerShape(if (isUltraCompactCard) 18.dp else 24.dp),
                     color = SurfaceBg,
                     border = BorderStroke(1.dp, CardBorderGray.copy(alpha = 0.45f)),
                     shadowElevation = 4.dp,
-                    modifier = Modifier.size(88.dp)
+                    modifier = Modifier.size(emojiBoxSize)
                 ) {
                     Box(
                         modifier = Modifier
@@ -1782,26 +1885,28 @@ private fun SwipeableVocabCard(
                     ) {
                         Text(
                             text = word.emoji,
-                            fontSize = 46.sp
+                            fontSize = emojiFontSize
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(if (isUltraCompactCard) 5.dp else 8.dp))
 
                 Text(
                     text = strings.cardPromptSpeakLanguage(language),
-                    fontSize = 11.sp,
+                    fontSize = if (isUltraCompactCard) 10.sp else 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = AppleBlue,
-                    letterSpacing = 1.2.sp
+                    letterSpacing = 1.1.sp
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(if (isUltraCompactCard) 2.dp else 4.dp))
 
                 Text(
                     text = word.czech,
                     fontSize = when {
+                        isUltraCompactCard && word.czech.length > 22 -> 19.sp
+                        isUltraCompactCard -> 22.sp
                         word.czech.length > 34 -> 20.sp
                         word.czech.length > 22 -> 23.sp
                         else -> 26.sp
@@ -1810,11 +1915,14 @@ private fun SwipeableVocabCard(
                     color = TextDark,
                     textAlign = TextAlign.Center,
                     lineHeight = when {
+                        isUltraCompactCard -> 25.sp
                         word.czech.length > 34 -> 25.sp
                         word.czech.length > 22 -> 28.sp
                         else -> 32.sp
                     },
                     letterSpacing = (-0.4).sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(horizontal = 8.dp)
                 )
             }
@@ -1823,7 +1931,7 @@ private fun SwipeableVocabCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 68.dp),
+                    .heightIn(min = hintSlotMinHeight),
                 contentAlignment = Alignment.Center
             ) {
                 androidx.compose.animation.AnimatedVisibility(
@@ -1840,7 +1948,10 @@ private fun SwipeableVocabCard(
                             .clickable(onClick = onToggleHint)
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 11.dp),
+                            modifier = Modifier.padding(
+                                horizontal = 18.dp,
+                                vertical = if (isUltraCompactCard) 8.dp else 10.dp
+                            ),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(7.dp)
                         ) {
@@ -1848,7 +1959,7 @@ private fun SwipeableVocabCard(
                                 imageVector = Icons.Default.Lightbulb,
                                 contentDescription = null,
                                 tint = AppleOrange,
-                                modifier = Modifier.size(17.dp)
+                                modifier = Modifier.size(16.dp)
                             )
                             Text(
                                 text = strings.showHintButton,
@@ -1866,15 +1977,18 @@ private fun SwipeableVocabCard(
                     exit = fadeOut(tween(130)) + scaleOut(targetScale = 0.94f, animationSpec = tween(130))
                 ) {
                     Surface(
-                        shape = RoundedCornerShape(22.dp),
+                        shape = RoundedCornerShape(20.dp),
                         color = SurfaceBg,
                         border = BorderStroke(0.5.dp, CardBorderGray),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                            modifier = Modifier.padding(
+                                horizontal = 14.dp,
+                                vertical = if (isCompactCard) 8.dp else 12.dp
+                            ),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(3.dp)
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -1884,13 +1998,13 @@ private fun SwipeableVocabCard(
                                     text = word.english,
                                     fontSize = when {
                                         word.english.length > 26 -> 18.sp
-                                        word.english.length > 18 -> 21.sp
+                                        isCompactCard || word.english.length > 18 -> 20.sp
                                         else -> 24.sp
                                     },
                                     lineHeight = when {
-                                        word.english.length > 26 -> 23.sp
-                                        word.english.length > 18 -> 26.sp
-                                        else -> 29.sp
+                                        word.english.length > 26 -> 22.sp
+                                        isCompactCard || word.english.length > 18 -> 24.sp
+                                        else -> 28.sp
                                     },
                                     fontWeight = FontWeight.Bold,
                                     color = AppleBlue,
@@ -1899,7 +2013,7 @@ private fun SwipeableVocabCard(
                                 )
                                 IconButton(
                                     onClick = onPlayAudio,
-                                    modifier = Modifier.size(28.dp)
+                                    modifier = Modifier.size(26.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.VolumeUp,
@@ -1911,11 +2025,11 @@ private fun SwipeableVocabCard(
                             if (word.phonetic.isNotEmpty()) {
                                 Text(
                                     text = word.phonetic,
-                                    fontSize = 14.sp,
+                                    fontSize = if (isCompactCard) 12.5.sp else 14.sp,
                                     color = TextMuted
                                 )
                             }
-                            if (word.exampleSentence.isNotEmpty()) {
+                            if (!isCompactCard && word.exampleSentence.isNotEmpty()) {
                                 Text(
                                     text = "“${word.exampleSentence}”",
                                     fontSize = 12.sp,
@@ -1929,6 +2043,7 @@ private fun SwipeableVocabCard(
                     }
                 }
             }
+        }
         }
     }
 }
