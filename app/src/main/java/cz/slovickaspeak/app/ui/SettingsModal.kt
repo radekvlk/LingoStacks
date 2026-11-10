@@ -52,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -235,22 +236,28 @@ fun AppleFullSettingsDialog(
                             onSelectDirection = { progressState.updateStudyDirection(it) }
                         )
 
+                        DailyGoalSectionCard(
+                            strings = strings,
+                            currentGoal = progressState.dailyGoalWords,
+                            onSelectGoal = { progressState.updateDailyGoal(it) }
+                        )
+
                         AppearanceSectionCard(
                             strings = strings,
                             isDarkMode = progressState.isDarkMode,
                             onSelectDarkMode = { progressState.updateDarkMode(it) }
                         )
 
-                        AutoPronounceSectionCard(
-                            strings = strings,
-                            autoPronounceEnabled = progressState.autoPronounceEnabled,
-                            onToggleAutoPronounce = { progressState.setAutoPronounce(it) }
-                        )
-
                         CardExitSpeedSectionCard(
                             strings = strings,
                             pauseWhileSpeaking = progressState.pauseCardWhileSpeaking,
                             onSelectPauseWhileSpeaking = { progressState.updatePauseCardWhileSpeaking(it) }
+                        )
+
+                        AutoPronounceSectionCard(
+                            strings = strings,
+                            autoPronounceEnabled = progressState.autoPronounceEnabled,
+                            onToggleAutoPronounce = { progressState.setAutoPronounce(it) }
                         )
 
                         StudyReminderSectionCard(
@@ -261,12 +268,6 @@ fun AppleFullSettingsDialog(
                             onUpdateReminder = { enabled, hour, minute ->
                                 progressState.updateStudyReminder(enabled, hour, minute)
                             }
-                        )
-
-                        DailyGoalSectionCard(
-                            strings = strings,
-                            currentGoal = progressState.dailyGoalWords,
-                            onSelectGoal = { progressState.updateDailyGoal(it) }
                         )
 
                         EnglishLevelSectionCard(
@@ -987,6 +988,58 @@ private fun AppVersionSectionCard(
 }
 
 @Composable
+private fun <T> AppleSegmentedControl(
+    options: List<Pair<T, String>>,
+    selectedValue: T,
+    onSelect: (T) -> Unit,
+    fontSize: TextUnit = 13.sp
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = AppleSecondaryFill,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(3.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            options.forEach { (value, label) ->
+                val selected = selectedValue == value
+                Surface(
+                    shape = RoundedCornerShape(9.dp),
+                    color = if (selected) CardElevatedSurface else Color.Transparent,
+                    border = if (selected) {
+                        BorderStroke(
+                            1.dp,
+                            if (isDarkThemeActive) AppleBlue.copy(alpha = 0.65f) else Color.Black.copy(alpha = 0.08f)
+                        )
+                    } else null,
+                    shadowElevation = if (selected) 3.dp else 0.dp,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(9.dp))
+                        .clickable { onSelect(value) }
+                ) {
+                    Text(
+                        text = label,
+                        color = if (selected) AppleBlue else TextMuted,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                        fontSize = fontSize,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .padding(vertical = 9.dp, horizontal = 6.dp)
+                            .wrapContentWidth(Alignment.CenterHorizontally)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun AppearanceSectionCard(
     strings: UiStrings,
     isDarkMode: Boolean,
@@ -1009,43 +1062,11 @@ private fun AppearanceSectionCard(
                 color = TextDark
             )
 
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = AppleSecondaryFill,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(3.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    val options = listOf(false to strings.lightModeLabel, true to strings.darkModeLabel)
-                    options.forEach { (darkValue, label) ->
-                        val selected = isDarkMode == darkValue
-                        Surface(
-                            shape = RoundedCornerShape(9.dp),
-                            color = if (selected) CardElevatedSurface else Color.Transparent,
-                            border = if (selected) BorderStroke(1.dp, if (cz.slovickaspeak.app.ui.theme.isDarkThemeActive) AppleBlue.copy(alpha = 0.65f) else Color.Black.copy(alpha = 0.08f)) else null,
-                            shadowElevation = if (selected) 3.dp else 0.dp,
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(9.dp))
-                                .clickable { onSelectDarkMode(darkValue) }
-                        ) {
-                            Text(
-                                text = label,
-                                color = if (selected) AppleBlue else TextMuted,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                fontSize = 13.sp,
-                                modifier = Modifier
-                                    .padding(vertical = 9.dp)
-                                    .wrapContentWidth(Alignment.CenterHorizontally)
-                            )
-                        }
-                    }
-                }
-            }
+            AppleSegmentedControl(
+                options = listOf(false to strings.lightModeLabel, true to strings.darkModeLabel),
+                selectedValue = isDarkMode,
+                onSelect = onSelectDarkMode
+            )
         }
     }
 }
@@ -1072,10 +1093,11 @@ private fun AutoPronounceSectionCard(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(end = 12.dp)
+                    .padding(end = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
-                    text = if (strings.isCzech) "Zopakovat výslovnost" else "Repeat pronunciation",
+                    text = if (strings.isCzech) "🔊 Zopakovat výslovnost" else "🔊 Repeat Pronunciation",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextDark
@@ -1120,65 +1142,34 @@ private fun CardExitSpeedSectionCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text(
-                text = if (strings.isCzech) "📖 Zobrazení slova po odpovědi" else "📖 Word Display After Answer",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextDark
-            )
-            Text(
-                text = if (strings.isCzech) {
-                    "Zvolte, zda má karta počkat s odhaleným slovem, než ho hlas dočte, nebo odjet ihned."
-                } else {
-                    "Choose whether the card stays visible with the word while spoken aloud, or slides away immediately."
-                },
-                fontSize = 12.sp,
-                color = TextMuted,
-                lineHeight = 16.sp
-            )
-
-            Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = SurfaceBg,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    val options = listOf(
-                        true to (if (strings.isCzech) "Číst při výslovnosti" else "Hold & read"),
-                        false to (if (strings.isCzech) "Rychle bez ukázání" else "Fast, no reveal")
-                    )
-                    options.forEach { (isHoldMode, label) ->
-                        val selected = pauseWhileSpeaking == isHoldMode
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = if (selected) CardElevatedSurface else Color.Transparent,
-                            border = if (selected) BorderStroke(1.dp, if (isDarkThemeActive) AppleBlue.copy(alpha = 0.6f) else Color.Black.copy(alpha = 0.08f)) else null,
-                            shadowElevation = if (selected) 2.dp else 0.dp,
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(10.dp))
-                                .clickable { onSelectPauseWhileSpeaking(isHoldMode) }
-                        ) {
-                            Text(
-                                text = label,
-                                color = if (selected) AppleBlue else TextMuted,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                fontSize = 12.5.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier
-                                    .padding(vertical = 9.dp, horizontal = 6.dp)
-                                    .wrapContentWidth(Alignment.CenterHorizontally)
-                            )
-                        }
-                    }
-                }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = if (strings.isCzech) "📖 Zobrazení slova po odpovědi" else "📖 Word Display After Answer",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextDark
+                )
+                Text(
+                    text = if (strings.isCzech) {
+                        "Zvolte, zda se po odjezdu karty ukáže bounce okno se slovem při čtení, nebo ihned přijede další."
+                    } else {
+                        "Choose whether to show a bounce bubble with the word while spoken aloud, or jump straight to the next card."
+                    },
+                    fontSize = 12.sp,
+                    color = TextMuted,
+                    lineHeight = 16.sp
+                )
             }
+
+            AppleSegmentedControl(
+                options = listOf(
+                    true to (if (strings.isCzech) "Číst při výslovnosti" else "Read & bounce"),
+                    false to (if (strings.isCzech) "Rychle bez ukázání" else "Fast, no reveal")
+                ),
+                selectedValue = pauseWhileSpeaking,
+                onSelect = onSelectPauseWhileSpeaking,
+                fontSize = 12.5.sp
+            )
         }
     }
 }
@@ -1529,42 +1520,13 @@ private fun LanguageSelectionSectionCard(
                 color = TextDark
             )
 
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = AppleSecondaryFill,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(3.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    cz.slovickaspeak.app.model.LearningLanguage.entries.forEach { lang ->
-                        val selected = selectedLanguage == lang
-                        Surface(
-                            shape = RoundedCornerShape(9.dp),
-                            color = if (selected) CardElevatedSurface else Color.Transparent,
-                            border = if (selected) BorderStroke(1.dp, if (cz.slovickaspeak.app.ui.theme.isDarkThemeActive) AppleBlue.copy(alpha = 0.65f) else Color.Black.copy(alpha = 0.08f)) else null,
-                            shadowElevation = if (selected) 3.dp else 0.dp,
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(9.dp))
-                                .clickable { onSelectLanguage(lang) }
-                        ) {
-                            Text(
-                                text = "${lang.flagEmoji} ${lang.localizedTitle(strings.isCzech)}",
-                                color = if (selected) AppleBlue else TextMuted,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                fontSize = 13.sp,
-                                modifier = Modifier
-                                    .padding(vertical = 9.dp)
-                                    .wrapContentWidth(Alignment.CenterHorizontally)
-                            )
-                        }
-                    }
-                }
-            }
+            AppleSegmentedControl(
+                options = cz.slovickaspeak.app.model.LearningLanguage.entries.map {
+                    it to "${it.flagEmoji} ${it.localizedTitle(strings.isCzech)}"
+                },
+                selectedValue = selectedLanguage,
+                onSelect = onSelectLanguage
+            )
         }
     }
 }
@@ -1593,42 +1555,14 @@ private fun StudyDirectionSectionCard(
                 color = TextDark
             )
 
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = AppleSecondaryFill,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(3.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    cz.slovickaspeak.app.model.StudyDirection.entries.forEach { dir ->
-                        val selected = selectedDirection == dir
-                        Surface(
-                            shape = RoundedCornerShape(9.dp),
-                            color = if (selected) CardElevatedSurface else Color.Transparent,
-                            border = if (selected) BorderStroke(1.dp, if (cz.slovickaspeak.app.ui.theme.isDarkThemeActive) AppleBlue.copy(alpha = 0.65f) else Color.Black.copy(alpha = 0.08f)) else null,
-                            shadowElevation = if (selected) 3.dp else 0.dp,
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(9.dp))
-                                .clickable { onSelectDirection(dir) }
-                        ) {
-                            Text(
-                                text = dir.shortLabel(selectedLanguage),
-                                color = if (selected) AppleBlue else TextMuted,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                fontSize = 12.5.sp,
-                                modifier = Modifier
-                                    .padding(vertical = 9.dp)
-                                    .wrapContentWidth(Alignment.CenterHorizontally)
-                            )
-                        }
-                    }
-                }
-            }
+            AppleSegmentedControl(
+                options = cz.slovickaspeak.app.model.StudyDirection.entries.map {
+                    it to it.shortLabel(selectedLanguage)
+                },
+                selectedValue = selectedDirection,
+                onSelect = onSelectDirection,
+                fontSize = 12.5.sp
+            )
         }
     }
 }

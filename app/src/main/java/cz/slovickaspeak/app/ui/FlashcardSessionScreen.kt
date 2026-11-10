@@ -31,6 +31,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -703,6 +704,10 @@ fun FlashcardSessionScreen(
                         showHintTranslation = isTranslationRevealed,
                         onToggleHint = handleToggleHint,
                         onPlayAudio = handlePlayAudio,
+                        autoPronounceEnabled = progressState.autoPronounceEnabled,
+                        onToggleAutoPronounce = {
+                            progressState.setAutoPronounce(!progressState.autoPronounceEnabled)
+                        },
                         onDragDelta = handleDragDelta,
                         onDragEnd = handleDragEnd,
                         isReversed = isReversedCard,
@@ -787,6 +792,10 @@ fun FlashcardSessionScreen(
                     showHintTranslation = isTranslationRevealed,
                     onToggleHint = handleToggleHint,
                     onPlayAudio = handlePlayAudio,
+                    autoPronounceEnabled = progressState.autoPronounceEnabled,
+                    onToggleAutoPronounce = {
+                        progressState.setAutoPronounce(!progressState.autoPronounceEnabled)
+                    },
                     onDragDelta = handleDragDelta,
                     onDragEnd = handleDragEnd,
                     isReversed = isReversedCard,
@@ -1457,62 +1466,21 @@ private fun AppleSessionTopBar(
                     color = TextDark
                 )
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // Settings icon button
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(SurfaceBg)
+                        .clickable { onOpenSettings() },
+                    contentAlignment = Alignment.Center
                 ) {
-                    // Auto-repeat pronunciation toggle button
-                    val isAutoRepeatOn = progressState.autoPronounceEnabled
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (isAutoRepeatOn) AppleBlue.copy(alpha = 0.14f) else SurfaceBg,
-                        border = BorderStroke(
-                            width = if (isAutoRepeatOn) 1.2.dp else 0.5.dp,
-                            color = if (isAutoRepeatOn) AppleBlue else CardBorderGray.copy(alpha = 0.6f)
-                        ),
-                        modifier = Modifier
-                            .height(32.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable {
-                                progressState.setAutoPronounce(!isAutoRepeatOn)
-                            }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                                contentDescription = if (strings.isCzech) "Automaticky zopakovat výslovnost" else "Repeat pronunciation",
-                                tint = if (isAutoRepeatOn) AppleBlue else TextMuted,
-                                modifier = Modifier.size(15.dp)
-                            )
-                            Text(
-                                text = "AUTO",
-                                fontSize = 10.5.sp,
-                                fontWeight = if (isAutoRepeatOn) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isAutoRepeatOn) AppleBlue else TextMuted
-                            )
-                        }
-                    }
-
-                    // Settings icon button
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(SurfaceBg)
-                            .clickable { onOpenSettings() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Tune,
-                            contentDescription = strings.settingsAndLeaderboard,
-                            tint = TextMuted,
-                            modifier = Modifier.size(17.dp)
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.Tune,
+                        contentDescription = strings.settingsAndLeaderboard,
+                        tint = TextMuted,
+                        modifier = Modifier.size(17.dp)
+                    )
                 }
             }
 
@@ -1554,6 +1522,8 @@ private fun Flashcard3DStackArea(
     showHintTranslation: Boolean,
     onToggleHint: () -> Unit,
     onPlayAudio: () -> Unit,
+    autoPronounceEnabled: Boolean = false,
+    onToggleAutoPronounce: () -> Unit = {},
     onDragDelta: (Float) -> Unit,
     onDragEnd: () -> Unit,
     modifier: Modifier = Modifier,
@@ -1620,6 +1590,8 @@ private fun Flashcard3DStackArea(
             showHintTranslation = showHintTranslation,
             onToggleHint = onToggleHint,
             onPlayAudio = onPlayAudio,
+            autoPronounceEnabled = autoPronounceEnabled,
+            onToggleAutoPronounce = onToggleAutoPronounce,
             onDragDelta = onDragDelta,
             onDragEnd = onDragEnd,
             isReversed = isReversed
@@ -1926,6 +1898,8 @@ private fun SwipeableVocabCard(
     showHintTranslation: Boolean,
     onToggleHint: () -> Unit,
     onPlayAudio: () -> Unit,
+    autoPronounceEnabled: Boolean = false,
+    onToggleAutoPronounce: () -> Unit = {},
     onDragDelta: (Float) -> Unit,
     onDragEnd: () -> Unit,
     isReversed: Boolean = false
@@ -2088,19 +2062,34 @@ private fun SwipeableVocabCard(
                         )
                     }
                 } else {
-                    IconButton(
-                        onClick = onPlayAudio,
+                    Surface(
+                        shape = CircleShape,
+                        color = if (autoPronounceEnabled) AppleBlue.copy(alpha = 0.14f) else SurfaceBg,
+                        border = BorderStroke(
+                            width = if (autoPronounceEnabled) 1.2.dp else 0.5.dp,
+                            color = if (autoPronounceEnabled) AppleBlue else CardBorderGray.copy(alpha = 0.6f)
+                        ),
                         modifier = Modifier
                             .size(34.dp)
                             .clip(CircleShape)
-                            .background(SurfaceBg)
+                            .clickable { onToggleAutoPronounce() }
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                            contentDescription = null,
-                            tint = AppleBlue,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = if (autoPronounceEnabled) {
+                                    Icons.AutoMirrored.Filled.VolumeUp
+                                } else {
+                                    Icons.AutoMirrored.Filled.VolumeOff
+                                },
+                                contentDescription = if (strings.isCzech) {
+                                    "Automaticky zopakovat výslovnost"
+                                } else {
+                                    "Repeat pronunciation automatically"
+                                },
+                                tint = if (autoPronounceEnabled) AppleBlue else TextMuted,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }
