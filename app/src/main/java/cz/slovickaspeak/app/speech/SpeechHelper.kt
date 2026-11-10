@@ -805,9 +805,12 @@ class SpeechSessionController(
     }
 
     private var pendingTtsOnDoneCallback: (() -> Unit)? = null
+    @Volatile
+    private var activeUtteranceId: String? = null
 
     private val ttsFallbackRunnable = Runnable {
         if (isTtsSpeaking) {
+            activeUtteranceId = null
             isTtsSpeaking = false
             isPausedForTts = false
             val cb = pendingTtsOnDoneCallback
@@ -872,10 +875,32 @@ class SpeechSessionController(
                 tts?.setSpeechRate(0.95f)
                 tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                     override fun onStart(utteranceId: String?) {
-                        isTtsSpeaking = true
+                        if (utteranceId != null && utteranceId == activeUtteranceId) {
+                            isTtsSpeaking = true
+                        }
                     }
 
                     override fun onDone(utteranceId: String?) {
+                        if (activeUtteranceId != null && utteranceId != activeUtteranceId) return
+                        activeUtteranceId = null
+                        isTtsSpeaking = false
+                        isPausedForTts = false
+                        mainHandler.removeCallbacks(ttsFallbackRunnable)
+                        val cb = pendingTtsOnDoneCallback
+                        pendingTtsOnDoneCallback = null
+                        mainHandler.post {
+                            cb?.invoke()
+                            // Allow 420ms after onDone so hardware speaker buffer & room echo fully decay before mic reopens
+                            if (shouldStayListening && !isPausedForTransition) {
+                                scheduleListenRestart(420L)
+                            }
+                        }
+                    }
+
+                    @Deprecated("Deprecated in Java")
+                    override fun onError(utteranceId: String?) {
+                        if (activeUtteranceId != null && utteranceId != activeUtteranceId) return
+                        activeUtteranceId = null
                         isTtsSpeaking = false
                         isPausedForTts = false
                         mainHandler.removeCallbacks(ttsFallbackRunnable)
@@ -884,20 +909,8 @@ class SpeechSessionController(
                         mainHandler.post {
                             cb?.invoke()
                             if (shouldStayListening && !isPausedForTransition) {
-                                scheduleListenRestart(140L)
+                                scheduleListenRestart(350L)
                             }
-                        }
-                    }
-
-                    @Deprecated("Deprecated in Java")
-                    override fun onError(utteranceId: String?) {
-                        isTtsSpeaking = false
-                        isPausedForTts = false
-                        mainHandler.removeCallbacks(ttsFallbackRunnable)
-                        val cb = pendingTtsOnDoneCallback
-                        pendingTtsOnDoneCallback = null
-                        mainHandler.post {
-                            cb?.invoke()
                         }
                     }
                 })
@@ -1003,7 +1016,8 @@ class SpeechSessionController(
             accumulatedPartialsInCycle.clear()
         }
         val spokenText = text.replace(" – ", ", ").replace(" - ", ", ")
-        val utteranceId = "vocab_tts_${System.currentTimeMillis()}"
+        val utteranceId = "vocab_tts_${System.nanoTime()}"
+        activeUtteranceId = utteranceId
         tts?.speak(spokenText, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
         val fallbackTimeoutMs = 1450L + (spokenText.length * 45L).coerceAtMost(2400L)
         mainHandler.postDelayed(ttsFallbackRunnable, fallbackTimeoutMs)

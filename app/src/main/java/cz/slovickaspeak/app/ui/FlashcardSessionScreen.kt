@@ -458,10 +458,10 @@ fun FlashcardSessionScreen(
                     if (isFinal) {
                         triggerWrongSpokenFlash(snippet, targetWordToPronounce = word, pronounceCorrection = true)
                     } else if (!WordMatcher.isPrefixOfTarget(candidates, word, expectCzech = expectCzech)) {
-                        // Only flash UI after a quiet 950ms pause if the session is still open in a noisy room;
-                        // NEVER cancels the recognizer or triggers TTS so mid-word speech is never interrupted!
+                        // Wait well past Android's 1100ms complete-silence window + ASR finalization latency
+                        // before flashing red on a non-final partial (prevents red-then-green flash before onResults).
                         wrongWordDebounceJob = coroutineScope.launch {
-                            delay(950L)
+                            delay(2200L)
                             triggerWrongSpokenFlash(snippet, targetWordToPronounce = word, pronounceCorrection = false)
                         }
                     }
