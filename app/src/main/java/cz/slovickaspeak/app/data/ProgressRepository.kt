@@ -124,6 +124,15 @@ class ProgressStateHolder(context: Context) {
     var autoPronounceEnabled by mutableStateOf(prefs.getBoolean("auto_pronounce_enabled", true))
         private set
 
+    var studyReminderEnabled by mutableStateOf(prefs.getBoolean("study_reminder_enabled", false))
+        private set
+
+    var studyReminderHour by mutableIntStateOf(prefs.getInt("study_reminder_hour", 19).coerceIn(0, 23))
+        private set
+
+    var studyReminderMinute by mutableIntStateOf(prefs.getInt("study_reminder_minute", 0).coerceIn(0, 59))
+        private set
+
     var selectedLanguage by mutableStateOf(
         prefs.getString("selected_learning_language", null)?.let { saved ->
             cz.slovickaspeak.app.model.LearningLanguage.entries.find { it.name == saved }
@@ -380,6 +389,14 @@ class ProgressStateHolder(context: Context) {
     init {
         refreshFromCloud()
         checkForOtaUpdate(manual = false)
+        if (studyReminderEnabled) {
+            cz.slovickaspeak.app.notifications.StudyReminderScheduler.scheduleOrCancel(
+                context = appContext,
+                enabled = true,
+                hour = studyReminderHour,
+                minute = studyReminderMinute
+            )
+        }
     }
 
     fun getOrCreateDeviceInviteCode(): String {
@@ -477,6 +494,29 @@ class ProgressStateHolder(context: Context) {
     fun setAutoPronounce(enabled: Boolean) {
         autoPronounceEnabled = enabled
         prefs.edit().putBoolean("auto_pronounce_enabled", enabled).apply()
+    }
+
+    fun updateStudyReminder(
+        enabled: Boolean,
+        hour: Int = studyReminderHour,
+        minute: Int = studyReminderMinute
+    ) {
+        val h = hour.coerceIn(0, 23)
+        val m = minute.coerceIn(0, 59)
+        studyReminderEnabled = enabled
+        studyReminderHour = h
+        studyReminderMinute = m
+        prefs.edit()
+            .putBoolean("study_reminder_enabled", enabled)
+            .putInt("study_reminder_hour", h)
+            .putInt("study_reminder_minute", m)
+            .apply()
+        cz.slovickaspeak.app.notifications.StudyReminderScheduler.scheduleOrCancel(
+            context = appContext,
+            enabled = enabled,
+            hour = h,
+            minute = m
+        )
     }
 
     fun updateSelectedLanguage(language: cz.slovickaspeak.app.model.LearningLanguage) {

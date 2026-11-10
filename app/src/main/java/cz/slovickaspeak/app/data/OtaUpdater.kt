@@ -131,7 +131,6 @@ object OtaUpdater {
             val cleanRemoteVersion = tagName.removePrefix("v").removePrefix("V").trim()
             val releaseTitle = json.optString("name", tagName).ifBlank { "v$cleanRemoteVersion" }
             val rawChangelog = json.optString("body", "").trim()
-            val localizedChangelog = extractLocalizedChangelog(rawChangelog, isCzech)
             val publishedAt = json.optString("published_at", "").take(10)
 
             val assets = json.optJSONArray("assets")
@@ -177,7 +176,7 @@ object OtaUpdater {
                         tagName = tagName,
                         versionName = cleanRemoteVersion,
                         title = releaseTitle,
-                        changelog = localizedChangelog,
+                        changelog = rawChangelog,
                         apkDownloadUrl = chosenUrl,
                         apkFileName = chosenName,
                         apkSizeBytes = chosenSize,

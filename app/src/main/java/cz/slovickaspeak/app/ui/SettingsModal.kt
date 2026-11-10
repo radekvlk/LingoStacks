@@ -1,9 +1,13 @@
 package cz.slovickaspeak.app.ui
 
+import android.Manifest
 import android.accounts.AccountManager
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.core.content.ContextCompat
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
@@ -211,6 +215,16 @@ fun AppleFullSettingsDialog(
                             strings = strings,
                             autoPronounceEnabled = progressState.autoPronounceEnabled,
                             onToggleAutoPronounce = { progressState.setAutoPronounce(it) }
+                        )
+
+                        StudyReminderSectionCard(
+                            strings = strings,
+                            reminderEnabled = progressState.studyReminderEnabled,
+                            reminderHour = progressState.studyReminderHour,
+                            reminderMinute = progressState.studyReminderMinute,
+                            onUpdateReminder = { enabled, hour, minute ->
+                                progressState.updateStudyReminder(enabled, hour, minute)
+                            }
                         )
 
                         DailyGoalSectionCard(
@@ -978,6 +992,244 @@ private fun AutoPronounceSectionCard(
                     uncheckedTrackColor = CardBorderGray
                 )
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun StudyReminderSectionCard(
+    strings: UiStrings,
+    reminderEnabled: Boolean,
+    reminderHour: Int,
+    reminderMinute: Int,
+    onUpdateReminder: (Boolean, Int, Int) -> Unit
+) {
+    val context = LocalContext.current
+    var showTimePickerDialog by remember { mutableStateOf(false) }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            onUpdateReminder(true, reminderHour, reminderMinute)
+        }
+    }
+
+    val formattedTime = String.format(java.util.Locale.US, "%02d:%02d", reminderHour, reminderMinute)
+
+    if (showTimePickerDialog) {
+        val pickerState = rememberTimePickerState(
+            initialHour = reminderHour,
+            initialMinute = reminderMinute,
+            is24Hour = true
+        )
+        Dialog(onDismissRequest = { showTimePickerDialog = false }) {
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = CardSurface,
+                border = BorderStroke(0.5.dp, CardBorderGray),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(20.dp, RoundedCornerShape(24.dp))
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Text(
+                        text = if (strings.isCzech) "Vybrat čas připomenutí" else "Choose reminder time",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextDark
+                    )
+
+                    TimePicker(
+                        state = pickerState,
+                        colors = TimePickerDefaults.colors(
+                            clockDialColor = SurfaceBg,
+                            selectorColor = AppleBlue,
+                            timeSelectorSelectedContainerColor = AppleBlueTint,
+                            timeSelectorUnselectedContainerColor = SurfaceBg,
+                            timeSelectorSelectedContentColor = AppleBlue,
+                            timeSelectorUnselectedContentColor = TextDark
+                        )
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { showTimePickerDialog = false },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = if (strings.isCzech) "Zrušit" else "Cancel",
+                                color = TextMuted,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                onUpdateReminder(true, pickerState.hour, pickerState.minute)
+                                showTimePickerDialog = false
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = AppleBlue),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = if (strings.isCzech) "Uložit" else "Save",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = CardSurface,
+        border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 12.dp)
+                ) {
+                    Text(
+                        text = if (strings.isCzech) "🔔 Denní připomenutí učení" else "🔔 Daily Study Reminder",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextDark
+                    )
+                    Text(
+                        text = if (strings.isCzech) {
+                            "Upozorní tě ve zvolený čas, pokud ještě nemáš splněný denní cíl."
+                        } else {
+                            "Notifies you at your chosen time if today's daily goal isn't done yet."
+                        },
+                        fontSize = 12.sp,
+                        color = TextMuted,
+                        lineHeight = 16.sp
+                    )
+                }
+
+                Switch(
+                    checked = reminderEnabled,
+                    onCheckedChange = { wantEnabled ->
+                        if (!wantEnabled) {
+                            onUpdateReminder(false, reminderHour, reminderMinute)
+                        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                            ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.POST_NOTIFICATIONS
+                            ) != PackageManager.PERMISSION_GRANTED
+                        ) {
+                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else {
+                            onUpdateReminder(true, reminderHour, reminderMinute)
+                        }
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = AppleBlue,
+                        uncheckedThumbColor = Color.White,
+                        uncheckedTrackColor = CardBorderGray
+                    )
+                )
+            }
+
+            AnimatedVisibility(
+                visible = reminderEnabled,
+                enter = expandVertically(
+                    animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow)
+                ) + fadeIn(tween(180)),
+                exit = shrinkVertically(animationSpec = tween(150)) + fadeOut(tween(120))
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = SurfaceBg,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .clickable { showTimePickerDialog = true }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (strings.isCzech) "⏰ Čas připomenutí" else "⏰ Reminder time",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TextDark
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = AppleBlueTint,
+                                border = BorderStroke(0.8.dp, AppleBlue.copy(alpha = 0.45f))
+                            ) {
+                                Text(
+                                    text = "$formattedTime  ▾",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AppleBlue,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // Quick 1-tap time presets
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        val presets = listOf(8 to 30, 12 to 30, 18 to 0, 20 to 30)
+                        presets.forEach { (h, m) ->
+                            val isSelected = reminderHour == h && reminderMinute == m
+                            val label = String.format(java.util.Locale.US, "%02d:%02d", h, m)
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (isSelected) AppleBlue else SurfaceBg,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable { onUpdateReminder(true, h, m) }
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) Color.White else TextMuted,
+                                    modifier = Modifier
+                                        .padding(vertical = 7.dp)
+                                        .wrapContentWidth(Alignment.CenterHorizontally)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

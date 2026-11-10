@@ -26,9 +26,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -111,8 +109,6 @@ fun DeckSelectionScreen(
                     item {
                         DeckHeaderRow(
                             strings = strings,
-                            versionName = progressState.appVersionName,
-                            githubRepoSlug = progressState.otaRepoSlug,
                             onOpenLeaderboard = {
                                 settingsInitialTab = 1
                                 showSettingsDialog = true
@@ -197,8 +193,6 @@ fun DeckSelectionScreen(
  item {
  DeckHeaderRow(
  strings = strings,
- versionName = progressState.appVersionName,
- githubRepoSlug = progressState.otaRepoSlug,
  onOpenLeaderboard = {
  settingsInitialTab = 1
  showSettingsDialog = true
@@ -334,65 +328,22 @@ private fun OtaUpdateBannerCard(
 @Composable
 private fun DeckHeaderRow(
     strings: UiStrings,
-    versionName: String,
-    githubRepoSlug: String,
     onOpenLeaderboard: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
-    val uriHandler = LocalUriHandler.current
-    val githubReleasesUrl = "https://github.com/$githubRepoSlug/releases/latest"
-
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    text = strings.appHeaderSubtitle,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AppleBlue,
-                    letterSpacing = 1.1.sp
-                )
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = AppleBlue.copy(alpha = 0.12f)
-                ) {
-                    Text(
-                        text = "v$versionName",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AppleBlue,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
-                }
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = AppleGreen.copy(alpha = 0.14f),
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .clickable {
-                            try {
-                                uriHandler.openUri(githubReleasesUrl)
-                            } catch (_: Exception) {
-                            }
-                        }
-                ) {
-                    Text(
-                        text = "GitHub ↗",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AppleGreenDark,
-                        textDecoration = TextDecoration.Underline,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
-                }
-            }
+            Text(
+                text = strings.appHeaderSubtitle,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = AppleBlue,
+                letterSpacing = 1.1.sp
+            )
             Text(
                 text = strings.appHeaderTitle,
                 fontSize = 32.sp,
@@ -474,35 +425,31 @@ private fun DeckGoalIndicatorCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // Current Language Pill (Tap opens settings if user wants to switch)
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = SurfaceBg,
+                    border = BorderStroke(0.5.dp, CardBorderGray),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onOpenSettings() }
                 ) {
-                    // Current Language Pill (Tap opens settings if user wants to switch)
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = SurfaceBg,
-                        border = BorderStroke(0.5.dp, CardBorderGray),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { onOpenSettings() }
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                text = "${selectedLanguage.flagEmoji} ${selectedLanguage.localizedTitle(strings.isCzech)}",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextDark
-                            )
-                        }
+                        Text(
+                            text = "${selectedLanguage.flagEmoji} ${selectedLanguage.localizedTitle(strings.isCzech)}",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextDark
+                        )
                     }
+                }
 
-                    // Top-left Dropdown ("výběr vlevo nahoře v rozevírací liště")
-                    Box {
+                // CEFR Level Dropdown
+                Box {
                         Surface(
                             shape = RoundedCornerShape(12.dp),
                             color = SurfaceBg,
@@ -565,11 +512,35 @@ private fun DeckGoalIndicatorCard(
                     }
                 }
 
+            // Clean single-line row for Today Words progress & remaining count
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    text = strings.dailyGoalProgress(completedTodayWords, dailyGoalWords),
-                    fontSize = 13.sp,
+                    text = if (strings.isCzech) {
+                        "Dnes: $completedTodayWords / $dailyGoalWords slov"
+                    } else {
+                        "Today: $completedTodayWords / $dailyGoalWords words"
+                    },
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (isGoalReached) AppleGreen else TextDark
+                    color = if (isGoalReached) AppleGreen else TextDark,
+                    maxLines = 1
+                )
+
+                val remaining = (dailyGoalWords - completedTodayWords).coerceAtLeast(0)
+                Text(
+                    text = when {
+                        isGoalReached -> if (strings.isCzech) "Cíl splněn! 🎉" else "Goal reached! 🎉"
+                        strings.isCzech -> "zbývá $remaining"
+                        else -> "$remaining left"
+                    },
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (isGoalReached) AppleGreen else AppleBlue,
+                    maxLines = 1
                 )
             }
 
