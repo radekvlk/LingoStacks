@@ -608,7 +608,7 @@ class SpeechSessionController(
     private val errorCallback: (String?) -> Unit
 ) {
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-    private var isSystemMuted = false
+    private val mutedStreams = mutableSetOf<Int>()
     private val mainHandler = Handler(Looper.getMainLooper())
     private var speechRecognizer: SpeechRecognizer? = null
     private var tts: TextToSpeech? = null
@@ -760,19 +760,36 @@ class SpeechSessionController(
 
     private fun muteSystemSounds() {
         mainHandler.removeCallbacks(restoreSystemSoundsRunnable)
-        if (isSystemMuted) return
         val am = audioManager ?: return
+        val candidateStreams = mutableListOf(
+            AudioManager.STREAM_SYSTEM,
+            AudioManager.STREAM_NOTIFICATION,
+            AudioManager.STREAM_DTMF,
+            AudioManager.STREAM_ACCESSIBILITY
+        )
         try {
-            // Mutes ONLY system UI clicks/earcons and notification tones.
-            // NEVER touches STREAM_MUSIC so media audio and Samsung microphone HAL remain 100% active!
-            am.adjustStreamVolume(AudioManager.STREAM_SYSTEM, AudioManager.ADJUST_MUTE, 0)
-            am.adjustStreamVolume(AudioManager.STREAM_NOTIFICATION, AudioManager.ADJUST_MUTE, 0)
-            isSystemMuted = true
+            if (am.ringerMode == AudioManager.RINGER_MODE_NORMAL) {
+                candidateStreams.add(AudioManager.STREAM_RING)
+            }
         } catch (_: Throwable) {
+        }
+
+        // Mute each earcon stream in its own try/catch so a DND SecurityException on
+        // NOTIFICATION/RING never blocks muting SYSTEM/DTMF/ACCESSIBILITY.
+        // Re-checks isStreamMute every cycle so system resets cannot restore beeps mid-session.
+        // NEVER touches STREAM_MUSIC so TTS pronunciation and Samsung mic HAL remain active.
+        for (stream in candidateStreams) {
+            try {
+                if (!am.isStreamMute(stream)) {
+                    am.adjustStreamVolume(stream, AudioManager.ADJUST_MUTE, 0)
+                    mutedStreams.add(stream)
+                }
+            } catch (_: Throwable) {
+            }
         }
     }
 
-    private fun restoreSystemSounds(delayMs: Long = 1350L) {
+    private fun restoreSystemSounds(delayMs: Long = 1500L) {
         mainHandler.removeCallbacks(restoreSystemSoundsRunnable)
         if (delayMs <= 0L) {
             restoreSystemSoundsNow()
@@ -782,13 +799,17 @@ class SpeechSessionController(
     }
 
     private fun restoreSystemSoundsNow() {
-        if (!isSystemMuted) return
+        if (mutedStreams.isEmpty()) return
         val am = audioManager ?: return
-        try {
-            am.adjustStreamVolume(AudioManager.STREAM_SYSTEM, AudioManager.ADJUST_UNMUTE, 0)
-            am.adjustStreamVolume(AudioManager.STREAM_NOTIFICATION, AudioManager.ADJUST_UNMUTE, 0)
-            isSystemMuted = false
-        } catch (_: Throwable) {
+        val toRestore = mutedStreams.toList()
+        mutedStreams.clear()
+        for (stream in toRestore) {
+            try {
+                if (am.isStreamMute(stream)) {
+                    am.adjustStreamVolume(stream, AudioManager.ADJUST_UNMUTE, 0)
+                }
+            } catch (_: Throwable) {
+            }
         }
     }
 
@@ -817,6 +838,7 @@ class SpeechSessionController(
         mainHandler.removeCallbacks(ttsFallbackRunnable)
         if (shouldStayListening) {
             if (isCurrentlyListening || isStartingListen || isProcessingSpeech) {
+                muteSystemSounds()
                 try {
                     speechRecognizer?.cancel()
                 } catch (_: Exception) {
@@ -869,13 +891,14 @@ class SpeechSessionController(
         mainHandler.removeCallbacks(transitionFallbackRunnable)
         mainHandler.removeCallbacks(ttsFallbackRunnable)
         mainHandler.post {
+            muteSystemSounds()
             try {
                 speechRecognizer?.cancel()
             } catch (_: Exception) {
             }
             accumulatedPartialsInCycle.clear()
-            // Keep system sounds muted for 1350ms so the recognizer teardown/cancel earcon is completely silenced!
-            restoreSystemSounds(1350L)
+            // Keep system sounds muted for 1500ms so the recognizer teardown/cancel earcon is completely silenced!
+            restoreSystemSounds(1500L)
             listeningCallback(false)
             rmsCallback(0f)
         }
@@ -892,9 +915,12 @@ class SpeechSessionController(
         mainHandler.removeCallbacks(restartListenRunnable)
         mainHandler.removeCallbacks(transitionFallbackRunnable)
         mainHandler.post {
-            try {
-                speechRecognizer?.cancel()
-            } catch (_: Exception) {
+            if (isCurrentlyListening || isStartingListen || isProcessingSpeech) {
+                muteSystemSounds()
+                try {
+                    speechRecognizer?.cancel()
+                } catch (_: Exception) {
+                }
             }
             isCurrentlyListening = false
             isStartingListen = false
@@ -927,6 +953,7 @@ class SpeechSessionController(
 
     private fun recreateRecognizerAndListen() {
         mainHandler.removeCallbacks(restartListenRunnable)
+        muteSystemSounds()
         try {
             speechRecognizer?.cancel()
             speechRecognizer?.destroy()
@@ -1155,6 +1182,7 @@ class SpeechSessionController(
         if (!shouldStayListening || isPausedForTts || isPausedForTransition || isTtsSpeaking) return
         if (isCurrentlyListening || isStartingListen || isProcessingSpeech) return
         mainHandler.removeCallbacks(restartListenRunnable)
+        muteSystemSounds()
         ensureRecognizer()
         val recognizer = speechRecognizer ?: return
         isStartingListen = true

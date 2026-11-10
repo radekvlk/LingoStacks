@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cz.slovickaspeak.app.model.AnswerMethod
 import cz.slovickaspeak.app.model.CardAttemptResult
+import cz.slovickaspeak.app.model.StudyDirection
 import cz.slovickaspeak.app.model.VocabDeck
 import cz.slovickaspeak.app.model.VocabWord
 import cz.slovickaspeak.app.speech.SpeechSessionController
@@ -364,7 +365,13 @@ fun FlashcardSessionScreen(
                 cardActiveTimestamp = SystemClock.uptimeMillis()
                 feedbackState = CardFeedbackState.NEUTRAL
                 keepScreenActive()
-                if (hasMicPermState && micAutoState) {
+                val nextIsReversed = when (progressState.studyDirection) {
+                    StudyDirection.NATIVE_TO_FOREIGN -> false
+                    StudyDirection.FOREIGN_TO_NATIVE -> true
+                    StudyDirection.MIXED -> (currentIndex % 2 == 1)
+                }
+                val willAutoSpeakOnArrival = nextIsReversed && progressState.autoPronounceEnabled
+                if (hasMicPermState && micAutoState && !willAutoSpeakOnArrival) {
                     speechControllerRef?.startForNewCard()
                 }
             }
@@ -457,7 +464,11 @@ fun FlashcardSessionScreen(
         controller.listenInCzech = isReversedCard
         if (isReversedCard && progressState.autoPronounceEnabled && currentWord != null) {
             delay(180L)
-            controller.speakEnglish(currentWord.english)
+            controller.speakEnglish(currentWord.english) {
+                if (hasMicPermState && micAutoState) {
+                    controller.startForNewCard()
+                }
+            }
         }
     }
 

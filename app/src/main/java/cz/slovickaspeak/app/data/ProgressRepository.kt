@@ -477,6 +477,7 @@ class ProgressStateHolder(context: Context) {
         }
 
     init {
+        ioExecutor.execute { OtaUpdater.cleanupCachedUpdates(appContext) }
         refreshFromCloud()
         checkForOtaUpdate(manual = false)
         if (studyReminderEnabled) {

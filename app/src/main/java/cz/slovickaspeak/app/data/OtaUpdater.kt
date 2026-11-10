@@ -325,6 +325,21 @@ object OtaUpdater {
     }
 
     /**
+     * Removes any downloaded OTA APK installers from cacheDir/updates/ once no longer needed.
+     */
+    fun cleanupCachedUpdates(context: Context) {
+        try {
+            val updatesDir = File(context.cacheDir, "updates")
+            if (updatesDir.exists() && updatesDir.isDirectory) {
+                updatesDir.listFiles()?.forEach { file ->
+                    if (file.isFile) file.delete()
+                }
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    /**
      * Downloads the APK from GitHub CDN (handling cross-host 302 redirects) into cacheDir/updates/.
      */
     fun downloadApk(
@@ -332,11 +347,9 @@ object OtaUpdater {
         release: OtaReleaseInfo,
         onProgress: (downloadedBytes: Long, totalBytes: Long) -> Unit
     ): File {
+        cleanupCachedUpdates(context)
         val updatesDir = File(context.cacheDir, "updates").apply {
             if (!exists()) mkdirs()
-        }
-        updatesDir.listFiles()?.forEach { old ->
-            if (old.isFile) old.delete()
         }
 
         val targetFile = File(updatesDir, "LingoWords_v${release.versionName}.apk")
