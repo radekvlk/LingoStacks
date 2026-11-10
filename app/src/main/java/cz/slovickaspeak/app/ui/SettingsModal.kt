@@ -240,6 +240,7 @@ fun AppleFullSettingsDialog(
                         DailyLeaderboardSectionCard(
                             strings = strings,
                             leaderboard = progressState.dailyLeaderboard,
+                            isSignedIn = progressState.googleUser != null,
                             isSyncing = progressState.isSyncingCloud,
                             onRefresh = { progressState.refreshFromCloud() }
                         )
@@ -287,6 +288,7 @@ fun AppleFullSettingsDialog(
 fun DailyLeaderboardSectionCard(
     strings: UiStrings = rememberAppStrings(),
     leaderboard: List<FriendProgress>,
+    isSignedIn: Boolean = true,
     isSyncing: Boolean,
     onRefresh: () -> Unit
 ) {
@@ -316,22 +318,76 @@ fun DailyLeaderboardSectionCard(
                         color = TextDark
                     )
                     Text(
-                        text = if (strings.isCzech) "Klepni na hráče pro detail celkového pokroku" else "Tap a player for full overall progress",
+                        text = when {
+                            !isSignedIn -> if (strings.isCzech) {
+                                "Viditelné až po přihlášení do aplikace"
+                            } else {
+                                "Available after signing in"
+                            }
+                            strings.isCzech -> "Klepni na hráče pro detail celkového pokroku"
+                            else -> "Tap a player for full overall progress"
+                        },
                         fontSize = 11.sp,
                         color = TextMuted
                     )
                 }
 
-                IconButton(
-                    onClick = onRefresh,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = null,
-                        tint = if (isSyncing) AppleOrange else AppleBlue
-                    )
+                if (isSignedIn) {
+                    IconButton(
+                        onClick = onRefresh,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = null,
+                            tint = if (isSyncing) AppleOrange else AppleBlue
+                        )
+                    }
                 }
+            }
+
+            if (!isSignedIn) {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = AppleBlueTint.copy(alpha = 0.6f),
+                    border = BorderStroke(0.8.dp, AppleBlue.copy(alpha = 0.3f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = CardSurface,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(text = "🔒", fontSize = 16.sp)
+                            }
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = if (strings.isCzech) "Žebříček uvidíš až po přihlášení" else "Sign in to view the leaderboard",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextDark
+                            )
+                            Text(
+                                text = if (strings.isCzech) {
+                                    "Ostatní účastníky a denní porovnání zobrazíme, jakmile se níže přihlásíš svým Google účtem."
+                                } else {
+                                    "Other learners and daily rankings will appear once you sign in with your Google account below."
+                                },
+                                fontSize = 12.sp,
+                                color = TextMuted,
+                                lineHeight = 16.sp
+                            )
+                        }
+                    }
+                }
+                return@Column
             }
 
             if (leaderboard.isEmpty()) {

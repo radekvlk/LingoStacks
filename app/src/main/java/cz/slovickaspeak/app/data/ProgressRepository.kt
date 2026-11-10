@@ -326,37 +326,36 @@ class ProgressStateHolder(context: Context) {
 
     val dailyLeaderboard: List<FriendProgress>
         get() {
+            val user = googleUser
+            if (user == null || !user.email.contains("@")) {
+                return emptyList()
+            }
+
             val isCs = isCzechLocale()
             val youTag = if (isCs) "Vy" else "You"
-            val user = googleUser
             val currentLastActive = prefs.getString("last_study_date", null)
                 ?: if (todayCompletedWords > 0) todayKey else ""
 
-            // Current user appears on the leaderboard ONLY when connected to a real account
-            val meList = if (user != null && user.email.contains("@")) {
-                listOf(
-                    FriendProgress(
-                        id = "me_${user.inviteCode}",
-                        displayName = "${user.displayName} ($youTag)",
-                        emailOrCode = user.inviteCode,
-                        todayCompleted = todayCompletedWords,
-                        dailyGoal = dailyGoalWords,
-                        streakDays = streakDays,
-                        totalSpoken = totalSpokenCorrect,
-                        statusText = if (isCs) "Váš dnešní výkon" else "Your progress today",
-                        isCurrentUser = true,
-                        masteredCount = getActiveLanguageMasteredCount(),
-                        totalCorrectCount = totalCorrect,
-                        completedSessions = completedSessions,
-                        accuracyPercent = accuracyPercent,
-                        catalogWordCount = getActiveLanguageCatalogCount(),
-                        languageCode = selectedLanguage.code,
-                        lastActiveDate = currentLastActive
-                    )
+            val meList = listOf(
+                FriendProgress(
+                    id = "me_${user.inviteCode}",
+                    displayName = "${user.displayName} ($youTag)",
+                    emailOrCode = user.inviteCode,
+                    todayCompleted = todayCompletedWords,
+                    dailyGoal = dailyGoalWords,
+                    streakDays = streakDays,
+                    totalSpoken = totalSpokenCorrect,
+                    statusText = if (isCs) "Váš dnešní výkon" else "Your progress today",
+                    isCurrentUser = true,
+                    masteredCount = getActiveLanguageMasteredCount(),
+                    totalCorrectCount = totalCorrect,
+                    completedSessions = completedSessions,
+                    accuracyPercent = accuracyPercent,
+                    catalogWordCount = getActiveLanguageCatalogCount(),
+                    languageCode = selectedLanguage.code,
+                    lastActiveDate = currentLastActive
                 )
-            } else {
-                emptyList()
-            }
+            )
 
             val myCode = user?.inviteCode ?: ""
             val myEmail = user?.email ?: ""
