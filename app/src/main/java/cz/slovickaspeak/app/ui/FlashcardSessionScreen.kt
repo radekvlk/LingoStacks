@@ -26,15 +26,20 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -56,6 +61,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cz.slovickaspeak.app.model.AnswerMethod
@@ -454,84 +460,83 @@ fun FlashcardSessionScreen(
         val isCardInteractive = feedbackState == CardFeedbackState.NEUTRAL ||
                 feedbackState == CardFeedbackState.SPOKEN_WRONG_FLASH
 
+        val isTranslationRevealed = showHintTranslation ||
+                (feedbackState != CardFeedbackState.NEUTRAL && feedbackState != CardFeedbackState.SPOKEN_WRONG_FLASH)
+
+        val handleToggleHint: () -> Unit = {
+            showHintTranslation = !showHintTranslation
+            if (showHintTranslation) {
+                usedHintOnCurrentCard = true
+                speechControllerRef?.speakEnglish(currentWord.english)
+            }
+        }
+        val handlePlayAudio: () -> Unit = {
+            speechControllerRef?.speakEnglish(currentWord.english)
+        }
+        val handleDragDelta: (Float) -> Unit = { delta ->
+            keepScreenActive()
+            if (isCardInteractive) {
+                coroutineScope.launch {
+                    offsetX.snapTo(offsetX.value + delta)
+                }
+            }
+        }
+        val handleDragEnd: () -> Unit = {
+            if (isCardInteractive) {
+                val threshold = 190f
+                when {
+                    offsetX.value > threshold -> {
+                        triggerCardResolution(
+                            isCorrect = true,
+                            method = AnswerMethod.SWIPED_KNOW
+                        )
+                    }
+                    offsetX.value < -threshold -> {
+                        triggerCardResolution(
+                            isCorrect = false,
+                            method = AnswerMethod.SWIPED_DONT_KNOW
+                        )
+                    }
+                    else -> {
+                        coroutineScope.launch {
+                            offsetX.animateTo(
+                                targetValue = 0f,
+                                animationSpec = tween(durationMillis = 220, easing = AppleGlideEasing)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        val handleToggleMic: () -> Unit = {
+            if (!hasMicPermission) {
+                micAutoEnabled = true
+                onRequestMicPermission()
+            } else {
+                micAutoEnabled = !micAutoEnabled
+                if (micAutoEnabled) {
+                    speechControllerRef?.startContinuousListening()
+                } else {
+                    speechControllerRef?.stopListening()
+                }
+            }
+        }
+
         if (isLandscape) {
-            // Fold / Tablet Landscape (na sirku): 2 sloupce (Vlevo velka 3D karta, vpravo ovladani a mikrofon)
+            // Fold / Tablet Landscape (na sirku): Vlevo studijni kokpit (statistiky, kontext, historie, hlas), vpravo karta + tlacitka pod rukou
             Row(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-                    .padding(horizontal = 24.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(18.dp)
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                // Levy sloupec: 3D balicek karticek s dostatkem vysky i sirky
-                Flashcard3DStackArea(
-                    strings = strings,
-                    deck = deck,
-                    currentWord = currentWord,
-                    nextWord = nextWord,
-                    thirdWord = thirdWord,
-                    offsetX = offsetX.value,
-                    cardScale = cardScale.value,
-                    cardAlpha = cardAlpha.value,
-                    feedbackState = feedbackState,
-                    showHintTranslation = showHintTranslation ||
-                            (feedbackState != CardFeedbackState.NEUTRAL && feedbackState != CardFeedbackState.SPOKEN_WRONG_FLASH),
-                    onToggleHint = {
-                        showHintTranslation = !showHintTranslation
-                        if (showHintTranslation) {
-                            usedHintOnCurrentCard = true
-                            speechControllerRef?.speakEnglish(currentWord.english)
-                        }
-                    },
-                    onPlayAudio = {
-                        speechControllerRef?.speakEnglish(currentWord.english)
-                    },
-                    onDragDelta = { delta ->
-                        keepScreenActive()
-                        if (isCardInteractive) {
-                            coroutineScope.launch {
-                                offsetX.snapTo(offsetX.value + delta)
-                            }
-                        }
-                    },
-                    onDragEnd = {
-                        if (isCardInteractive) {
-                            val threshold = 190f
-                            when {
-                                offsetX.value > threshold -> {
-                                    triggerCardResolution(
-                                        isCorrect = true,
-                                        method = AnswerMethod.SWIPED_KNOW
-                                    )
-                                }
-                                offsetX.value < -threshold -> {
-                                    triggerCardResolution(
-                                        isCorrect = false,
-                                        method = AnswerMethod.SWIPED_DONT_KNOW
-                                    )
-                                }
-                                else -> {
-                                    coroutineScope.launch {
-                                        offsetX.animateTo(
-                                            targetValue = 0f,
-                                            animationSpec = tween(durationMillis = 220, easing = AppleGlideEasing)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    modifier = Modifier
-                        .weight(1.15f)
-                        .fillMaxHeight()
-                )
-
-                // Pravy sloupec: Horni lista + Zivy mikrofonni stav + Spodni tlacitkovy dock
+                // Levy sloupec: Kokpit (TopBar + Zive statistiky + Kontext & Pamet + Posledni odpovedi + Hlasovy monitor)
                 Column(
                     modifier = Modifier
-                        .weight(0.85f)
+                        .weight(0.95f)
                         .fillMaxHeight(),
-                    verticalArrangement = Arrangement.SpaceBetween,
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     AppleSessionTopBar(
@@ -547,7 +552,41 @@ fun FlashcardSessionScreen(
                         onOpenSettings = { showGoalPicker = true }
                     )
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    LandscapeSessionTelemetryRow(
+                        strings = strings,
+                        results = results,
+                        repeatPendingCount = wordsNeedingSecondConfirmation.size,
+                        todayCompleted = progressState.todayCompletedWords,
+                        dailyGoal = progressState.dailyGoalWords
+                    )
+
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        WordMemoryInsightsCard(
+                            strings = strings,
+                            language = deck.language,
+                            word = currentWord,
+                            srsStat = progressState.getWordSrsStat(currentWord.id),
+                            isRevealed = isTranslationRevealed,
+                            onSpeakSentence = { sentence ->
+                                speechControllerRef?.speakEnglish(sentence)
+                            },
+                            onRevealHint = handleToggleHint
+                        )
+
+                        RecentAttemptsCard(
+                            strings = strings,
+                            results = results,
+                            onReplayWord = { wordText ->
+                                speechControllerRef?.speakEnglish(wordText)
+                            }
+                        )
+                    }
 
                     LiveSpeechBanner(
                         strings = strings,
@@ -559,8 +598,35 @@ fun FlashcardSessionScreen(
                         speechError = speechError,
                         rmsLevel = rmsLevel
                     )
+                }
 
-                    Spacer(modifier = Modifier.weight(1f))
+                // Pravy sloupec: 3D balicek karticek + Ovladaci panel (Nevim / Mic / Vim) primo pod rukou
+                Column(
+                    modifier = Modifier
+                        .weight(1.05f)
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Flashcard3DStackArea(
+                        strings = strings,
+                        deck = deck,
+                        currentWord = currentWord,
+                        nextWord = nextWord,
+                        thirdWord = thirdWord,
+                        offsetX = offsetX.value,
+                        cardScale = cardScale.value,
+                        cardAlpha = cardAlpha.value,
+                        feedbackState = feedbackState,
+                        showHintTranslation = isTranslationRevealed,
+                        onToggleHint = handleToggleHint,
+                        onPlayAudio = handlePlayAudio,
+                        onDragDelta = handleDragDelta,
+                        onDragEnd = handleDragEnd,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    )
 
                     BottomControlBar(
                         strings = strings,
@@ -574,19 +640,7 @@ fun FlashcardSessionScreen(
                                 method = AnswerMethod.SWIPED_DONT_KNOW
                             )
                         },
-                        onToggleMic = {
-                            if (!hasMicPermission) {
-                                micAutoEnabled = true
-                                onRequestMicPermission()
-                            } else {
-                                micAutoEnabled = !micAutoEnabled
-                                if (micAutoEnabled) {
-                                    speechControllerRef?.startContinuousListening()
-                                } else {
-                                    speechControllerRef?.stopListening()
-                                }
-                            }
-                        },
+                        onToggleMic = handleToggleMic,
                         onSwipeKnow = {
                             triggerCardResolution(
                                 isCorrect = true,
@@ -643,53 +697,11 @@ fun FlashcardSessionScreen(
                     cardScale = cardScale.value,
                     cardAlpha = cardAlpha.value,
                     feedbackState = feedbackState,
-                    showHintTranslation = showHintTranslation ||
-                            (feedbackState != CardFeedbackState.NEUTRAL && feedbackState != CardFeedbackState.SPOKEN_WRONG_FLASH),
-                    onToggleHint = {
-                        showHintTranslation = !showHintTranslation
-                        if (showHintTranslation) {
-                            usedHintOnCurrentCard = true
-                            speechControllerRef?.speakEnglish(currentWord.english)
-                        }
-                    },
-                    onPlayAudio = {
-                        speechControllerRef?.speakEnglish(currentWord.english)
-                    },
-                    onDragDelta = { delta ->
-                        keepScreenActive()
-                        if (isCardInteractive) {
-                            coroutineScope.launch {
-                                offsetX.snapTo(offsetX.value + delta)
-                            }
-                        }
-                    },
-                    onDragEnd = {
-                        if (isCardInteractive) {
-                            val threshold = 190f
-                            when {
-                                offsetX.value > threshold -> {
-                                    triggerCardResolution(
-                                        isCorrect = true,
-                                        method = AnswerMethod.SWIPED_KNOW
-                                    )
-                                }
-                                offsetX.value < -threshold -> {
-                                    triggerCardResolution(
-                                        isCorrect = false,
-                                        method = AnswerMethod.SWIPED_DONT_KNOW
-                                    )
-                                }
-                                else -> {
-                                    coroutineScope.launch {
-                                        offsetX.animateTo(
-                                            targetValue = 0f,
-                                            animationSpec = tween(durationMillis = 220, easing = AppleGlideEasing)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    },
+                    showHintTranslation = isTranslationRevealed,
+                    onToggleHint = handleToggleHint,
+                    onPlayAudio = handlePlayAudio,
+                    onDragDelta = handleDragDelta,
+                    onDragEnd = handleDragEnd,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
@@ -709,19 +721,7 @@ fun FlashcardSessionScreen(
                             method = AnswerMethod.SWIPED_DONT_KNOW
                         )
                     },
-                    onToggleMic = {
-                        if (!hasMicPermission) {
-                            micAutoEnabled = true
-                            onRequestMicPermission()
-                        } else {
-                            micAutoEnabled = !micAutoEnabled
-                            if (micAutoEnabled) {
-                                speechControllerRef?.startContinuousListening()
-                            } else {
-                                speechControllerRef?.stopListening()
-                            }
-                        }
-                    },
+                    onToggleMic = handleToggleMic,
                     onSwipeKnow = {
                         triggerCardResolution(
                             isCorrect = true,
@@ -729,6 +729,473 @@ fun FlashcardSessionScreen(
                         )
                     }
                 )
+            }
+        }
+    }
+}
+
+private fun maskTargetWordInSentence(sentence: String, target: String): Pair<String, Boolean> {
+    if (sentence.isBlank() || target.isBlank()) return sentence to false
+    val cleanedTarget = target
+        .replace(Regex("\\s*[–-]\\s*.*"), "")
+        .replace(Regex("\\(.*?\\)"), "")
+        .trim()
+    val candidateTokens = cleanedTarget
+        .split('/', ',', ';', ' ')
+        .map { it.trim() }
+        .filter { it.length >= 3 && it.lowercase() !in setOf("the", "and", "for", "los", "las", "una") }
+        .distinct()
+    if (candidateTokens.isEmpty()) return sentence to false
+
+    var masked = sentence
+    var didMask = false
+    for (token in candidateTokens) {
+        val pattern = Regex("(?i)\\b${Regex.escape(token)}\\w*")
+        if (pattern.containsMatchIn(masked)) {
+            masked = pattern.replace(masked, "______")
+            didMask = true
+        }
+    }
+    return masked to didMask
+}
+
+@Composable
+private fun LandscapeSessionTelemetryRow(
+    strings: UiStrings,
+    results: List<CardAttemptResult>,
+    repeatPendingCount: Int,
+    todayCompleted: Int,
+    dailyGoal: Int
+) {
+    val answered = results.size
+    val correct = results.count { it.isCorrect }
+    val accuracyText = if (answered > 0) "${(correct * 100) / answered}%" else "—"
+    val streak = results.asReversed().takeWhile { it.isCorrect }.count()
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        TelemetryMiniCard(
+            label = if (strings.isCzech) "Přesnost" else "Accuracy",
+            value = accuracyText,
+            accent = if (answered == 0) AppleBlue else AppleGreen,
+            modifier = Modifier.weight(1f)
+        )
+        TelemetryMiniCard(
+            label = if (strings.isCzech) "Série" else "Streak",
+            value = "$streak",
+            leadingIcon = Icons.Default.LocalFireDepartment,
+            accent = if (streak > 0) AppleOrange else TextMuted,
+            modifier = Modifier.weight(1f)
+        )
+        TelemetryMiniCard(
+            label = if (repeatPendingCount > 0) {
+                if (strings.isCzech) "Opakování" else "To repeat"
+            } else {
+                if (strings.isCzech) "Dnešní cíl" else "Daily goal"
+            },
+            value = if (repeatPendingCount > 0) "$repeatPendingCount×" else "$todayCompleted/$dailyGoal",
+            accent = if (repeatPendingCount > 0) AppleOrange else AppleIndigo,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun TelemetryMiniCard(
+    label: String,
+    value: String,
+    accent: Color,
+    modifier: Modifier = Modifier,
+    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null
+) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = CardSurface,
+        border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                if (leadingIcon != null) {
+                    Icon(
+                        imageVector = leadingIcon,
+                        contentDescription = null,
+                        tint = accent,
+                        modifier = Modifier.size(15.dp)
+                    )
+                }
+                Text(
+                    text = value,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextDark
+                )
+            }
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                color = TextMuted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun WordMemoryInsightsCard(
+    strings: UiStrings,
+    language: cz.slovickaspeak.app.model.LearningLanguage,
+    word: VocabWord,
+    srsStat: cz.slovickaspeak.app.data.WordSrsStat?,
+    isRevealed: Boolean,
+    onSpeakSentence: (String) -> Unit,
+    onRevealHint: () -> Unit
+) {
+    val boxLevel = (srsStat?.box ?: 0).coerceIn(0, 5)
+    val lapses = srsStat?.lapses ?: 0
+    val statusLabel = when {
+        srsStat == null -> if (strings.isCzech) "Nové slovíčko" else "New word"
+        boxLevel == 0 -> if (strings.isCzech) "K procvičení" else "Needs review"
+        boxLevel >= 4 -> if (strings.isCzech) "V dlouhodobé paměti" else "Mastered"
+        else -> if (strings.isCzech) "Upevňuje se • Box $boxLevel/5" else "Learning • Box $boxLevel/5"
+    }
+    val statusColor = when {
+        srsStat == null -> AppleBlue
+        boxLevel == 0 -> AppleRed
+        boxLevel >= 4 -> AppleGreen
+        else -> AppleOrange
+    }
+
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = CardSurface,
+        border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(4.dp, RoundedCornerShape(20.dp), spotColor = Color.Black.copy(alpha = 0.04f))
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // Header: Pametovy stav + SRS indikátor
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Psychology,
+                        contentDescription = null,
+                        tint = statusColor,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = if (strings.isCzech) "Paměť & Kontext" else "Memory & Context",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextDark
+                    )
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = statusColor.copy(alpha = 0.13f)
+                ) {
+                    Text(
+                        text = statusLabel,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = statusColor,
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
+                    )
+                }
+            }
+
+            // 5-segment Leitner memory progress bar + optional lapses note
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                for (step in 1..5) {
+                    val active = step <= boxLevel
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(if (active) statusColor else SurfaceBg)
+                    )
+                }
+                if (lapses > 0) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if (strings.isCzech) "Chyby: $lapses" else "Lapses: $lapses",
+                        fontSize = 11.sp,
+                        color = TextMuted
+                    )
+                }
+            }
+
+            // Příkladová věta: zakrytý kontext před odpovědí -> plná věta + audio po odkrytí
+            if (word.exampleSentence.isNotBlank()) {
+                val (maskedSentence, didMask) = remember(word.id, word.exampleSentence, word.english) {
+                    maskTargetWordInSentence(word.exampleSentence, word.english)
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = SurfaceBg,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (isRevealed) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onSpeakSentence(word.exampleSentence) }
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "“${word.exampleSentence}”",
+                                    fontSize = 13.sp,
+                                    fontStyle = FontStyle.Italic,
+                                    color = TextDark,
+                                    lineHeight = 18.sp
+                                )
+                                if (word.phonetic.isNotBlank() || word.acceptedVariants.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    val extraInfo = buildList {
+                                        if (word.phonetic.isNotBlank()) add(word.phonetic)
+                                        if (word.acceptedVariants.isNotEmpty()) {
+                                            val prefix = if (strings.isCzech) "Uznávané:" else "Accepted:"
+                                            add("$prefix ${word.acceptedVariants.take(3).joinToString(", ")}")
+                                        }
+                                    }.joinToString(" • ")
+                                    Text(
+                                        text = extraInfo,
+                                        fontSize = 11.5.sp,
+                                        color = TextMuted,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(AppleBlueTint),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                    contentDescription = null,
+                                    tint = AppleBlue,
+                                    modifier = Modifier.size(17.dp)
+                                )
+                            }
+                        }
+                    } else if (didMask) {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            Text(
+                                text = if (strings.isCzech) {
+                                    "Kontextová nápověda (${language.localizedTitle(true).lowercase()})"
+                                } else {
+                                    "Context clue (${language.localizedTitle(false)})"
+                                },
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = AppleBlue
+                            )
+                            Text(
+                                text = "“$maskedSentence”",
+                                fontSize = 13.sp,
+                                fontStyle = FontStyle.Italic,
+                                color = TextDark,
+                                lineHeight = 18.sp
+                            )
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onRevealHint() }
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Lightbulb,
+                                contentDescription = null,
+                                tint = AppleOrange,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = if (strings.isCzech) {
+                                    "Zobrazit překlad a příkladovou větu"
+                                } else {
+                                    "Reveal translation and example sentence"
+                                },
+                                fontSize = 12.5.sp,
+                                color = TextMuted
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecentAttemptsCard(
+    strings: UiStrings,
+    results: List<CardAttemptResult>,
+    onReplayWord: (String) -> Unit
+) {
+    val recent = results.asReversed().take(4)
+    val spokenCount = results.count { it.method == AnswerMethod.SPOKEN_CORRECT }
+
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = CardSurface,
+        border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(4.dp, RoundedCornerShape(20.dp), spotColor = Color.Black.copy(alpha = 0.04f))
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.History,
+                        contentDescription = null,
+                        tint = AppleIndigo,
+                        modifier = Modifier.size(17.dp)
+                    )
+                    Text(
+                        text = if (strings.isCzech) "Poslední odpovědi" else "Recent Answers",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextDark
+                    )
+                }
+
+                if (results.isNotEmpty()) {
+                    Text(
+                        text = if (strings.isCzech) "$spokenCount hlasem" else "$spokenCount spoken",
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextMuted
+                    )
+                }
+            }
+
+            if (recent.isEmpty()) {
+                Text(
+                    text = if (strings.isCzech) {
+                        "Tvé odpovědi se zobrazí zde — kliknutím si slovíčko kdykoliv znovu poslechneš."
+                    } else {
+                        "Your recent answers will appear here — tap any item to replay pronunciation."
+                    },
+                    fontSize = 12.sp,
+                    color = TextMuted,
+                    lineHeight = 16.sp
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    recent.forEach { item ->
+                        val statusColor = if (item.isCorrect) AppleGreen else AppleRed
+                        val statusBg = if (item.isCorrect) AppleGreenTint else AppleRedTint
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(SurfaceBg)
+                                .clickable { onReplayWord(item.word.english) }
+                                .padding(horizontal = 10.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(22.dp)
+                                    .clip(CircleShape)
+                                    .background(statusBg),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (item.isCorrect) Icons.Default.Check else Icons.Default.Close,
+                                    contentDescription = null,
+                                    tint = statusColor,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                            }
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "${item.word.czech} → ${item.word.english}",
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = TextDark,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                if (!item.spokenTranscript.isNullOrBlank()) {
+                                    Text(
+                                        text = if (strings.isCzech) {
+                                            "Rozpoznáno: “${item.spokenTranscript}”"
+                                        } else {
+                                            "Heard: “${item.spokenTranscript}”"
+                                        },
+                                        fontSize = 11.sp,
+                                        color = TextMuted,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                contentDescription = null,
+                                tint = AppleBlue,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
     }

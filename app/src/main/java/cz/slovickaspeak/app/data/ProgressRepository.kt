@@ -212,6 +212,12 @@ class ProgressStateHolder(context: Context) {
     var srsRevision by mutableIntStateOf(0)
         private set
 
+    fun getWordSrsStat(wordId: String): WordSrsStat? {
+        @Suppress("UNUSED_EXPRESSION")
+        srsRevision
+        return wordSrsMap[wordId]
+    }
+
     fun getDeckMasteredCount(deck: cz.slovickaspeak.app.model.VocabDeck): Int {
         @Suppress("UNUSED_EXPRESSION")
         srsRevision
