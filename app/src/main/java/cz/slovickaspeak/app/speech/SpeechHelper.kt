@@ -1238,8 +1238,8 @@ class SpeechSessionController(
                     if (rmsdB > 1.8f) {
                         silentCycleCount = 0
                     }
-                    // rmsdB ranges roughly -2..10 dB; noise-gate low room hiss below 1.2 dB so idle mic stays calm
-                    val normalized = ((rmsdB - 1.2f) / 8.8f).coerceIn(0f, 1f)
+                    // rmsdB ranges roughly -2..10 dB (typical voice ~3..7.5 dB); noise-gate hiss <= 1.2 dB so idle mic stays calm
+                    val normalized = ((rmsdB - 1.2f) / 6.3f).coerceIn(0f, 1f)
                     emitRmsIfChanged(normalized)
                 }
 

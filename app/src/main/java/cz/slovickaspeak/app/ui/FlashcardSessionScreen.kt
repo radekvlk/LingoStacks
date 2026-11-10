@@ -7,6 +7,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
@@ -1970,11 +1971,12 @@ private fun AudioWaveVisualizer(
         if (!animateWaves) {
             boostAnim.snapTo(0f)
         } else {
-            snapshotFlow { (rmsLevelProvider() * 3.5f).coerceIn(0f, 6f) }
+            snapshotFlow { (rmsLevelProvider() * 8.0f).coerceIn(0f, 9f) }
                 .collectLatest { targetBoost ->
+                    val duration = if (targetBoost > boostAnim.value) 150 else 280
                     boostAnim.animateTo(
                         targetValue = targetBoost,
-                        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing)
+                        animationSpec = tween(durationMillis = duration, easing = FastOutSlowInEasing)
                     )
                 }
         }
@@ -2731,25 +2733,59 @@ private fun BottomControlBar(
         } else {
             snapshotFlow { rmsLevelProvider().coerceIn(0f, 1f) }
                 .collectLatest { target ->
+                    val duration = if (target > smoothRmsAnim.value) 170 else 340
                     smoothRmsAnim.animateTo(
                         targetValue = target,
-                        animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing)
+                        animationSpec = tween(durationMillis = duration, easing = FastOutSlowInEasing)
                     )
                 }
         }
     }
 
     val isVoiceActive by remember(animateMicWaves) {
-        derivedStateOf { animateMicWaves && rmsLevelProvider() > 0.12f }
+        derivedStateOf { animateMicWaves && rmsLevelProvider() > 0.10f }
     }
     val voicePulseScaleState = animateFloatAsState(
-        targetValue = if (isVoiceActive) 1.08f else 1.0f,
+        targetValue = if (isVoiceActive) 1.11f else 1.0f,
         animationSpec = spring(
-            dampingRatio = 0.85f,
-            stiffness = 140f
+            dampingRatio = 0.80f,
+            stiffness = 175f
         ),
         label = "voicePulseScale"
     )
+    val iconVoiceScaleState = animateFloatAsState(
+        targetValue = if (isVoiceActive) 1.05f else 1.0f,
+        animationSpec = spring(
+            dampingRatio = 0.78f,
+            stiffness = 185f
+        ),
+        label = "iconVoiceScale"
+    )
+
+    // Paired closely-spaced circular ripples triggered ONLY during active speech (0 CPU when quiet)
+    val voiceWaveProgress = remember { Animatable(0f) }
+    LaunchedEffect(animateMicWaves) {
+        if (!animateMicWaves) {
+            voiceWaveProgress.snapTo(0f)
+            return@LaunchedEffect
+        }
+        snapshotFlow { isVoiceActive || smoothRmsAnim.value > 0.02f || voicePulseScaleState.value > 1.005f }
+            .collectLatest { speaking ->
+                if (speaking) {
+                    voiceWaveProgress.snapTo(0f)
+                    var cycleBase = 0f
+                    while (true) {
+                        voiceWaveProgress.animateTo(
+                            targetValue = cycleBase + 1f,
+                            animationSpec = tween(durationMillis = 1050, easing = LinearEasing)
+                        )
+                        cycleBase += 1f
+                    }
+                } else {
+                    voiceWaveProgress.snapTo(0f)
+                }
+            }
+    }
 
     val breathScaleState: State<Float>
     val wave1State: State<Float>
@@ -2808,7 +2844,7 @@ private fun BottomControlBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 12.dp),
+                .padding(horizontal = 24.dp, vertical = 13.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -2855,32 +2891,61 @@ private fun BottomControlBar(
                 }
             }
 
-            // Center Enlarged Circular Microphone Button with smooth outward fading ripples
+            // Center Circular Microphone Button with circular outward fading ripples that expand further on voice
             Box(
                 modifier = Modifier
-                    .size(80.dp)
+                    .size(96.dp)
                     .drawBehind {
                         if (animateMicWaves) {
                             val buttonRadius = 32.dp.toPx()
-                            val maxExtraRadius = 22.dp.toPx()
-                            val intensity = 0.34f + smoothRmsAnim.value * 0.14f
-                            val p1 = wave1State.value
-                            val p2 = wave2State.value
-                            for (i in 0..1) {
-                                val p = if (i == 0) p1 else p2
-                                val fade = (1f - p) * (1f - p)
-                                val r = buttonRadius * 0.85f + (buttonRadius * 0.15f + maxExtraRadius) * p
-                                val fillAlpha = (intensity * fade).coerceIn(0f, 1f)
-                                val ringAlpha = (intensity * 1.15f * fade).coerceIn(0f, 1f)
-                                drawCircle(
-                                    color = AppleBlue.copy(alpha = fillAlpha * 0.55f),
-                                    radius = r
-                                )
-                                drawCircle(
-                                    color = AppleIndigo.copy(alpha = ringAlpha * 0.7f),
-                                    radius = r,
-                                    style = Stroke(width = 1.5.dp.toPx())
-                                )
+                            val voice = smoothRmsAnim.value
+                            val pulseNorm = ((voicePulseScaleState.value - 1f) / 0.11f).coerceIn(0f, 1f)
+                            val energy = maxOf(voice, pulseNorm * 0.8f).coerceIn(0f, 1f)
+                            val strokePx = 1.5.dp.toPx()
+
+                            // Calm idle breathing waves fade down smoothly when active paired speech waves take over
+                            val idleMask = (1f - energy * 0.85f).coerceIn(0f, 1f)
+                            if (idleMask > 0.02f) {
+                                val idleExtra = 15.dp.toPx()
+                                val idleIntensity = 0.28f * idleMask
+                                val p1 = wave1State.value
+                                val p2 = wave2State.value
+                                for (i in 0..1) {
+                                    val p = if (i == 0) p1 else p2
+                                    val fade = (1f - p) * (1f - p)
+                                    val r = buttonRadius * 0.90f + (buttonRadius * 0.10f + idleExtra) * p
+                                    val a = (idleIntensity * fade).coerceIn(0f, 1f)
+                                    drawCircle(color = AppleBlue.copy(alpha = a * 0.45f), radius = r)
+                                    drawCircle(
+                                        color = AppleIndigo.copy(alpha = a * 0.65f),
+                                        radius = r,
+                                        style = Stroke(width = strokePx)
+                                    )
+                                }
+                            }
+
+                            // Two concentric circular waves closely following one behind the other during speech
+                            if (energy > 0.01f) {
+                                val t = voiceWaveProgress.value
+                                val voiceExtra = (20f + 8f * energy).dp.toPx()
+                                val voiceIntensity = 0.34f * energy
+                                val phases = if (t >= 0.24f) {
+                                    floatArrayOf(t % 1f, (t - 0.24f) % 1f)
+                                } else {
+                                    floatArrayOf(t)
+                                }
+                                for (rawP in phases) {
+                                    val eased = 1f - (1f - rawP) * (1f - rawP)
+                                    val fade = (1f - eased) * (1f - eased)
+                                    val r = buttonRadius * 0.92f + (buttonRadius * 0.08f + voiceExtra) * eased
+                                    val a = (voiceIntensity * fade).coerceIn(0f, 1f)
+                                    drawCircle(color = AppleBlue.copy(alpha = a * 0.42f), radius = r)
+                                    drawCircle(
+                                        color = AppleIndigo.copy(alpha = a * 0.72f),
+                                        radius = r,
+                                        style = Stroke(width = strokePx)
+                                    )
+                                }
                             }
                         }
                     },
@@ -2890,7 +2955,7 @@ private fun BottomControlBar(
                     modifier = Modifier
                         .size(64.dp)
                         .graphicsLayer {
-                            val s = breathScaleState.value * voicePulseScaleState.value
+                            val s = breathScaleState.value * (voicePulseScaleState.value + smoothRmsAnim.value * 0.02f)
                             scaleX = s
                             scaleY = s
                         }
@@ -2908,7 +2973,13 @@ private fun BottomControlBar(
                         imageVector = if (micAutoEnabled) Icons.Default.Mic else Icons.Default.MicOff,
                         contentDescription = null,
                         tint = Color.White,
-                        modifier = Modifier.size(30.dp)
+                        modifier = Modifier
+                            .size(28.dp)
+                            .graphicsLayer {
+                                val glyphScale = if (micAutoEnabled) iconVoiceScaleState.value else 1.0f
+                                scaleX = glyphScale
+                                scaleY = glyphScale
+                            }
                     )
                 }
             }
