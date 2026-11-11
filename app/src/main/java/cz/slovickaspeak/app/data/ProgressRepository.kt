@@ -1568,8 +1568,7 @@ class ProgressStateHolder(context: Context) {
                     val myCode = ensureValidInviteCode(user.inviteCode, user.email)
                     friends.removeAll { existing ->
                         val codeUp = existing.emailOrCode.uppercase(Locale.US)
-                        codeUp.equals(myCode, ignoreCase = true) ||
-                            (existing.id.startsWith("cloud_") && codeUp !in bestByCode)
+                        codeUp == myCode || codeUp == "SLOV-8621"
                     }
                     val myRemote = bestByCode[myCode]?.second
                     if (myRemote != null && myRemote.lastActiveDate == todayKey) {
