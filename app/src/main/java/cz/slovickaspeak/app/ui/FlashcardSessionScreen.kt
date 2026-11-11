@@ -46,7 +46,6 @@ import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Psychology
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -130,7 +129,6 @@ fun FlashcardSessionScreen(
     var currentIndex by remember(dailyGoalWords) { mutableIntStateOf(0) }
     var masteredInSessionCount by remember(dailyGoalWords) { mutableIntStateOf(0) }
     val results = remember(dailyGoalWords) { mutableStateListOf<CardAttemptResult>() }
-    var showGoalPicker by remember { mutableStateOf(false) }
     var showRecentWordsPanel by remember { mutableStateOf(false) }
     var toggleFeedbackPopup by remember { mutableStateOf<String?>(null) }
     var toggleFeedbackSeq by remember { mutableIntStateOf(0) }
@@ -476,7 +474,6 @@ fun FlashcardSessionScreen(
     }
 
     val currentHandleSpeech by rememberUpdatedState(handleSpeechCandidates)
-    val showGoalPickerUpdated by rememberUpdatedState(showGoalPicker)
     val showOtaDialogUpdated by rememberUpdatedState(progressState.showOtaDialog)
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -498,7 +495,7 @@ fun FlashcardSessionScreen(
                     isAppResumed = true
                     rmsLevel = 0f
                     keepScreenActive()
-                    if (hasMicPermState && micAutoState && !showGoalPickerUpdated && !showOtaDialogUpdated) {
+                    if (hasMicPermState && micAutoState && !showOtaDialogUpdated) {
                         controller.startContinuousListening()
                     }
                 }
@@ -524,7 +521,7 @@ fun FlashcardSessionScreen(
         }
     }
 
-    val isModalBlocking = showGoalPicker || progressState.showOtaDialog
+    val isModalBlocking = progressState.showOtaDialog
     val isMicVisualActive = micAutoEnabled && isAppResumed && !isModalBlocking
 
     LaunchedEffect(hasMicPermission, isModalBlocking, isAppResumed, micAutoEnabled, speechControllerRef) {
@@ -563,13 +560,6 @@ fun FlashcardSessionScreen(
         animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
         label = "sessionProgressBar"
     )
-
-    if (showGoalPicker) {
-        AppleFullSettingsDialog(
-            progressState = progressState,
-            onDismiss = { showGoalPicker = false }
-        )
-    }
 
     Scaffold(
         containerColor = SurfaceBg
@@ -755,8 +745,7 @@ fun FlashcardSessionScreen(
                         onCloseSession = {
                             speechControllerRef?.stopListening()
                             onCloseSession()
-                        },
-                        onOpenSettings = { showGoalPicker = true }
+                        }
                     )
 
                     LandscapeSessionTelemetryRow(
@@ -893,8 +882,7 @@ fun FlashcardSessionScreen(
                     onCloseSession = {
                         speechControllerRef?.stopListening()
                         onCloseSession()
-                    },
-                    onOpenSettings = { showGoalPicker = true }
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(6.dp))
@@ -1585,7 +1573,6 @@ private fun AppleSessionTopBar(
     totalSessionCards: Int,
     sessionProgressFraction: Float,
     onCloseSession: () -> Unit,
-    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -1605,7 +1592,21 @@ private fun AppleSessionTopBar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Close button
+                // Spacer matching the top-right close button width so progress stays centered
+                Spacer(modifier = Modifier.size(32.dp))
+
+                Text(
+                    text = strings.sessionCardProgress(
+                        (currentIndex + 1).coerceAtMost(totalSessionCards),
+                        totalSessionCards,
+                        progressState.todayCompletedWords
+                    ),
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp,
+                    color = TextDark
+                )
+
+                // Close button moved to top-right
                 Box(
                     modifier = Modifier
                         .size(32.dp)
@@ -1619,34 +1620,6 @@ private fun AppleSessionTopBar(
                         contentDescription = null,
                         tint = TextMuted,
                         modifier = Modifier.size(18.dp)
-                    )
-                }
-
-                Text(
-                    text = strings.sessionCardProgress(
-                        (currentIndex + 1).coerceAtMost(totalSessionCards),
-                        totalSessionCards,
-                        progressState.todayCompletedWords
-                    ),
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 13.sp,
-                    color = TextDark
-                )
-
-                // Settings icon button
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(SurfaceBg)
-                        .clickable { onOpenSettings() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Tune,
-                        contentDescription = strings.settingsAndLeaderboard,
-                        tint = TextMuted,
-                        modifier = Modifier.size(17.dp)
                     )
                 }
             }
