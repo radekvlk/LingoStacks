@@ -1,6 +1,6 @@
 # 🗣️ LingoWords — Chytrá hlasová výuka slovíček pro Android
 
-Moderní Android aplikace v designu **Cupertino Glass** pro aktivní procvičování angličtiny a španělštiny hlasem, gesty a chytrou metodou opakování (*Spaced Repetition*).
+Moderní Android aplikace v designu **Cupertino Glass** pro aktivní procvičování **5 světových jazyků** (angličtina, španělština, němčina, francouzština a italština) hlasem, gesty a chytrou metodou opakování (*Spaced Repetition*).
 
 ## 📸 Ukázky z aplikace
 
@@ -14,18 +14,21 @@ Moderní Android aplikace v designu **Cupertino Glass** pro aktivní procvičov�
 
 ## ✨ Hlavní funkce
 
-- **🔄 Obousměrné učení (`CZ ↔ EN/ES` i `Mix`):**
-  - Rychlé přepínání **CZ → EN/ES (aktivní výbavnost)**, **EN/ES → CZ (pasivní porozumění)** nebo **Mix obou směrů** přímo na kompaktní liště na úvodní obrazovce (**Jazyk • Směr • Úroveň**) i v Nastavení.
+- **🔄 Obousměrné učení (`CZ ↔ EN/ES/DE/FR/IT` i `Mix`):**
+  - Rychlé přepínání **CZ → cizí jazyk (aktivní výbavnost)**, **cizí jazyk → CZ (pasivní porozumění)** nebo **Mix obou směrů** přímo na symetrické horní liště (**Jazyk • Směr • Úroveň**) pod prosvítající vlající vlajkou vybraného jazyka i v Nastavení.
   - V otočeném směru aplikace zobrazí cizí slovo s výslovností, automaticky ho přečte (`AUTO`), rozpoznává **český překlad přes `cs-CZ` rozpoznávání řeči** (včetně synonym a drobných odchylek ve skloňování) a ukládá pro pasivní směr **oddělené SRS intervaly**, aby neovlivnila aktivní znalost.
 - **🎙️ Nepřetržité rozpoznávání hlasu (`SpeechRecognizer`):**
-  - Vyslov překlad nahlas – aplikace průběžně poslouchá v angličtině, španělštině i češtině (`cs-CZ`), toleruje drobné odchylky i český přízvuk, ihned vyhodnotí odpověď, přehraje rodilou výslovnost (`TextToSpeech`) a plynule přejde na další kartu.
+  - Vyslov překlad nahlas – aplikace průběžně poslouchá v angličtině, španělštině, němčině, francouzštině, italštině i češtině (`cs-CZ`), využívá jazykově specifickou fonetickou toleranci ve `WordMatcher`, ihned vyhodnotí odpověď, přehraje rodilou výslovnost (`TextToSpeech`) a plynule přejde na další kartu.
   - Vizuální hlasový ekvalizér v reálném čase a automatické skrývání tlačítek **Vím / Nevím** s *bounce* animací při vypnutí mikrofonu.
 - **🃏 Plynulé Swipe kartičky & chytrý kontext:**
   - Gesto **doprava (Vím)** / **doleva (Nevím)** s okamžitým plynulým odsunem karty a paralelní výslovností.
   - Rozbalovací nápověda s fonetickým přepisem, nápovědnou větou s jedním klepnutím k přehrání a historií posledních pokusů.
-- **📚 3 140 slovíček a frází v 38 tematických okruzích (A1–C2):**
+- **📚 8 270+ slovíček a frází v 95 tematických okruzích (A1–C2):**
   - 🇬🇧 **Angličtina (1 430 položek / 19 okruhů):** slovní zásoba A1–C2, základní i pokročilá **nepravidelná slovesa** (trojice tvarů) a nejpoužívanější cestovatelské i konverzační **fráze**.
-  - 🇪🇸 **Španělština (1 710 položek / 19 okruhů):** slovní zásoba A1–C2, **nepravidelná slovesa** (přítomný i minulý čas *indefinido*) a nejpoužívanější každodenní i konverzační **fráze**.
+  - 🇪🇸 **Španělština (1 710 položek / 19 okruhů):** slovní zásoba A1–C2, **nepravidelná slovesa** (přítomný i minulý čas *indefinido*) a každodenní i konverzační **fráze**.
+  - 🇩🇪 **Němčina (1 710 položek / 19 okruhů):** slovní zásoba A1–C2 se členy, **nepravidelná slovesa** (přítomný i minulý čas / *Partizip II*) a cestovní i konverzační **fráze**.
+  - 🇫🇷 **Francouzština (1 710 položek / 19 okruhů):** slovní zásoba A1–C2 se členy, **nepravidelná slovesa** (*présent* i *passé composé*) a cestovní i konverzační **fráze**.
+  - 🇮🇹 **Italština (1 710 položek / 19 okruhů):** slovní zásoba A1–C2 se členy, **nepravidelná slovesa** (*presente* i *passato prossimo*) a cestovní i konverzační **fráze**.
 - **🧠 Chytré opakování (Leitner + SM-2):**
   - Neznámá slovíčka a slovíčka s nápovědou se automaticky vrací v optimálních intervalech zvlášť pro aktivní i pasivní směr učení.
 - **📱 Optimalizace pro skládací telefony (Galaxy Z Fold):**
