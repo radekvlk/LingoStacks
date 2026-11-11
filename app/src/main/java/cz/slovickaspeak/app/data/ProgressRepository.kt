@@ -9,15 +9,13 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import cz.slovickaspeak.app.model.AnswerMethod
 import cz.slovickaspeak.app.model.BuiltInVocabulary
 import cz.slovickaspeak.app.model.CardAttemptResult
-import org.json.JSONObject
-import java.io.BufferedReader
 import java.io.File
-import java.io.InputStreamReader
-import java.net.HttpURLConnection
-import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -475,6 +473,9 @@ class ProgressStateHolder(context: Context) {
     }
 
     var isSyncingCloud by mutableStateOf(false)
+        private set
+
+    var lastSyncOnlineOk by mutableStateOf(true)
         private set
 
     var lastSyncStatus by mutableStateOf(
@@ -1000,71 +1001,128 @@ class ProgressStateHolder(context: Context) {
         saveFriends()
     }
 
+    private fun ensureValidInviteCode(rawCode: String, email: String): String {
+        val candidate = rawCode.trim().uppercase(Locale.US)
+        if (Regex("^SLOV-[A-Z0-9]{1,19}$").matches(candidate)) {
+            return candidate
+        }
+        val suffix = abs(email.lowercase(Locale.US).hashCode()) % 9000 + 1000
+        return "SLOV-$suffix"
+    }
+
+    private val authLock = Any()
+    @Volatile
+    private var pendingAuthTask: com.google.android.gms.tasks.Task<com.google.firebase.auth.AuthResult>? = null
+
+    private fun withFirebaseUid(onResult: (String?, Exception?) -> Unit) {
+        try {
+            val auth = FirebaseAuth.getInstance()
+            val current = auth.currentUser
+            if (current != null) {
+                onResult(current.uid, null)
+                return
+            }
+            val task = synchronized(authLock) {
+                auth.currentUser?.let { existing ->
+                    onResult(existing.uid, null)
+                    return
+                }
+                pendingAuthTask ?: auth.signInAnonymously().also { created ->
+                    pendingAuthTask = created
+                    created.addOnCompleteListener {
+                        synchronized(authLock) {
+                            if (pendingAuthTask === created) {
+                                pendingAuthTask = null
+                            }
+                        }
+                    }
+                }
+            }
+            task.addOnSuccessListener { result ->
+                onResult(result.user?.uid, null)
+            }.addOnFailureListener { e ->
+                onResult(null, e)
+            }
+        } catch (e: Exception) {
+            onResult(null, e)
+        }
+    }
+
+    private fun formatCloudErrorStatus(error: Exception?): String {
+        val msg = error?.message?.lowercase(Locale.US).orEmpty()
+        return when {
+            msg.contains("permission") || msg.contains("unauthenticated") ->
+                if (isCzechLocale()) "Chyba oprávnění cloudu (Firebase)" else "Cloud permission error (Firebase)"
+            else ->
+                if (isCzechLocale()) "Režim offline (synchronizuje se po připojení)" else "Offline mode (will sync when connected)"
+        }
+    }
+
     /**
-     * Publishes the user's current progress to the cloud ONLY if the user has connected
-     * a real account (googleUser != null with email), so the leaderboard only contains real connected people.
+     * Publishes the user's current progress to Cloud Firestore (`leaderboard/{uid}`) ONLY if
+     * the user has connected an account (googleUser != null with email), without storing PII email.
      */
     fun pushMyProgressToCloud(force: Boolean = true) {
         val user = googleUser ?: return
         if (!user.email.contains("@")) return
         val now = System.currentTimeMillis()
-        if (!force && now - lastCloudPushMillis < 25_000L) return
+        if (!force && now - lastCloudPushMillis < 45_000L) return
         lastCloudPushMillis = now
 
-        val code = user.inviteCode
-        val name = user.displayName
-        val email = user.email
+        val safeCode = ensureValidInviteCode(user.inviteCode, user.email)
+        val safeName = user.displayName.trim().ifEmpty { "User" }.take(60)
         val currentMastered = getActiveLanguageMasteredCount()
         val catalogTotal = getActiveLanguageCatalogCount()
-        val lastActive = prefs.getString("last_study_date", null)
-            ?: if (todayCompletedWords > 0) todayKey else ""
+        val lastActive = (prefs.getString("last_study_date", null)
+            ?: if (todayCompletedWords > 0) todayKey else "").take(10)
 
-        val payload = JSONObject().apply {
-            put("code", code.uppercase(Locale.US))
-            put("name", name)
-            put("email", email.lowercase(Locale.US))
-            put("date", todayKey)
-            put("todayCompleted", todayCompletedWords)
-            put("todayXp", todayXp)
-            put("weeklyCompleted", weeklyCompletedWords)
-            put("weeklyXp", weeklyXp)
-            put("dailyGoal", dailyGoalWords)
-            put("streakDays", streakDays)
-            put("totalSpoken", totalSpokenCorrect)
-            put("masteredCount", currentMastered)
-            put("totalCorrect", totalCorrect)
-            put("completedSessions", completedSessions)
-            put("accuracyPercent", accuracyPercent)
-            put("catalogWordCount", catalogTotal)
-            put("languageCode", selectedLanguage.code)
-            put("lastActiveDate", lastActive)
-            put("ts", System.currentTimeMillis())
-        }.toString()
+        withFirebaseUid { uid, authErr ->
+            if (uid == null) {
+                lastSyncOnlineOk = false
+                lastSyncStatus = formatCloudErrorStatus(authErr)
+                return@withFirebaseUid
+            }
 
-        val userTopic = "slovicka_user_${code.uppercase(Locale.US).replace(Regex("[^A-Z0-9]"), "")}"
-        val boardTopic = "lingowords_real_board_v1"
+            val entryMap = hashMapOf<String, Any>(
+                "uid" to uid,
+                "code" to safeCode,
+                "name" to safeName,
+                "date" to todayKey,
+                "lastActiveDate" to lastActive,
+                "languageCode" to selectedLanguage.code,
+                "todayCompleted" to todayCompletedWords.coerceIn(0, 5000),
+                "todayXp" to todayXp.coerceIn(0, 10000),
+                "weeklyCompleted" to weeklyCompletedWords.coerceIn(0, 30000),
+                "weeklyXp" to weeklyXp.coerceIn(0, 50000),
+                "dailyGoal" to dailyGoalWords.coerceIn(1, 500),
+                "streakDays" to streakDays.coerceIn(0, 10000),
+                "totalSpoken" to totalSpokenCorrect.coerceIn(0, 1000000),
+                "masteredCount" to currentMastered.coerceIn(0, 50000),
+                "totalCorrect" to totalCorrect.coerceIn(0, 2000000),
+                "completedSessions" to completedSessions.coerceIn(0, 100000),
+                "accuracyPercent" to accuracyPercent.coerceIn(0, 100),
+                "catalogWordCount" to catalogTotal.coerceIn(0, 50000),
+                "ts" to System.currentTimeMillis()
+            )
 
-        ioExecutor.execute {
-            try {
-                postJsonToTopic(userTopic, payload)
-                postJsonToTopic(boardTopic, payload)
-                mainHandler.post {
+            FirebaseFirestore.getInstance().collection("leaderboard")
+                .document(uid)
+                .set(entryMap)
+                .addOnSuccessListener {
+                    android.util.Log.d("LingoSync", "Firestore write OK uid=$uid code=$safeCode")
+                    lastSyncOnlineOk = true
                     lastSyncStatus = if (isCzechLocale()) "Synchronizováno online ✓" else "Synced online ✓"
                 }
-            } catch (_: Exception) {
-                mainHandler.post {
-                    lastSyncStatus = if (isCzechLocale()) {
-                        "Režim offline (synchronizuje se po připojení)"
-                    } else {
-                        "Offline mode (will sync when connected)"
-                    }
+                .addOnFailureListener { e ->
+                    android.util.Log.w("LingoSync", "Firestore write FAILED uid=$uid err=${e.message} map=$entryMap", e)
+                    lastSyncOnlineOk = false
+                    lastSyncStatus = formatCloudErrorStatus(e)
                 }
-            }
         }
     }
 
     /**
-     * Fetches the latest progress from the global real-users daily board and invited friends' channels.
+     * Fetches the latest progress from Cloud Firestore (`leaderboard`) and merges entries cleanly.
      */
     fun refreshFromCloud() {
         checkNewDayRollover(alsoRefreshCloud = false)
@@ -1074,26 +1132,86 @@ class ProgressStateHolder(context: Context) {
         if (isSyncingCloud) return
         isSyncingCloud = true
 
-        val watchedCodes = friends.map { it.emailOrCode.uppercase(Locale.US) }.toSet()
+        withFirebaseUid { uid, authErr ->
+            if (uid == null) {
+                lastSyncOnlineOk = false
+                lastSyncStatus = formatCloudErrorStatus(authErr)
+                isSyncingCloud = false
+                return@withFirebaseUid
+            }
 
-        ioExecutor.execute {
-            val latestByCode = mutableMapOf<String, FriendProgress>()
+            FirebaseFirestore.getInstance().collection("leaderboard")
+                .orderBy("todayXp", Query.Direction.DESCENDING)
+                .limit(100)
+                .get()
+                .addOnSuccessListener { snapshot ->
+                    val currentDay = todayKey
+                    val weekStart = currentWeekStartKey()
+                    val bestByCode = mutableMapOf<String, Pair<Long, FriendProgress>>()
 
-            try {
-                // 1. Read shared daily leaderboard topic for real connected users
-                fetchTopicEntries("lingowords_real_board_v1", latestByCode)
+                    for (doc in snapshot.documents) {
+                        val code = (doc.getString("code") ?: "").uppercase(Locale.US)
+                        val name = normalizeKnownLeaderboardName(doc.getString("name") ?: "")
+                        if (code.isBlank() || name.isBlank() || name.startsWith("Hráč (")) continue
 
-                // 2. Read each specifically invited friend's topic
-                for (code in watchedCodes) {
-                    val clean = code.replace(Regex("[^A-Z0-9]"), "")
-                    if (clean.isNotEmpty()) {
-                        fetchTopicEntries("slovicka_user_$clean", latestByCode)
+                        val date = doc.getString("date") ?: ""
+                        val goalVal = (doc.getLong("dailyGoal")?.toInt() ?: 20).coerceAtLeast(1)
+                        val msgCompleted = (doc.getLong("todayCompleted")?.toInt() ?: 0).coerceAtLeast(0)
+                        val fallbackDayXp = msgCompleted + if (msgCompleted >= goalVal) 5 else 0
+                        val msgXp = (doc.getLong("todayXp")?.toInt() ?: fallbackDayXp).coerceAtLeast(0)
+
+                        val todayVal = if (date == currentDay) msgCompleted else 0
+                        val todayXpVal = if (date == currentDay) msgXp else 0
+                        val weeklyWordsVal = if (date >= weekStart) {
+                            (doc.getLong("weeklyCompleted")?.toInt() ?: msgCompleted).coerceAtLeast(todayVal)
+                        } else 0
+                        val weeklyXpVal = if (date >= weekStart) {
+                            (doc.getLong("weeklyXp")?.toInt() ?: msgXp).coerceAtLeast(todayXpVal)
+                        } else 0
+
+                        val streakVal = (doc.getLong("streakDays")?.toInt() ?: 0).coerceAtLeast(0)
+                        val spokenVal = (doc.getLong("totalSpoken")?.toInt() ?: 0).coerceAtLeast(0)
+                        val masteredVal = (doc.getLong("masteredCount")?.toInt() ?: spokenVal).coerceAtLeast(0)
+                        val totalCorrectVal = (doc.getLong("totalCorrect")?.toInt() ?: spokenVal).coerceAtLeast(0)
+                        val sessionsVal = (doc.getLong("completedSessions")?.toInt() ?: 0).coerceAtLeast(0)
+                        val accuracyVal = (doc.getLong("accuracyPercent")?.toInt() ?: 0).coerceIn(0, 100)
+                        val catalogVal = (doc.getLong("catalogWordCount")?.toInt() ?: 1430).coerceAtLeast(0)
+                        val langCode = doc.getString("languageCode") ?: "en"
+                        val lastActive = (doc.getString("lastActiveDate") ?: date).ifEmpty { date }
+                        val ts = doc.getLong("ts") ?: 0L
+
+                        val fp = FriendProgress(
+                            id = "cloud_$code",
+                            displayName = name,
+                            emailOrCode = code,
+                            todayCompleted = todayVal,
+                            dailyGoal = goalVal,
+                            streakDays = streakVal,
+                            totalSpoken = spokenVal,
+                            statusText = if (todayVal >= goalVal) "Cíl splněn ✓" else "Dnes $todayVal/$goalVal slov",
+                            masteredCount = masteredVal,
+                            totalCorrectCount = totalCorrectVal,
+                            completedSessions = sessionsVal,
+                            accuracyPercent = accuracyVal,
+                            catalogWordCount = catalogVal,
+                            languageCode = langCode,
+                            lastActiveDate = lastActive,
+                            todayXp = todayXpVal,
+                            weeklyCompleted = weeklyWordsVal,
+                            weeklyXp = weeklyXpVal
+                        )
+
+                        val existing = bestByCode[code]
+                        if (existing == null ||
+                            fp.todayXp > existing.second.todayXp ||
+                            (fp.todayXp == existing.second.todayXp && ts > existing.first)
+                        ) {
+                            bestByCode[code] = ts to fp
+                        }
                     }
-                }
 
-                mainHandler.post {
-                    val myCode = (googleUser?.inviteCode ?: "").uppercase(Locale.US)
-                    val myRemote = if (myCode.isNotEmpty()) latestByCode[myCode] else null
+                    val myCode = ensureValidInviteCode(user.inviteCode, user.email)
+                    val myRemote = bestByCode[myCode]?.second
                     if (myRemote != null && myRemote.lastActiveDate == todayKey) {
                         var updatedLocal = false
                         if (myRemote.todayCompleted > todayCompletedWords) {
@@ -1115,8 +1233,10 @@ class ProgressStateHolder(context: Context) {
                                 .apply()
                         }
                     }
-                    for ((code, remoteFriend) in latestByCode) {
+
+                    for ((code, pair) in bestByCode) {
                         if (code == myCode) continue
+                        val remoteFriend = pair.second
                         val existingIdx = friends.indexOfFirst {
                             it.emailOrCode.equals(code, ignoreCase = true)
                         }
@@ -1127,6 +1247,7 @@ class ProgressStateHolder(context: Context) {
                         }
                     }
                     saveFriends()
+                    lastSyncOnlineOk = true
                     lastSyncStatus = if (isCzechLocale()) {
                         "Online žebříček aktualizován ✓"
                     } else {
@@ -1134,114 +1255,12 @@ class ProgressStateHolder(context: Context) {
                     }
                     isSyncingCloud = false
                 }
-            } catch (_: Exception) {
-                mainHandler.post {
+                .addOnFailureListener { e ->
+                    lastSyncOnlineOk = false
+                    lastSyncStatus = formatCloudErrorStatus(e)
                     isSyncingCloud = false
                 }
-            }
         }
-    }
-
-    private fun postJsonToTopic(topic: String, jsonPayload: String) {
-        val url = URL("https://ntfy.sh/$topic")
-        val conn = (url.openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
-            connectTimeout = 5000
-            readTimeout = 5000
-            doOutput = true
-            setRequestProperty("Content-Type", "text/plain; charset=utf-8")
-        }
-        conn.outputStream.use { os ->
-            os.write(jsonPayload.toByteArray(Charsets.UTF_8))
-        }
-        conn.inputStream.close()
-        conn.disconnect()
-    }
-
-    private fun fetchTopicEntries(topic: String, outMap: MutableMap<String, FriendProgress>) {
-        val url = URL("https://ntfy.sh/$topic/json?poll=1&since=7d")
-        val conn = (url.openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
-            connectTimeout = 5000
-            readTimeout = 5000
-        }
-        val currentDay = todayKey
-        val weekStart = currentWeekStartKey()
-        // Track max per-day values per user across Mon..Today so older clients also get accurate weekly sums
-        val weekDailyByCode = mutableMapOf<String, MutableMap<String, Pair<Int, Int>>>()
-
-        BufferedReader(InputStreamReader(conn.inputStream, Charsets.UTF_8)).use { reader ->
-            var line: String?
-            while (reader.readLine().also { line = it } != null) {
-                val rawLine = line?.trim() ?: continue
-                if (rawLine.isEmpty()) continue
-                try {
-                    val envelope = JSONObject(rawLine)
-                    if (envelope.optString("event") != "message") continue
-                    val msgStr = envelope.optString("message", "")
-                    if (!msgStr.startsWith("{")) continue
-                    val data = JSONObject(msgStr)
-                    val code = data.optString("code", "").uppercase(Locale.US)
-                    val email = data.optString("email", "").trim()
-                    val name = normalizeKnownLeaderboardName(data.optString("name", ""))
-                    // Only accept real users who have connected an email account
-                    if (code.isBlank() || !email.contains("@") || name.isBlank() || name.startsWith("Hráč (")) continue
-
-                    val date = data.optString("date", "")
-                    val goalVal = data.optInt("dailyGoal", 20).coerceAtLeast(1)
-                    val msgCompleted = data.optInt("todayCompleted", 0)
-                    val fallbackDayXp = msgCompleted + if (msgCompleted >= goalVal) 5 else 0
-                    val msgXp = data.optInt("todayXp", fallbackDayXp)
-
-                    if (date >= weekStart && date.length == 10) {
-                        val userDays = weekDailyByCode.getOrPut(code) { mutableMapOf() }
-                        val prevDay = userDays[date]
-                        userDays[date] = maxOf(msgCompleted, prevDay?.first ?: 0) to maxOf(msgXp, prevDay?.second ?: 0)
-                    }
-
-                    val todayVal = if (date == currentDay) msgCompleted else 0
-                    val todayXpVal = if (date == currentDay) msgXp else 0
-                    val explicitWeeklyCompleted = if (date >= weekStart) data.optInt("weeklyCompleted", msgCompleted) else 0
-                    val explicitWeeklyXp = if (date >= weekStart) data.optInt("weeklyXp", msgXp) else 0
-                    val summedDays = weekDailyByCode[code]?.values
-                    val weeklyWordsVal = maxOf(explicitWeeklyCompleted, summedDays?.sumOf { it.first } ?: 0)
-                    val weeklyXpVal = maxOf(explicitWeeklyXp, summedDays?.sumOf { it.second } ?: 0)
-
-                    val streakVal = data.optInt("streakDays", 0)
-                    val spokenVal = data.optInt("totalSpoken", 0)
-                    val masteredVal = data.optInt("masteredCount", spokenVal)
-                    val totalCorrectVal = data.optInt("totalCorrect", spokenVal)
-                    val sessionsVal = data.optInt("completedSessions", 0)
-                    val accuracyVal = data.optInt("accuracyPercent", 0)
-                    val catalogVal = data.optInt("catalogWordCount", 1430)
-                    val langCode = data.optString("languageCode", "en")
-                    val lastActive = data.optString("lastActiveDate", date).ifEmpty { date }
-
-                    outMap[code] = FriendProgress(
-                        id = "cloud_$code",
-                        displayName = name,
-                        emailOrCode = code,
-                        todayCompleted = todayVal,
-                        dailyGoal = goalVal,
-                        streakDays = streakVal,
-                        totalSpoken = spokenVal,
-                        statusText = if (todayVal >= goalVal) "Cíl splněn ✓" else "Dnes $todayVal/$goalVal slov",
-                        masteredCount = masteredVal,
-                        totalCorrectCount = totalCorrectVal,
-                        completedSessions = sessionsVal,
-                        accuracyPercent = accuracyVal,
-                        catalogWordCount = catalogVal,
-                        languageCode = langCode,
-                        lastActiveDate = lastActive,
-                        todayXp = todayXpVal,
-                        weeklyCompleted = weeklyWordsVal,
-                        weeklyXp = weeklyXpVal
-                    )
-                } catch (_: Exception) {
-                }
-            }
-        }
-        conn.disconnect()
     }
 
     private fun saveStats() {

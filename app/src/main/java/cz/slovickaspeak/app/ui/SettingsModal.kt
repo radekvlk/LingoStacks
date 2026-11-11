@@ -163,7 +163,11 @@ fun AppleFullSettingsDialog(
                         Text(
                             text = progressState.lastSyncStatus,
                             fontSize = 11.sp,
-                            color = AppleGreenDark,
+                            color = if (progressState.lastSyncOnlineOk) {
+                                if (isDarkThemeActive) AppleGreen else AppleGreenDark
+                            } else {
+                                AppleOrange
+                            },
                             fontWeight = FontWeight.Medium
                         )
                     }
