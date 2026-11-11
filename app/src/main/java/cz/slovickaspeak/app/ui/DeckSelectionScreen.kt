@@ -26,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -56,6 +57,7 @@ import androidx.compose.ui.window.Dialog
 import kotlin.math.PI
 import kotlin.math.sin
 import cz.slovickaspeak.app.data.DeckMemorySummary
+import cz.slovickaspeak.app.data.LanguageCompleteStats
 import cz.slovickaspeak.app.model.CefrLevel
 import cz.slovickaspeak.app.model.LearningLanguage
 import cz.slovickaspeak.app.model.StudyDirection
@@ -131,7 +133,19 @@ fun DeckSelectionScreen(
         containerColor = SurfaceBg
     ) { innerPadding ->
         if (isLandscape) {
-            // Fold / Tablet Landscape (na sirku): 2 sloupce vedle sebe (Dashboard vlevo, Balicky vpravo)
+            // Fold / Tablet Landscape (na sirku): 2 sloupce vedle sebe (Plnohodnotny Dashboard vlevo, Balicky vpravo)
+            val allLanguageStats = remember(progressState.srsRevision, studyDirection) {
+                LearningLanguage.entries.map { progressState.getLanguageCompleteStats(it) }
+            }
+            val activeLangStats = allLanguageStats.firstOrNull { it.language == selectedLanguage }
+                ?: allLanguageStats.first()
+            val recommendedPair = remember(filteredDecks, progressState.srsRevision, studyDirection) {
+                val withSummaries = filteredDecks.map { it to progressState.getDeckMemorySummary(it) }
+                withSummaries.firstOrNull { it.second.needsReviewCount > 0 }
+                    ?: withSummaries.firstOrNull { it.second.learnedAnyCount in 1 until it.second.totalCount }
+                    ?: withSummaries.firstOrNull()
+            }
+
             Row(
                 modifier = Modifier
                     .fillMaxSize()
@@ -139,12 +153,12 @@ fun DeckSelectionScreen(
                     .padding(horizontal = 24.dp, vertical = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                // Levy sloupec: Hlavicka a Karta denniho cile
+                // Levy sloupec: Hlavicka, denni cil, rychly start, statistiky a prehled jazyku
                 LazyColumn(
                     modifier = Modifier
-                        .weight(0.9f)
+                        .weight(0.92f)
                         .fillMaxHeight(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     item {
                         DeckHeaderRow(
@@ -195,12 +209,48 @@ fun DeckSelectionScreen(
                             onOpenStats = { showCompleteStatsDialog = true }
                         )
                     }
+
+                    if (recommendedPair != null) {
+                        item {
+                            LandscapeQuickResumeCard(
+                                deck = recommendedPair.first,
+                                summary = recommendedPair.second,
+                                strings = strings,
+                                onClick = { onSelectDeck(recommendedPair.first) }
+                            )
+                        }
+                    }
+
+                    item {
+                        LandscapeQuickStatsCard(
+                            strings = strings,
+                            selectedLanguage = selectedLanguage,
+                            studyDirection = studyDirection,
+                            streakDays = progressState.streakDays,
+                            accuracyPercent = progressState.accuracyPercent,
+                            totalSpokenCorrect = progressState.totalSpokenCorrect,
+                            activeLangStats = activeLangStats,
+                            onOpenStats = { showCompleteStatsDialog = true }
+                        )
+                    }
+
+                    item {
+                        LandscapeLanguagesCard(
+                            strings = strings,
+                            selectedLanguage = selectedLanguage,
+                            studyDirection = studyDirection,
+                            languageStats = allLanguageStats,
+                            onSelectLanguage = { lang ->
+                                progressState.updateSelectedLanguage(lang)
+                            }
+                        )
+                    }
                 }
 
                 // Pravy sloupec: Seznam tematickych balicku
                 LazyColumn(
                     modifier = Modifier
-                        .weight(1.1f)
+                        .weight(1.08f)
                         .fillMaxHeight(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
@@ -1548,6 +1598,353 @@ fun InitialLanguageDialog(
                     color = TextMuted,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LandscapeQuickResumeCard(
+    deck: VocabDeck,
+    summary: DeckMemorySummary,
+    strings: UiStrings,
+    onClick: () -> Unit
+) {
+    val hasReview = summary.needsReviewCount > 0
+    val statusText = when {
+        hasReview && strings.isCzech -> "K opakování: ${summary.needsReviewCount}"
+        hasReview -> "Due review: ${summary.needsReviewCount}"
+        strings.isCzech -> "Doporučená lekce"
+        else -> "Continue Learning"
+    }
+    val statusBg = if (hasReview) AppleRedTint else AppleBlueTint
+    val statusColor = if (hasReview) AppleRed else AppleBlue
+
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = CardSurface,
+        border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(5.dp, RoundedCornerShape(20.dp), spotColor = Color.Black.copy(alpha = 0.05f))
+            .clip(RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = SurfaceBg,
+                modifier = Modifier.size(44.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(text = deck.emoji, fontSize = 22.sp)
+                }
+            }
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = statusBg
+                ) {
+                    Text(
+                        text = statusText,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = statusColor,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                    )
+                }
+                Text(
+                    text = deck.title,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextDark,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = if (strings.isCzech) {
+                        "${deck.level.label} • ${summary.learnedAnyCount} / ${summary.totalCount} slov"
+                    } else {
+                        "${deck.level.label} • ${summary.learnedAnyCount} / ${summary.totalCount} words"
+                    },
+                    fontSize = 11.5.sp,
+                    color = TextMuted,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        Brush.horizontalGradient(listOf(AppleBlue, AppleIndigo))
+                    )
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = if (strings.isCzech) "Spustit" else "Start",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LandscapeQuickStatTile(
+    icon: String,
+    value: String,
+    label: String,
+    accentColor: Color,
+    tintBg: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = tintBg,
+        modifier = modifier
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(text = icon, fontSize = 17.sp)
+            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                Text(
+                    text = value,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = accentColor,
+                    maxLines = 1
+                )
+                Text(
+                    text = label,
+                    fontSize = 10.5.sp,
+                    color = TextMuted,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LandscapeQuickStatsCard(
+    strings: UiStrings,
+    selectedLanguage: LearningLanguage,
+    studyDirection: StudyDirection,
+    streakDays: Int,
+    accuracyPercent: Int,
+    totalSpokenCorrect: Int,
+    activeLangStats: LanguageCompleteStats,
+    onOpenStats: () -> Unit
+) {
+    val masteredInLang = if (studyDirection == StudyDirection.FOREIGN_TO_NATIVE) {
+        activeLangStats.passiveMasteredCount
+    } else {
+        activeLangStats.activeMasteredCount
+    }
+
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = CardSurface,
+        border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(5.dp, RoundedCornerShape(20.dp), spotColor = Color.Black.copy(alpha = 0.05f))
+            .clip(RoundedCornerShape(20.dp))
+            .clickable(onClick = onOpenStats)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (strings.isCzech) "Tvůj přehled" else "Your Progress",
+                    fontSize = 13.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextDark
+                )
+                Text(
+                    text = if (strings.isCzech) "Statistiky ›" else "Details ›",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = AppleBlue
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                LandscapeQuickStatTile(
+                    icon = "🔥",
+                    value = if (strings.isCzech) "$streakDays d" else "$streakDays days",
+                    label = if (strings.isCzech) "Řada dnů" else "Streak",
+                    accentColor = AppleOrange,
+                    tintBg = AppleOrange.copy(alpha = 0.11f),
+                    modifier = Modifier.weight(1f)
+                )
+                LandscapeQuickStatTile(
+                    icon = "🎯",
+                    value = "$accuracyPercent %",
+                    label = if (strings.isCzech) "Přesnost" else "Accuracy",
+                    accentColor = if (isDarkThemeActive) AppleGreen else AppleGreenDark,
+                    tintBg = AppleGreenTint,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                LandscapeQuickStatTile(
+                    icon = "📚",
+                    value = "$masteredInLang / ${activeLangStats.totalWords}",
+                    label = if (strings.isCzech) "Naučeno (${selectedLanguage.code.uppercase()})" else "Learned (${selectedLanguage.code.uppercase()})",
+                    accentColor = AppleBlue,
+                    tintBg = AppleBlueTint,
+                    modifier = Modifier.weight(1f)
+                )
+                LandscapeQuickStatTile(
+                    icon = "🎙️",
+                    value = "$totalSpokenCorrect",
+                    label = if (strings.isCzech) "Hlasem" else "Spoken",
+                    accentColor = AppleIndigo,
+                    tintBg = AppleIndigo.copy(alpha = 0.11f),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LandscapeLanguagesCard(
+    strings: UiStrings,
+    selectedLanguage: LearningLanguage,
+    studyDirection: StudyDirection,
+    languageStats: List<LanguageCompleteStats>,
+    onSelectLanguage: (LearningLanguage) -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = CardSurface,
+        border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(5.dp, RoundedCornerShape(20.dp), spotColor = Color.Black.copy(alpha = 0.05f))
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (strings.isCzech) "Moje jazyky" else "My Languages",
+                    fontSize = 13.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextDark
+                )
+                Text(
+                    text = if (strings.isCzech) "5 jazyků • 8 270+ slov" else "5 languages • 8,270+ words",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = TextMuted
+                )
+            }
+
+            languageStats.forEach { stat ->
+                val isSelected = stat.language == selectedLanguage
+                val learned = if (studyDirection == StudyDirection.FOREIGN_TO_NATIVE) {
+                    stat.passiveMasteredCount
+                } else {
+                    stat.activeMasteredCount
+                }
+                val fraction = if (stat.totalWords == 0) 0f else (learned.toFloat() / stat.totalWords.toFloat()).coerceIn(0f, 1f)
+
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (isSelected) AppleBlueTint else SurfaceBg,
+                    border = if (isSelected) BorderStroke(1.dp, AppleBlue.copy(alpha = 0.55f)) else null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onSelectLanguage(stat.language) }
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "${stat.language.flagEmoji} ${stat.language.localizedTitle(strings.isCzech)}",
+                                fontSize = 12.5.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                                color = TextDark
+                            )
+                            Text(
+                                text = "$learned / ${stat.totalWords}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isSelected) AppleBlue else TextMuted
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(4.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(CardBorderGray.copy(alpha = 0.4f))
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(fraction)
+                                    .clip(RoundedCornerShape(50))
+                                    .background(if (isSelected) AppleBlue else AppleGreen)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
