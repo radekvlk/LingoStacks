@@ -438,7 +438,13 @@ fun FlashcardSessionScreen(
         val canAcceptSpeech = !isTransitioningUpdated &&
                 (state == CardFeedbackState.NEUTRAL || state == CardFeedbackState.SPOKEN_WRONG_FLASH)
         if (word != null && canAcceptSpeech && candidates.isNotEmpty()) {
-            val matched = WordMatcher.matches(candidates, word, isFinal, expectCzech = expectCzech)
+            val matched = WordMatcher.matches(
+                spokenCandidates = candidates,
+                targetWord = word,
+                isFinal = isFinal,
+                expectCzech = expectCzech,
+                language = deck.language
+            )
             if (matched != null) {
                 wrongWordDebounceJob?.cancel()
                 wrongFlashResetJob?.cancel()
@@ -457,10 +463,10 @@ fun FlashcardSessionScreen(
                     if (isFinal) {
                         triggerWrongSpokenFlash(snippet)
                     } else if (!WordMatcher.isPrefixOfTarget(candidates, word, expectCzech = expectCzech)) {
-                        // Wait well past Android's 1100ms complete-silence window + ASR finalization latency
+                        // Wait well past Android's 750-900ms complete-silence window + ASR finalization latency
                         // before flashing red on a non-final partial (prevents red-then-green flash before onResults).
                         wrongWordDebounceJob = coroutineScope.launch {
-                            delay(2200L)
+                            delay(1750L)
                             triggerWrongSpokenFlash(snippet)
                         }
                     }

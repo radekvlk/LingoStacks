@@ -24,8 +24,46 @@ import kotlin.math.min
 
 object WordMatcher {
 
-    private val leadingArticles = Regex("^(a|an|the|to|be|is|are|i|you|we|they|he|she|it|el|la|los|las|un|una|unos|unas|yo|tu|ella|nosotros|ellos)\\s+")
+    private val leadingArticles = Regex("^(a|an|the|to|el|la|los|las|un|una|unos|unas)\\s+")
     private val combiningMarksRegex = Regex("\\p{InCombiningDiacriticalMarks}+")
+    private val britishToAmerican = mapOf(
+        "colour" to "color",
+        "colours" to "colors",
+        "favour" to "favor",
+        "favourite" to "favorite",
+        "flavour" to "flavor",
+        "humour" to "humor",
+        "labour" to "labor",
+        "neighbour" to "neighbor",
+        "behaviour" to "behavior",
+        "honour" to "honor",
+        "centre" to "center",
+        "theatre" to "theater",
+        "metre" to "meter",
+        "litre" to "liter",
+        "grey" to "gray",
+        "tyre" to "tire",
+        "analyse" to "analyze",
+        "organise" to "organize",
+        "realise" to "realize",
+        "apologise" to "apologize",
+        "recognise" to "recognize",
+        "practise" to "practice",
+        "licence" to "license",
+        "defence" to "defense",
+        "offence" to "offense",
+        "dialogue" to "dialog",
+        "catalogue" to "catalog",
+        "programme" to "program",
+        "travelling" to "traveling",
+        "cancelled" to "canceled",
+        "jewellery" to "jewelry",
+        "cheque" to "check",
+        "mum" to "mom",
+        "pyjamas" to "pajamas",
+        "aeroplane" to "airplane",
+        "doughnut" to "donut"
+    )
     private val commonContractions = mapOf(
         "i'm" to "i am",
         "im" to "i am",
@@ -100,7 +138,17 @@ object WordMatcher {
         "80" to "eighty",
         "90" to "ninety",
         "100" to "hundred",
-        "1000" to "thousand"
+        "1000" to "thousand",
+        "1st" to "first",
+        "2nd" to "second",
+        "3rd" to "third",
+        "4th" to "fourth",
+        "5th" to "fifth",
+        "6th" to "sixth",
+        "7th" to "seventh",
+        "8th" to "eighth",
+        "9th" to "ninth",
+        "10th" to "tenth"
     )
 
     // Common single-word homophones and STT substitutions when spoken in isolation
@@ -271,6 +319,7 @@ object WordMatcher {
             rawWords.flatMap { token ->
                 val expanded = commonContractions[token]
                 (expanded?.split(" ") ?: listOf(token.replace("'", "")))
+                    .map { w -> britishToAmerican[w] ?: w }
                     .filter { it.isNotEmpty() }
             }
         } else {
@@ -286,9 +335,24 @@ object WordMatcher {
     }
 
     /**
-     * Produces a pronunciation skeleton for English and Spanish words with Czech-speaker accent tolerance.
+     * Language-aware phonetic skeleton for English, Spanish, or Czech spoken input.
      */
-    fun phoneticCode(word: String): String {
+    fun phoneticCode(
+        word: String,
+        language: LearningLanguage = LearningLanguage.ENGLISH,
+        expectCzech: Boolean = false
+    ): String {
+        return when {
+            expectCzech -> czechPhoneticCode(word)
+            language == LearningLanguage.SPANISH -> spanishPhoneticCode(word)
+            else -> englishPhoneticCode(word)
+        }
+    }
+
+    /**
+     * Produces a pronunciation skeleton for English words with Czech-speaker accent tolerance.
+     */
+    private fun englishPhoneticCode(word: String): String {
         if (word.isEmpty()) return ""
         var s = stripAccents(word).lowercase(Locale.US).trim()
         s = digitToWord[s] ?: s
@@ -316,10 +380,6 @@ object WordMatcher {
             .replace("ch", "c")
             .replace("th", "t")
             .replace("qu", "k")
-            .replace("gue", "ge")
-            .replace("gui", "gi")
-            .replace("ll", "i")
-            .replace("rr", "r")
             .replace("ck", "k")
             .replace("dg", "j")
             .replace("ce", "se")
@@ -358,6 +418,78 @@ object WordMatcher {
             if (mapped != prevChar) {
                 sb.append(mapped)
                 prevChar = mapped
+            }
+        }
+        return sb.toString()
+    }
+
+    /**
+     * Spanish-specific phonetic skeleton handling j/g(e,i), z/c(e,i)/s, ll/y, ñ/ni+vowel, b/v, qu/k, ch, and silent h.
+     */
+    private fun spanishPhoneticCode(word: String): String {
+        if (word.isEmpty()) return ""
+        var s = stripAccents(word).lowercase(Locale.US).trim()
+        s = digitToWord[s] ?: s
+
+        s = s.replace("ch", "x")
+            .replace("h", "")
+            .replace("gue", "ge")
+            .replace("gui", "gi")
+            .replace("que", "ke")
+            .replace("qui", "ki")
+            .replace("qu", "k")
+            .replace("ge", "je")
+            .replace("gi", "ji")
+            .replace("ce", "se")
+            .replace("ci", "si")
+            .replace("ll", "i")
+            .replace("rr", "r")
+            .replace(Regex("n[iy]([aeiou])"), "n$1")
+
+        val sb = StringBuilder()
+        var prev = ' '
+        for (ch in s) {
+            val mapped = when (ch) {
+                'z' -> 's'
+                'v', 'b' -> 'p'
+                'w' -> 'u'
+                'y' -> 'i'
+                'c', 'q' -> 'k'
+                else -> ch
+            }
+            if (mapped != prev) {
+                sb.append(mapped)
+                prev = mapped
+            }
+        }
+        return sb.toString()
+    }
+
+    /**
+     * Czech sound key normalizing y/i, ch/x, mě/mne, and voiced/unvoiced assimilation (d/t, b/p, v/f, z/s, g/k).
+     */
+    private fun czechPhoneticCode(word: String): String {
+        if (word.isEmpty()) return ""
+        var s = stripAccents(word).lowercase(Locale.US).trim()
+        s = s.replace("ch", "x")
+            .replace("me", "mne")
+            .replace("qu", "kv")
+        val sb = StringBuilder()
+        var prev = ' '
+        for (ch in s) {
+            val mapped = when (ch) {
+                'y' -> 'i'
+                'b' -> 'p'
+                'd' -> 't'
+                'g' -> 'k'
+                'v', 'w' -> 'f'
+                'z' -> 's'
+                'q' -> 'k'
+                else -> ch
+            }
+            if (mapped != prev) {
+                sb.append(mapped)
+                prev = mapped
             }
         }
         return sb.toString()
@@ -449,17 +581,21 @@ object WordMatcher {
             val cleaned = targetWord.czech.replace(Regex("\\s*\\(.*?\\)"), " ").trim()
             cleaned.split("/", ";", ",", "–", " - ")
         } else {
-            val primary = targetWord.english.replace(Regex("\\s*\\(.*?\\)"), " ")
-                .split("/", ";", ",")
+            val cleanedPrimary = targetWord.english.replace(Regex("\\s*\\(.*?\\)"), " ")
+            val spacedPrimary = cleanedPrimary.replace(" – ", " ").replace(" - ", " ")
+            val primary = cleanedPrimary.split("/", ";", ",") + spacedPrimary.split("/", ";", ",")
             val variants = targetWord.acceptedVariants.flatMap {
-                it.replace(Regex("\\s*\\(.*?\\)"), " ").split("/", ";", ",")
+                it.replace(Regex("\\s*\\(.*?\\)"), " ")
+                    .replace(" – ", " ")
+                    .replace(" - ", " ")
+                    .split("/", ";", ",")
             }
             primary + variants
         }
         return raw.map { it.trim() }
             .filter { it.length >= 2 }
             .distinct()
-            .take(10)
+            .take(15)
     }
 
     /**
@@ -472,9 +608,14 @@ object WordMatcher {
         for (candidate in spokenCandidates) {
             val norm = normalize(candidate, stripLeadingForeignArticles = !expectCzech)
             if (norm.isEmpty()) continue
+            val normNoSpace = norm.replace(" ", "")
             val lastToken = norm.split(" ").lastOrNull() ?: norm
             for (target in rawTargets) {
-                if (target.startsWith(norm) || (lastToken.length >= 2 && target.startsWith(lastToken))) {
+                val targetNoSpace = target.replace(" ", "")
+                if (target.startsWith(norm) ||
+                    targetNoSpace.startsWith(normNoSpace) ||
+                    (lastToken.length >= 2 && target.startsWith(lastToken))
+                ) {
                     return true
                 }
             }
@@ -500,28 +641,25 @@ object WordMatcher {
         val original: String,
         val norm: String,
         val words: List<String>,
-        val phrases: List<String>
+        val phrases: List<String>,
+        val noSpacePhrases: List<String>
     )
 
     /**
-     * Checks if any of the recognized speech candidates match the target English word
-     * or any of its accepted variants.
-     * Evaluates in strict confidence tiers across ALL candidates:
-     * - Tier 1: Exact target matches (or target word in sentence)
-     * - Tier 2: Homophones & number words (e.g. meat/meet, sun/son)
-     * - Tier 3: Grammatical inflections (e.g. cookies/cookie, walked/walk)
-     * - Tier 4: Exact phonetic skeleton match (Czech accent tolerance, e.g. w/v, c/k)
-     * - Tier 5: Levenshtein & Near-Phonetic (STRICT: only on final results or non-prefixes,
-     *           and requires phonetic length >= 5 so short words like cook/cookie never collide!)
-     *
-     * Returns the canonical target word / variant that was matched (e.g. "cookie"),
-     * so UI feedback always correctly displays the intended word!
+     * Checks if any of the recognized speech candidates match the target word
+     * or any of its accepted variants across strict confidence tiers:
+     * - Tier 1: Exact target / compound no-space match / target words present
+     * - Tier 2: Homophones, British/US variants & number/ordinal words
+     * - Tier 3: Grammatical inflections (EN/ES suffixes OR Czech stem declensions)
+     * - Tier 4: Language-aware phonetic skeleton (English, Spanish, or Czech sound key)
+     * - Tier 5: Levenshtein, consonant skeleton & near-phonetic across single/multi-word phrases
      */
     fun matches(
         spokenCandidates: List<String>,
         targetWord: VocabWord,
         isFinal: Boolean = true,
-        expectCzech: Boolean = false
+        expectCzech: Boolean = false,
+        language: LearningLanguage = LearningLanguage.ENGLISH
     ): String? {
         val rawTargets = extractNormalizedTargets(targetWord, expectCzech)
         val matchedDisplay = if (expectCzech) primaryCzechDisplay(targetWord) else targetWord.english
@@ -530,22 +668,39 @@ object WordMatcher {
             val norm = normalize(cand, stripLeadingForeignArticles = !expectCzech)
             if (norm.isEmpty()) return@mapNotNull null
             val words = norm.split(" ").filter { it.isNotEmpty() }
-            val phrases = mutableListOf(norm)
-            if (words.size >= 2) {
-                phrases.add(words.last())
-                phrases.add(words.takeLast(2).joinToString(" "))
-            }
-            if (words.size >= 3) {
-                phrases.add(words.takeLast(3).joinToString(" "))
-            }
-            CandidateInfo(original = cand, norm = norm, words = words, phrases = phrases.distinct())
+            val phrases = LinkedHashSet<String>().apply {
+                add(norm)
+                if (words.size >= 2) {
+                    add(words.last())
+                    add(words.takeLast(2).joinToString(" "))
+                    val windowLimit = words.size.coerceAtMost(10)
+                    for (i in 0 until windowLimit) {
+                        add(words[i])
+                        if (i + 1 < windowLimit) {
+                            add("${words[i]} ${words[i + 1]}")
+                        }
+                        if (i + 2 < windowLimit) {
+                            add("${words[i]} ${words[i + 1]} ${words[i + 2]}")
+                        }
+                    }
+                }
+            }.toList()
+            val noSpacePhrases = phrases.map { it.replace(" ", "") }.distinct()
+            CandidateInfo(
+                original = cand,
+                norm = norm,
+                words = words,
+                phrases = phrases,
+                noSpacePhrases = noSpacePhrases
+            )
         }
 
         if (parsedCandidates.isEmpty() || rawTargets.isEmpty()) return null
 
-        // TIER 1: Exact matches across ALL candidates
+        // TIER 1: Exact matches & space-agnostic compound matches across ALL candidates
         for (target in rawTargets) {
             val targetWords = target.split(" ").filter { it.isNotEmpty() }
+            val targetNoSpace = target.replace(" ", "")
             for (cand in parsedCandidates) {
                 for (phrase in cand.phrases) {
                     if (phrase == target || cand.words.contains(target)) {
@@ -554,6 +709,9 @@ object WordMatcher {
                     if (target.contains(" ") && phrase.contains(target)) {
                         return matchedDisplay
                     }
+                }
+                if (targetNoSpace.length >= 3 && cand.noSpacePhrases.any { it == targetNoSpace }) {
+                    return matchedDisplay
                 }
                 if (targetWords.size >= 2 && cand.words.size >= targetWords.size) {
                     if (targetWords.all { cand.words.contains(it) }) {
@@ -624,38 +782,44 @@ object WordMatcher {
             }
         }
 
-        // TIER 4: Exact Phonetic Skeleton Match (foreign pronunciation tolerance)
-        if (!expectCzech) {
-            for (target in rawTargets) {
-                val targetPhonetic = phoneticCode(target)
-                if (targetPhonetic.length >= 2) {
-                    for (cand in parsedCandidates) {
-                        for (phrase in cand.phrases) {
-                            val candPhonetic = phoneticCode(phrase)
-                            if (candPhonetic == targetPhonetic || cand.words.any { phoneticCode(it) == targetPhonetic }) {
-                                return matchedDisplay
-                            }
+        // TIER 4: Language-Aware Phonetic Skeleton Match (English, Spanish, or Czech sound key)
+        val minPhoneticLen = if (expectCzech) 3 else 2
+        for (target in rawTargets) {
+            val targetNoSpace = target.replace(" ", "")
+            val targetPhonetic = phoneticCode(targetNoSpace, language, expectCzech)
+            if (targetPhonetic.length >= minPhoneticLen) {
+                for (cand in parsedCandidates) {
+                    for (noSpace in cand.noSpacePhrases) {
+                        if (phoneticCode(noSpace, language, expectCzech) == targetPhonetic) {
+                            return matchedDisplay
                         }
+                    }
+                    if (cand.words.any { phoneticCode(it, language, expectCzech) == targetPhonetic }) {
+                        return matchedDisplay
                     }
                 }
             }
         }
 
-        // TIER 5: Loose Fuzzy / Near-Phonetic Tolerance
+        // TIER 5: Loose Fuzzy / Near-Phonetic / Consonant Skeleton Tolerance
         val anyIsPrefix = parsedCandidates.any { cand ->
             rawTargets.any { target -> target.startsWith(cand.norm) || target.startsWith(cand.words.last()) }
         }
 
         if (isFinal || !anyIsPrefix) {
             for (target in rawTargets) {
-                val targetPhonetic = phoneticCode(target)
+                val targetNoSpace = target.replace(" ", "")
+                val targetPhonetic = phoneticCode(targetNoSpace, language, expectCzech)
                 val targetWords = target.split(" ").filter { it.isNotEmpty() }
+                val minNearPhoneticLen = if (isFinal) 4 else 5
 
                 for (cand in parsedCandidates) {
-                    for (phrase in cand.phrases) {
-                        if (!expectCzech && targetPhonetic.length >= 5) {
-                            val candPhonetic = phoneticCode(phrase)
-                            if (candPhonetic.length >= 4 &&
+                    for (idx in cand.phrases.indices) {
+                        val phrase = cand.phrases[idx]
+                        val phraseNoSpace = phrase.replace(" ", "")
+                        if (targetPhonetic.length >= minNearPhoneticLen) {
+                            val candPhonetic = phoneticCode(phraseNoSpace, language, expectCzech)
+                            if (candPhonetic.length >= 3 &&
                                 abs(candPhonetic.length - targetPhonetic.length) <= 1 &&
                                 levenshtein(candPhonetic, targetPhonetic) <= 1
                             ) {
@@ -666,8 +830,8 @@ object WordMatcher {
                         if (!expectCzech && isFinal && !target.contains(" ")) {
                             val targetCons = consonantSkeleton(target)
                             if (targetCons.length >= 2) {
-                                val candCons = consonantSkeleton(phrase)
-                                if (candCons == targetCons && abs(phrase.length - target.length) <= 1) {
+                                val candCons = consonantSkeleton(phraseNoSpace)
+                                if (candCons == targetCons && abs(phraseNoSpace.length - target.length) <= 1) {
                                     return matchedDisplay
                                 }
                                 if (cand.words.any { cw ->
@@ -705,10 +869,18 @@ object WordMatcher {
 
                     if (targetWords.size >= 2 && cand.words.size >= targetWords.size) {
                         val matchedCount = targetWords.count { tw ->
+                            val twPhon = phoneticCode(tw, language, expectCzech)
+                            val twCons = if (!expectCzech) consonantSkeleton(tw) else ""
                             cand.words.any { cw ->
-                                cw == tw || areHomophones(cw, tw) ||
-                                    (!expectCzech && phoneticCode(cw) == phoneticCode(tw)) ||
-                                    (tw.length >= 5 && levenshtein(cw, tw) <= 1)
+                                cw == tw ||
+                                    areHomophones(cw, tw) ||
+                                    (twPhon.length >= 2 && phoneticCode(cw, language, expectCzech) == twPhon) ||
+                                    (tw.length >= 5 && levenshtein(cw, tw) <= 1) ||
+                                    (isFinal && (
+                                        (tw.length >= 4 && levenshtein(cw, tw) <= 1) ||
+                                            (twPhon.length >= 3 && levenshtein(phoneticCode(cw, language, expectCzech), twPhon) <= 1) ||
+                                            (twCons.length >= 2 && abs(cw.length - tw.length) <= 1 && consonantSkeleton(cw) == twCons)
+                                        ))
                             }
                         }
                         if (matchedCount >= targetWords.size) {
@@ -1294,7 +1466,7 @@ class SpeechSessionController(
                             // Only treat NO_MATCH as a broken recognizer if the cycle died almost immediately (< 1.8s),
                             // never during genuine quiet pauses (avoids recreating the Binder service every 20s!).
                             if (error == SpeechRecognizer.ERROR_NO_MATCH && cycleDurationMs < 1800L) {
-                                consecutiveEmptyNoMatch += 1
+                                consecutiveEmptyNoMatch += if (cycleDurationMs < 600L) 2 else 1
                                 if (consecutiveEmptyNoMatch >= 4) {
                                     consecutiveEmptyNoMatch = 0
                                     useDefaultFallbackRecognizer = !useDefaultFallbackRecognizer
@@ -1338,7 +1510,12 @@ class SpeechSessionController(
                         return
                     }
 
-                    scheduleListenRestart(180L)
+                    val errorDelay = if (error == SpeechRecognizer.ERROR_NETWORK || error == SpeechRecognizer.ERROR_NETWORK_TIMEOUT) {
+                        450L
+                    } else {
+                        180L
+                    }
+                    scheduleListenRestart(errorDelay)
                 }
 
                 override fun onResults(results: Bundle?) {
@@ -1455,11 +1632,20 @@ class SpeechSessionController(
             putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 10)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 1500L)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 800L)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1100L)
+            putExtra(
+                RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS,
+                if (isShortTarget) 900L else 1200L
+            )
+            putExtra(
+                RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS,
+                if (isShortTarget) 550L else 700L
+            )
+            putExtra(
+                RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS,
+                if (isShortTarget) 750L else 900L
+            )
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && biasList.isNotEmpty()) {
-                putStringArrayListExtra(RecognizerIntent.EXTRA_BIASING_STRINGS, ArrayList(biasList.take(10)))
+                putStringArrayListExtra(RecognizerIntent.EXTRA_BIASING_STRINGS, ArrayList(biasList.take(15)))
             }
         }
         try {
