@@ -12,8 +12,8 @@ android {
         applicationId = "cz.slovickaspeak.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 54
-        versionName = "1.6.34"
+        versionCode = 55
+        versionName = "1.6.35"
 
         vectorDrawables {
             useSupportLibrary = true

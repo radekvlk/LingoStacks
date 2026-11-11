@@ -13,8 +13,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
@@ -583,8 +585,8 @@ private fun DeckGoalIndicatorCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Learning Language Dropdown
-                Box(modifier = Modifier.weight(1f)) {
+                // Learning Language Dropdown (slightly wider for Francouzština / Španělština)
+                Box(modifier = Modifier.weight(1.22f)) {
                     FilterDropdownPill(
                         label = "${selectedLanguage.flagEmoji} ${selectedLanguage.localizedTitle(strings.isCzech)}",
                         modifier = Modifier.fillMaxWidth(),
@@ -644,7 +646,7 @@ private fun DeckGoalIndicatorCard(
                 }
 
                 // CEFR Level Dropdown (compact A1-C2 label on pill, full description in menu)
-                Box(modifier = Modifier.weight(1f)) {
+                Box(modifier = Modifier.weight(0.78f)) {
                     FilterDropdownPill(
                         label = selectedLevel?.label ?: "A1–C2",
                         modifier = Modifier.fillMaxWidth(),
@@ -1111,100 +1113,55 @@ fun InitialLanguageDialog(
                 }
 
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // English Option Card
-                    Surface(
-                        shape = RoundedCornerShape(18.dp),
-                        color = SurfaceBg,
-                        border = BorderStroke(1.dp, CardBorderGray.copy(alpha = 0.8f)),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(18.dp))
-                            .clickable { onSelectLanguage(LearningLanguage.ENGLISH) }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    LearningLanguage.entries.forEach { lang ->
+                        Surface(
+                            shape = RoundedCornerShape(18.dp),
+                            color = SurfaceBg,
+                            border = BorderStroke(1.dp, CardBorderGray.copy(alpha = 0.8f)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(18.dp))
+                                .clickable { onSelectLanguage(lang) }
                         ) {
-                            Text(text = "🇬🇧", fontSize = 32.sp)
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = LearningLanguage.ENGLISH.localizedTitle(strings.isCzech),
-                                    fontSize = 17.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextDark
-                                )
-                                val enWordCount = remember {
-                                    cz.slovickaspeak.app.model.BuiltInVocabulary.englishDecks.sumOf { it.words.size }
+                            Row(
+                                modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                Text(text = lang.flagEmoji, fontSize = 32.sp)
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = lang.localizedTitle(strings.isCzech),
+                                        fontSize = 17.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextDark
+                                    )
+                                    val (wordCount, deckCount) = remember(lang) {
+                                        val decks = cz.slovickaspeak.app.model.BuiltInVocabulary.decksForLanguage(lang)
+                                        decks.sumOf { it.words.size } to decks.size
+                                    }
+                                    Text(
+                                        text = if (strings.isCzech) {
+                                            "$wordCount slov a frází • $deckCount okruhů (A1–C2)"
+                                        } else {
+                                            "$wordCount words & phrases • $deckCount decks (A1–C2)"
+                                        },
+                                        fontSize = 12.sp,
+                                        color = TextMuted
+                                    )
                                 }
-                                val enDeckCount = remember {
-                                    cz.slovickaspeak.app.model.BuiltInVocabulary.englishDecks.size
-                                }
-                                Text(
-                                    text = if (strings.isCzech) {
-                                        "$enWordCount slov a frází • $enDeckCount okruhů (A1–C2)"
-                                    } else {
-                                        "$enWordCount words & phrases • $enDeckCount decks (A1–C2)"
-                                    },
-                                    fontSize = 12.sp,
-                                    color = TextMuted
+                                Icon(
+                                    imageVector = Icons.Default.ChevronRight,
+                                    contentDescription = null,
+                                    tint = AppleBlue
                                 )
                             }
-                            Icon(
-                                imageVector = Icons.Default.ChevronRight,
-                                contentDescription = null,
-                                tint = AppleBlue
-                            )
-                        }
-                    }
-
-                    // Spanish Option Card
-                    Surface(
-                        shape = RoundedCornerShape(18.dp),
-                        color = SurfaceBg,
-                        border = BorderStroke(1.dp, CardBorderGray.copy(alpha = 0.8f)),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(18.dp))
-                            .clickable { onSelectLanguage(LearningLanguage.SPANISH) }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(14.dp)
-                        ) {
-                            Text(text = "🇪🇸", fontSize = 32.sp)
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = LearningLanguage.SPANISH.localizedTitle(strings.isCzech),
-                                    fontSize = 17.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextDark
-                                )
-                                val esWordCount = remember {
-                                    cz.slovickaspeak.app.model.BuiltInVocabulary.spanishDecks.sumOf { it.words.size }
-                                }
-                                val esDeckCount = remember {
-                                    cz.slovickaspeak.app.model.BuiltInVocabulary.spanishDecks.size
-                                }
-                                Text(
-                                    text = if (strings.isCzech) {
-                                        "$esWordCount slov a frází • $esDeckCount okruhů (A1–C2)"
-                                    } else {
-                                        "$esWordCount words & phrases • $esDeckCount decks (A1–C2)"
-                                    },
-                                    fontSize = 12.sp,
-                                    color = TextMuted
-                                )
-                            }
-                            Icon(
-                                imageVector = Icons.Default.ChevronRight,
-                                contentDescription = null,
-                                tint = AppleBlue
-                            )
                         }
                     }
                 }

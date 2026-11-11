@@ -93,6 +93,45 @@ class WordMatcherTest {
     }
 
     @Test
+    fun germanPhoneticsUmlautsAndEszett() {
+        val street = word("Ulice", "Straße")
+        assertNotNull(WordMatcher.matches(listOf("Strasse"), street, isFinal = true, language = LearningLanguage.GERMAN))
+
+        val dog = word("Pes", "Hund")
+        assertNotNull(WordMatcher.matches(listOf("der Hund"), dog, isFinal = true, language = LearningLanguage.GERMAN))
+
+        val houses = word("Domy", "Häuser")
+        assertNotNull(WordMatcher.matches(listOf("Heuser"), houses, isFinal = true, language = LearningLanguage.GERMAN))
+
+        val important = word("Důležitý", "wichtig")
+        assertNotNull(WordMatcher.matches(listOf("wichtik"), important, isFinal = true, language = LearningLanguage.GERMAN))
+
+        val irregular = word("Jít (3 tvary)", "gehen – ging – gegangen")
+        assertNotNull(WordMatcher.matches(listOf("gehen ging gegangen"), irregular, isFinal = true, language = LearningLanguage.GERMAN))
+    }
+
+    @Test
+    fun frenchAndItalianPhoneticsAndElisions() {
+        val waterFr = word("Voda", "eau")
+        assertNotNull(WordMatcher.matches(listOf("l'eau"), waterFr, isFinal = true, language = LearningLanguage.FRENCH))
+
+        val heartFr = word("Srdce", "cœur")
+        assertNotNull(WordMatcher.matches(listOf("coeur"), heartFr, isFinal = true, language = LearningLanguage.FRENCH))
+
+        val helloFr = word("Dobrý den", "bonjour")
+        assertNotNull(WordMatcher.matches(listOf("bonjur"), helloFr, isFinal = true, language = LearningLanguage.FRENCH))
+
+        val waterIt = word("Voda", "acqua")
+        assertNotNull(WordMatcher.matches(listOf("l'acqua"), waterIt, isFinal = true, language = LearningLanguage.ITALIAN))
+
+        val familyIt = word("Rodina", "famiglia")
+        assertNotNull(WordMatcher.matches(listOf("familja"), familyIt, isFinal = true, language = LearningLanguage.ITALIAN))
+
+        val churchIt = word("Kostel", "chiesa")
+        assertNotNull(WordMatcher.matches(listOf("kiesa"), churchIt, isFinal = true, language = LearningLanguage.ITALIAN))
+    }
+
+    @Test
     fun preventsPrematureShortPartialCollisions() {
         val cookie = word("Sušenka", "cookie")
         assertNull(WordMatcher.matches(listOf("cook"), cookie, isFinal = false))

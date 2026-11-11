@@ -123,8 +123,13 @@ fun getUiStrings(isCs: Boolean): UiStrings {
             dailyGoalSliderHint = "Posuňte lištu (5 až 200 slovíček) pro nastavení denního cíle:",
             englishLevelTitle = "🇬🇧 Úroveň angličtiny (A1 – C2)",
             languageLevelTitle = { lang ->
-                if (lang == LearningLanguage.SPANISH) "🇪🇸 Úroveň španělštiny (A1 – C2)"
-                else "🇬🇧 Úroveň angličtiny (A1 – C2)"
+                when (lang) {
+                    LearningLanguage.SPANISH -> "🇪🇸 Úroveň španělštiny (A1 – C2)"
+                    LearningLanguage.GERMAN -> "🇩🇪 Úroveň němčiny (A1 – C2)"
+                    LearningLanguage.FRENCH -> "🇫🇷 Úroveň francouzštiny (A1 – C2)"
+                    LearningLanguage.ITALIAN -> "🇮🇹 Úroveň italštiny (A1 – C2)"
+                    LearningLanguage.ENGLISH -> "🇬🇧 Úroveň angličtiny (A1 – C2)"
+                }
             },
             allLevelsButton = "Všechny úrovně (A1 – C2)",
             allStatsTitle = "Veškeré statistiky učení",
@@ -161,7 +166,13 @@ fun getUiStrings(isCs: Boolean): UiStrings {
             cardPromptSpeakEnglish = "ŘEKNI ANGLICKY",
             cardPromptSpeakCzech = "ŘEKNI ČESKY",
             cardPromptSpeakLanguage = { lang ->
-                if (lang == LearningLanguage.SPANISH) "ŘEKNI ŠPANĚLSKY" else "ŘEKNI ANGLICKY"
+                when (lang) {
+                    LearningLanguage.SPANISH -> "ŘEKNI ŠPANĚLSKY"
+                    LearningLanguage.GERMAN -> "ŘEKNI NĚMECKY"
+                    LearningLanguage.FRENCH -> "ŘEKNI FRANCOUZSKY"
+                    LearningLanguage.ITALIAN -> "ŘEKNI ITALSKY"
+                    LearningLanguage.ENGLISH -> "ŘEKNI ANGLICKY"
+                }
             },
             showHintButton = "Zobrazit nápovědu",
             badgeDontKnow = "Nevím ✗",
@@ -177,8 +188,13 @@ fun getUiStrings(isCs: Boolean): UiStrings {
             bannerListening = "Poslouchám – rovnou řekni slovo anglicky",
             bannerListeningCzech = "Poslouchám – řekni překlad česky",
             bannerListeningForLanguage = { lang ->
-                if (lang == LearningLanguage.SPANISH) "Poslouchám – rovnou řekni slovo španělsky"
-                else "Poslouchám – rovnou řekni slovo anglicky"
+                when (lang) {
+                    LearningLanguage.SPANISH -> "Poslouchám – rovnou řekni slovo španělsky"
+                    LearningLanguage.GERMAN -> "Poslouchám – rovnou řekni slovo německy"
+                    LearningLanguage.FRENCH -> "Poslouchám – rovnou řekni slovo francouzsky"
+                    LearningLanguage.ITALIAN -> "Poslouchám – rovnou řekni slovo italsky"
+                    LearningLanguage.ENGLISH -> "Poslouchám – rovnou řekni slovo anglicky"
+                }
             },
             bannerMicReady = "Mikrofon připraven – mluv nebo posuň kartu",
             summaryCompleteTitle = "Lekce dokončena!",
@@ -225,8 +241,13 @@ fun getUiStrings(isCs: Boolean): UiStrings {
             dailyGoalSliderHint = "Slide the bar (5 to 200 words) to set your daily goal:",
             englishLevelTitle = "🇬🇧 English Level (A1 – C2)",
             languageLevelTitle = { lang ->
-                if (lang == LearningLanguage.SPANISH) "🇪🇸 Spanish Level (A1 – C2)"
-                else "🇬🇧 English Level (A1 – C2)"
+                when (lang) {
+                    LearningLanguage.SPANISH -> "🇪🇸 Spanish Level (A1 – C2)"
+                    LearningLanguage.GERMAN -> "🇩🇪 German Level (A1 – C2)"
+                    LearningLanguage.FRENCH -> "🇫🇷 French Level (A1 – C2)"
+                    LearningLanguage.ITALIAN -> "🇮🇹 Italian Level (A1 – C2)"
+                    LearningLanguage.ENGLISH -> "🇬🇧 English Level (A1 – C2)"
+                }
             },
             allLevelsButton = "All Levels (A1 – C2)",
             allStatsTitle = "All Learning Statistics",
@@ -263,7 +284,13 @@ fun getUiStrings(isCs: Boolean): UiStrings {
             cardPromptSpeakEnglish = "SPEAK IN ENGLISH",
             cardPromptSpeakCzech = "SPEAK IN CZECH",
             cardPromptSpeakLanguage = { lang ->
-                if (lang == LearningLanguage.SPANISH) "SPEAK IN SPANISH" else "SPEAK IN ENGLISH"
+                when (lang) {
+                    LearningLanguage.SPANISH -> "SPEAK IN SPANISH"
+                    LearningLanguage.GERMAN -> "SPEAK IN GERMAN"
+                    LearningLanguage.FRENCH -> "SPEAK IN FRENCH"
+                    LearningLanguage.ITALIAN -> "SPEAK IN ITALIAN"
+                    LearningLanguage.ENGLISH -> "SPEAK IN ENGLISH"
+                }
             },
             showHintButton = "Show hint",
             badgeDontKnow = "Don't know ✗",
@@ -279,8 +306,13 @@ fun getUiStrings(isCs: Boolean): UiStrings {
             bannerListening = "Listening – speak the word in English",
             bannerListeningCzech = "Listening – say translation in Czech",
             bannerListeningForLanguage = { lang ->
-                if (lang == LearningLanguage.SPANISH) "Listening – speak the word in Spanish"
-                else "Listening – speak the word in English"
+                when (lang) {
+                    LearningLanguage.SPANISH -> "Listening – speak the word in Spanish"
+                    LearningLanguage.GERMAN -> "Listening – speak the word in German"
+                    LearningLanguage.FRENCH -> "Listening – speak the word in French"
+                    LearningLanguage.ITALIAN -> "Listening – speak the word in Italian"
+                    LearningLanguage.ENGLISH -> "Listening – speak the word in English"
+                }
             },
             bannerMicReady = "Microphone ready – speak or swipe card",
             summaryCompleteTitle = "Lesson Complete!",

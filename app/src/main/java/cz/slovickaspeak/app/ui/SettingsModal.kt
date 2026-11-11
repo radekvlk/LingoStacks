@@ -2095,13 +2095,11 @@ fun AppleCompleteStatsDialog(
     onDismiss: () -> Unit
 ) {
     val strings = rememberAppStrings()
-    val englishStats = remember(progressState.srsRevision, progressState.studyDirection) {
-        progressState.getLanguageCompleteStats(LearningLanguage.ENGLISH)
+    val allLanguageStats = remember(progressState.srsRevision, progressState.studyDirection) {
+        LearningLanguage.entries.map { progressState.getLanguageCompleteStats(it) }
     }
-    val spanishStats = remember(progressState.srsRevision, progressState.studyDirection) {
-        progressState.getLanguageCompleteStats(LearningLanguage.SPANISH)
-    }
-    val activeStats = if (progressState.selectedLanguage == LearningLanguage.SPANISH) spanishStats else englishStats
+    val activeStats = allLanguageStats.firstOrNull { it.language == progressState.selectedLanguage }
+        ?: allLanguageStats.first()
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -2173,7 +2171,7 @@ fun AppleCompleteStatsDialog(
                         progressState = progressState
                     )
 
-                    listOf(englishStats, spanishStats).forEach { langStats ->
+                    allLanguageStats.forEach { langStats ->
                         CompleteLanguageMasteryCard(
                             strings = strings,
                             stats = langStats

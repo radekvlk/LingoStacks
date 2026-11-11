@@ -8,7 +8,10 @@ enum class LearningLanguage(
     val titleEn: String
 ) {
     ENGLISH("en", "en-US", "🇬🇧", "Angličtina", "English"),
-    SPANISH("es", "es-ES", "🇪🇸", "Španělština", "Spanish");
+    SPANISH("es", "es-ES", "🇪🇸", "Španělština", "Spanish"),
+    GERMAN("de", "de-DE", "🇩🇪", "Němčina", "German"),
+    FRENCH("fr", "fr-FR", "🇫🇷", "Francouzština", "French"),
+    ITALIAN("it", "it-IT", "🇮🇹", "Italština", "Italian");
 
     fun localizedTitle(isCzech: Boolean): String = if (isCzech) titleCs else titleEn
 }
@@ -101,12 +104,27 @@ object BuiltInVocabulary {
         SpanishVocabularyPart1.decks + SpanishVocabularyPart2.decks + SpanishVocabularyPart3.decks + SpanishVocabularyPart4.decks
     }
 
+    val germanDecks: List<VocabDeck> by lazy {
+        GermanVocabularyPart1.decks + GermanVocabularyPart2.decks + GermanVocabularyPart3.decks + GermanVocabularyPart4.decks
+    }
+
+    val frenchDecks: List<VocabDeck> by lazy {
+        FrenchVocabularyPart1.decks + FrenchVocabularyPart2.decks + FrenchVocabularyPart3.decks + FrenchVocabularyPart4.decks
+    }
+
+    val italianDecks: List<VocabDeck> by lazy {
+        ItalianVocabularyPart1.decks + ItalianVocabularyPart2.decks + ItalianVocabularyPart3.decks + ItalianVocabularyPart4.decks
+    }
+
     val decks: List<VocabDeck> by lazy {
-        englishDecks + spanishDecks
+        englishDecks + spanishDecks + germanDecks + frenchDecks + italianDecks
     }
 
     fun decksForLanguage(language: LearningLanguage): List<VocabDeck> = when (language) {
         LearningLanguage.ENGLISH -> englishDecks
         LearningLanguage.SPANISH -> spanishDecks
+        LearningLanguage.GERMAN -> germanDecks
+        LearningLanguage.FRENCH -> frenchDecks
+        LearningLanguage.ITALIAN -> italianDecks
     }
 }

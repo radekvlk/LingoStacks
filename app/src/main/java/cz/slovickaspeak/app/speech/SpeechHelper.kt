@@ -24,7 +24,8 @@ import kotlin.math.min
 
 object WordMatcher {
 
-    private val leadingArticles = Regex("^(a|an|the|to|el|la|los|las|un|una|unos|unas)\\s+")
+    private val leadingArticles = Regex("^(a|an|the|to|el|la|los|las|un|una|unos|unas|der|die|das|den|dem|des|ein|eine|einen|einem|einer|zu|le|les|du|l|il|lo|gli|uno)\\s+")
+    private val elidedArticlePrefix = Regex("^(l|un)'([a-zàâäéèêëïîôöùûüçæœ])")
     private val combiningMarksRegex = Regex("\\p{InCombiningDiacriticalMarks}+")
     private val britishToAmerican = mapOf(
         "colour" to "color",
@@ -297,7 +298,86 @@ object WordMatcher {
         setOf("cocer", "coser"),
         setOf("cien", "sien"),
         setOf("cerrar", "serrar"),
-        setOf("callo", "cayo")
+        setOf("callo", "cayo"),
+        // German number words & common ASR homophones
+        setOf("null", "0"),
+        setOf("eins", "ein", "eine", "1"),
+        setOf("zwei", "zwo", "2"),
+        setOf("drei", "3"),
+        setOf("vier", "für", "fur", "4"),
+        setOf("fünf", "funf", "5"),
+        setOf("sechs", "sex", "6"),
+        setOf("sieben", "7"),
+        setOf("acht", "8"),
+        setOf("neun", "9"),
+        setOf("zehn", "10"),
+        setOf("zwanzig", "20"),
+        setOf("hundert", "100"),
+        setOf("tausend", "1000"),
+        setOf("das", "dass"),
+        setOf("seid", "seit"),
+        setOf("war", "wahr"),
+        setOf("mehr", "meer"),
+        setOf("mal", "mahl"),
+        setOf("leere", "lehre"),
+        setOf("seite", "saite"),
+        setOf("wieder", "wider"),
+        setOf("mann", "man"),
+        setOf("viel", "fiel"),
+        setOf("rad", "rat"),
+        setOf("tod", "tot"),
+        setOf("stadt", "statt"),
+        setOf("lid", "lied"),
+        setOf("biss", "bis"),
+        setOf("isst", "ist"),
+        setOf("laib", "leib"),
+        setOf("stiel", "stil"),
+        // French numbers & frequent ASR homophones
+        setOf("un", "une", "1"),
+        setOf("deux", "2"),
+        setOf("trois", "3"),
+        setOf("quatre", "4"),
+        setOf("cinq", "5"),
+        setOf("six", "6"),
+        setOf("sept", "7"),
+        setOf("huit", "8"),
+        setOf("neuf", "9"),
+        setOf("dix", "dis", "dit", "10"),
+        setOf("vingt", "vin", "vain", "20"),
+        setOf("cent", "sans", "sang", "sent", "100"),
+        setOf("mille", "mil", "1000"),
+        setOf("eau", "haut", "au", "o"),
+        setOf("mer", "mere", "maire"),
+        setOf("pere", "paire", "pair"),
+        setOf("vert", "verre", "ver", "vers"),
+        setOf("faim", "fin"),
+        setOf("foi", "fois", "foie"),
+        setOf("cour", "cours", "court"),
+        setOf("compte", "comte", "conte"),
+        setOf("sain", "saint", "sein"),
+        setOf("et", "est", "es"),
+        setOf("ou", "août"),
+        setOf("son", "sont"),
+        setOf("temps", "tant", "tend"),
+        setOf("voix", "voie", "vois", "voit"),
+        setOf("coeur", "choeur"),
+        // Italian numbers & frequent ASR homophones
+        setOf("uno", "una", "1"),
+        setOf("due", "2"),
+        setOf("tre", "3"),
+        setOf("quattro", "4"),
+        setOf("cinque", "5"),
+        setOf("sei", "6"),
+        setOf("sette", "7"),
+        setOf("otto", "8"),
+        setOf("nove", "9"),
+        setOf("dieci", "10"),
+        setOf("venti", "20"),
+        setOf("cento", "100"),
+        setOf("anno", "hanno"),
+        setOf("o", "ho"),
+        setOf("ai", "hai"),
+        setOf("a", "ha")
     )
 
     fun stripAccents(input: String): String {
@@ -306,9 +386,23 @@ object WordMatcher {
     }
 
     fun normalize(input: String, stripLeadingForeignArticles: Boolean = true): String {
-        val rawWords = stripAccents(input)
-            .lowercase(Locale.US)
+        val preNormalized = input
+            .replace("ß", "ss")
+            .replace("ẞ", "ss")
+            .replace("œ", "oe")
+            .replace("Œ", "OE")
+            .replace("æ", "ae")
+            .replace("Æ", "AE")
             .replace("’", "'")
+            .lowercase(Locale.US)
+        val elisionExpanded = if (stripLeadingForeignArticles) {
+            preNormalized.split(Regex("\\s+")).joinToString(" ") { tok ->
+                tok.replace(elidedArticlePrefix, "$1 $2")
+            }
+        } else {
+            preNormalized
+        }
+        val rawWords = stripAccents(elisionExpanded)
             .replace(Regex("[^a-z0-9'\\s]"), " ")
             .replace(Regex("\\s+"), " ")
             .trim()
@@ -335,7 +429,7 @@ object WordMatcher {
     }
 
     /**
-     * Language-aware phonetic skeleton for English, Spanish, or Czech spoken input.
+     * Language-aware phonetic skeleton for English, Spanish, German, French, Italian, or Czech spoken input.
      */
     fun phoneticCode(
         word: String,
@@ -345,6 +439,9 @@ object WordMatcher {
         return when {
             expectCzech -> czechPhoneticCode(word)
             language == LearningLanguage.SPANISH -> spanishPhoneticCode(word)
+            language == LearningLanguage.GERMAN -> germanPhoneticCode(word)
+            language == LearningLanguage.FRENCH -> frenchPhoneticCode(word)
+            language == LearningLanguage.ITALIAN -> italianPhoneticCode(word)
             else -> englishPhoneticCode(word)
         }
     }
@@ -455,6 +552,158 @@ object WordMatcher {
                 'w' -> 'u'
                 'y' -> 'i'
                 'c', 'q' -> 'k'
+                else -> ch
+            }
+            if (mapped != prev) {
+                sb.append(mapped)
+                prev = mapped
+            }
+        }
+        return sb.toString()
+    }
+
+    /**
+     * German-specific phonetic skeleton handling ß/ss, ä/ö/ü/äu, sch/tsch/ch, v/f, w/v, z/ts, qu/kv, silent vowel-h, and -ig.
+     */
+    private fun germanPhoneticCode(word: String): String {
+        if (word.isEmpty()) return ""
+        val pre = word.lowercase(Locale.GERMANY)
+            .replace("ß", "ss")
+            .replace("äu", "oi")
+            .replace("ä", "a")
+            .replace("ö", "o")
+            .replace("ü", "u")
+        var s = stripAccents(pre).lowercase(Locale.US).trim()
+        s = digitToWord[s] ?: s
+
+        s = s.replace("tsch", "c")
+            .replace("sch", "s")
+            .replace("chs", "ks")
+            .replace("ch", "x")
+            .replace("ck", "k")
+            .replace("qu", "kv")
+            .replace("ph", "f")
+            .replace("th", "t")
+            .replace("dt", "t")
+            .replace("tz", "ts")
+            .replace("z", "ts")
+            .replace("eu", "oi")
+            .replace("ei", "ai")
+            .replace("ey", "ai")
+            .replace("ay", "ai")
+            .replace("ie", "i")
+            .replace("ae", "a")
+            .replace("oe", "o")
+            .replace("ue", "u")
+            .replace(Regex("([aeiou])h"), "$1")
+            .replace(Regex("ig\\b"), "ik")
+
+        val sb = StringBuilder()
+        var prev = ' '
+        for (ch in s) {
+            val mapped = when (ch) {
+                'v' -> 'f'
+                'w' -> 'v'
+                'y', 'j' -> 'i'
+                'c', 'q' -> 'k'
+                else -> ch
+            }
+            if (mapped != prev) {
+                sb.append(mapped)
+                prev = mapped
+            }
+        }
+        return sb.toString()
+    }
+
+    /**
+     * French-specific phonetic skeleton handling eau/au/o, ai/ei/er/ez/é, ou, oi, silent final consonants, qu/gu, ch/j, gn, and nasals.
+     */
+    private fun frenchPhoneticCode(word: String): String {
+        if (word.isEmpty()) return ""
+        val pre = word.lowercase(Locale.FRANCE)
+            .replace("œ", "e")
+            .replace("æ", "e")
+            .replace("’", "'")
+        var s = stripAccents(pre).lowercase(Locale.US).trim()
+        s = digitToWord[s] ?: s
+
+        s = s.replace("eaux", "o")
+            .replace("eau", "o")
+            .replace("au", "o")
+            .replace("ph", "f")
+            .replace("ch", "s")
+            .replace("qu", "k")
+            .replace("gue", "ge")
+            .replace("gui", "gi")
+            .replace("gn", "ni")
+            .replace("ill", "i")
+            .replace("ou", "u")
+            .replace("oi", "va")
+            .replace("ai", "e")
+            .replace("ei", "e")
+            .replace(Regex("(er|ez|et|es)\\b"), "e")
+            .replace(Regex("ent\\b"), "e")
+            .replace("ce", "se")
+            .replace("ci", "si")
+            .replace("cy", "si")
+            .replace("ge", "je")
+            .replace("gi", "ji")
+            .replace(Regex("\\bh"), "")
+        if (s.length > 3 && s.last() in "stdpxz") {
+            s = s.dropLast(1)
+        }
+
+        val sb = StringBuilder()
+        var prev = ' '
+        for (ch in s) {
+            if (ch == 'h') continue
+            val mapped = when (ch) {
+                'c', 'q' -> 'k'
+                'w' -> 'v'
+                'y' -> 'i'
+                'z' -> 's'
+                else -> ch
+            }
+            if (mapped != prev) {
+                sb.append(mapped)
+                prev = mapped
+            }
+        }
+        return sb.toString()
+    }
+
+    /**
+     * Italian-specific phonetic skeleton handling c(e,i), g(e,i), ch/gh, gl(i), gn, sc(e,i), qu/kv, silent h, and double consonants.
+     */
+    private fun italianPhoneticCode(word: String): String {
+        if (word.isEmpty()) return ""
+        var s = stripAccents(word).lowercase(Locale.US).trim()
+        s = digitToWord[s] ?: s
+
+        s = s.replace("gli", "li")
+            .replace("gn", "ni")
+            .replace("sce", "se")
+            .replace("sci", "si")
+            .replace("chi", "ki")
+            .replace("che", "ke")
+            .replace("ghi", "gi")
+            .replace("ghe", "ge")
+            .replace("ce", "je")
+            .replace("ci", "ji")
+            .replace("ge", "je")
+            .replace("gi", "ji")
+            .replace("qu", "kv")
+            .replace("z", "ts")
+
+        val sb = StringBuilder()
+        var prev = ' '
+        for (ch in s) {
+            if (ch == 'h') continue
+            val mapped = when (ch) {
+                'c', 'q' -> 'k'
+                'w' -> 'v'
+                'y', 'j' -> 'i'
                 else -> ch
             }
             if (mapped != prev) {
@@ -1055,15 +1304,18 @@ class SpeechSessionController(
         mainHandler.postDelayed(restartListenRunnable, delayMs)
     }
 
+    private fun activeTargetLocale(): Locale = when (language) {
+        LearningLanguage.SPANISH -> Locale("es", "ES")
+        LearningLanguage.GERMAN -> Locale.GERMANY
+        LearningLanguage.FRENCH -> Locale.FRANCE
+        LearningLanguage.ITALIAN -> Locale.ITALY
+        LearningLanguage.ENGLISH -> Locale.US
+    }
+
     init {
         tts = TextToSpeech(context.applicationContext) { status ->
             if (status == TextToSpeech.SUCCESS) {
-                val targetLocale = if (language == LearningLanguage.SPANISH) {
-                    Locale("es", "ES")
-                } else {
-                    Locale.US
-                }
-                tts?.language = targetLocale
+                tts?.language = activeTargetLocale()
                 tts?.setSpeechRate(0.95f)
                 tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                     override fun onStart(utteranceId: String?) {
@@ -1179,13 +1431,8 @@ class SpeechSessionController(
             onDone?.invoke()
             return
         }
-        val targetLocale = if (language == LearningLanguage.SPANISH) {
-            Locale("es", "ES")
-        } else {
-            Locale.US
-        }
         try {
-            tts?.language = targetLocale
+            tts?.language = activeTargetLocale()
         } catch (_: Throwable) {
         }
         pendingTtsOnDoneCallback = onDone
@@ -1615,14 +1862,10 @@ class SpeechSessionController(
         lastStartAttemptUptime = SystemClock.uptimeMillis()
         accumulatedPartialsInCycle.clear()
 
-        val localeTag = if (listenInCzech) "cs-CZ" else language.speechLocaleTag // e.g. "cs-CZ", "es-ES" or "en-US"
-        val altLocaleTag = localeTag.replace('-', '_') // e.g. "cs_CZ", "es_ES" or "en_US"
-        val langCode = if (listenInCzech) "cs" else language.code // e.g. "cs", "es" or "en"
-        val targetLocale = when {
-            listenInCzech -> Locale("cs", "CZ")
-            language == LearningLanguage.SPANISH -> Locale("es", "ES")
-            else -> Locale.US
-        }
+        val localeTag = if (listenInCzech) "cs-CZ" else language.speechLocaleTag // e.g. "cs-CZ", "de-DE", "es-ES" or "en-US"
+        val altLocaleTag = localeTag.replace('-', '_') // e.g. "cs_CZ", "de_DE", "es_ES" or "en_US"
+        val langCode = if (listenInCzech) "cs" else language.code // e.g. "cs", "de", "es" or "en"
+        val targetLocale = if (listenInCzech) Locale("cs", "CZ") else activeTargetLocale()
 
         try {
             Locale.setDefault(targetLocale)
