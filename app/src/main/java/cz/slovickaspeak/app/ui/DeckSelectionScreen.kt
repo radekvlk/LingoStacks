@@ -197,84 +197,88 @@ fun DeckSelectionScreen(
                             modifier = Modifier.padding(bottom = 2.dp)
                         )
                     }
- items(filteredDecks, key = { it.id }) { deck ->
- val memorySummary = progressState.getDeckMemorySummary(deck)
- DeckCard(
- deck = deck,
- strings = strings,
- memorySummary = memorySummary,
- onClick = { onSelectDeck(deck) }
- )
- }
- }
- }
- } else {
- // Portrait (na vysku): Nechano plne roztazene pres celou sirku podle zadani
- LazyColumn(
- modifier = Modifier
- .fillMaxSize()
- .padding(innerPadding),
- contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
- verticalArrangement = Arrangement.spacedBy(16.dp)
- ) {
- item {
- DeckHeaderRow(
- strings = strings,
- onOpenLeaderboard = {
- settingsInitialTab = 1
- showSettingsDialog = true
- },
- onOpenSettings = {
- settingsInitialTab = 0
- showSettingsDialog = true
- }
- )
- }
+                    items(filteredDecks, key = { it.id }) { deck ->
+                        val memorySummary = remember(deck.id, progressState.srsRevision, studyDirection) {
+                            progressState.getDeckMemorySummary(deck)
+                        }
+                        DeckCard(
+                            deck = deck,
+                            strings = strings,
+                            memorySummary = memorySummary,
+                            onClick = { onSelectDeck(deck) }
+                        )
+                    }
+                }
+            }
+        } else {
+            // Portrait (na vysku): Nechano plne roztazene pres celou sirku podle zadani
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item {
+                    DeckHeaderRow(
+                        strings = strings,
+                        onOpenLeaderboard = {
+                            settingsInitialTab = 1
+                            showSettingsDialog = true
+                        },
+                        onOpenSettings = {
+                            settingsInitialTab = 0
+                            showSettingsDialog = true
+                        }
+                    )
+                }
 
- val pendingOta = progressState.availableOtaRelease
- if (pendingOta != null && !progressState.otaBannerDismissed) {
- item {
- OtaUpdateBannerCard(
- strings = strings,
- newVersionName = pendingOta.versionName,
- onUpdateClick = { progressState.openOtaModal() },
- onDismissClick = { progressState.dismissOtaBanner() }
- )
- }
- }
+                val pendingOta = progressState.availableOtaRelease
+                if (pendingOta != null && !progressState.otaBannerDismissed) {
+                    item {
+                        OtaUpdateBannerCard(
+                            strings = strings,
+                            newVersionName = pendingOta.versionName,
+                            onUpdateClick = { progressState.openOtaModal() },
+                            onDismissClick = { progressState.dismissOtaBanner() }
+                        )
+                    }
+                }
 
- item {
- DeckGoalIndicatorCard(
- strings = strings,
- selectedLanguage = selectedLanguage,
- selectedLevel = selectedLevel,
- studyDirection = studyDirection,
- completedTodayWords = completedTodayWords,
- dailyGoalWords = dailyGoalWords,
- isGoalReached = isGoalReached,
- goalProgressFraction = goalProgressFraction,
- onSelectLanguage = { lang ->
- progressState.updateSelectedLanguage(lang)
- },
- onSelectLevel = { level ->
- progressState.updateSelectedCefrLevel(level)
- },
- onSelectDirection = { direction ->
- progressState.updateStudyDirection(direction)
- },
- onOpenStats = { showCompleteStatsDialog = true }
- )
- }
+                item {
+                    DeckGoalIndicatorCard(
+                        strings = strings,
+                        selectedLanguage = selectedLanguage,
+                        selectedLevel = selectedLevel,
+                        studyDirection = studyDirection,
+                        completedTodayWords = completedTodayWords,
+                        dailyGoalWords = dailyGoalWords,
+                        isGoalReached = isGoalReached,
+                        goalProgressFraction = goalProgressFraction,
+                        onSelectLanguage = { lang ->
+                            progressState.updateSelectedLanguage(lang)
+                        },
+                        onSelectLevel = { level ->
+                            progressState.updateSelectedCefrLevel(level)
+                        },
+                        onSelectDirection = { direction ->
+                            progressState.updateStudyDirection(direction)
+                        },
+                        onOpenStats = { showCompleteStatsDialog = true }
+                    )
+                }
 
- items(filteredDecks, key = { it.id }) { deck ->
- val memorySummary = progressState.getDeckMemorySummary(deck)
- DeckCard(
- deck = deck,
- strings = strings,
- memorySummary = memorySummary,
- onClick = { onSelectDeck(deck) }
- )
- }
+                items(filteredDecks, key = { it.id }) { deck ->
+                    val memorySummary = remember(deck.id, progressState.srsRevision, studyDirection) {
+                        progressState.getDeckMemorySummary(deck)
+                    }
+                    DeckCard(
+                        deck = deck,
+                        strings = strings,
+                        memorySummary = memorySummary,
+                        onClick = { onSelectDeck(deck) }
+                    )
+                }
  }
  }
  }

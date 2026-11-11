@@ -99,6 +99,7 @@ class ProgressStateHolder(context: Context) {
     private val appContext = context.applicationContext
     private val prefs = context.getSharedPreferences("slovicka_speak_prefs", Context.MODE_PRIVATE)
     private val ioExecutor = Executors.newSingleThreadExecutor()
+    private val prefsExecutor = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
 
     // GitHub Unified OTA Update State
@@ -1244,27 +1245,43 @@ class ProgressStateHolder(context: Context) {
     }
 
     private fun saveStats() {
-        val serializedSrs = wordSrsMap.values.joinToString("\n") {
-            "${it.wordId}|${it.box}|${it.lapses}|${it.dueAtMillis}"
+        // Snapshot lightweight references on Main thread; run full string serialization & disk write off-thread
+        val dayKeySnapshot = todayKey
+        val todayCompletedSnapshot = todayCompletedWords
+        val todayBaseXpSnapshot = todayBaseXp
+        val totalAttemptsSnapshot = totalAttempts
+        val totalCorrectSnapshot = totalCorrect
+        val totalSpokenSnapshot = totalSpokenCorrect
+        val completedSessionsSnapshot = completedSessions
+        val streakSnapshot = streakDays
+        val srsSnapshot = wordSrsMap.values.toList()
+        val weeklySnapshot = weeklyDailyStats.toMap()
+        val reviewSetSnapshot = needsReviewWordIds.toSet()
+        val masteredSetSnapshot = masteredWordIds.toSet()
+
+        prefsExecutor.execute {
+            val serializedSrs = srsSnapshot.joinToString("\n") {
+                "${it.wordId}|${it.box}|${it.lapses}|${it.dueAtMillis}"
+            }
+            val serializedWeeklyLog = weeklySnapshot.entries.joinToString("\n") { (date, pair) ->
+                "$date|${pair.first}|${pair.second}"
+            }
+            prefs.edit()
+                .putString("today_date", dayKeySnapshot)
+                .putInt("today_completed", todayCompletedSnapshot)
+                .putString("today_xp_date", dayKeySnapshot)
+                .putInt("today_base_xp", todayBaseXpSnapshot)
+                .putString("weekly_daily_log_v1", serializedWeeklyLog)
+                .putInt("total_attempts", totalAttemptsSnapshot)
+                .putInt("total_correct", totalCorrectSnapshot)
+                .putInt("total_spoken", totalSpokenSnapshot)
+                .putInt("completed_sessions", completedSessionsSnapshot)
+                .putInt("streak_days", streakSnapshot)
+                .putStringSet("needs_review_word_ids", reviewSetSnapshot)
+                .putStringSet("mastered_word_ids", masteredSetSnapshot)
+                .putString("word_srs_stats_v1", serializedSrs)
+                .apply()
         }
-        val serializedWeeklyLog = weeklyDailyStats.entries.joinToString("\n") { (date, pair) ->
-            "$date|${pair.first}|${pair.second}"
-        }
-        prefs.edit()
-            .putString("today_date", todayKey)
-            .putInt("today_completed", todayCompletedWords)
-            .putString("today_xp_date", todayKey)
-            .putInt("today_base_xp", todayBaseXp)
-            .putString("weekly_daily_log_v1", serializedWeeklyLog)
-            .putInt("total_attempts", totalAttempts)
-            .putInt("total_correct", totalCorrect)
-            .putInt("total_spoken", totalSpokenCorrect)
-            .putInt("completed_sessions", completedSessions)
-            .putInt("streak_days", streakDays)
-            .putStringSet("needs_review_word_ids", needsReviewWordIds.toSet())
-            .putStringSet("mastered_word_ids", masteredWordIds.toSet())
-            .putString("word_srs_stats_v1", serializedSrs)
-            .apply()
     }
 
     private fun loadSavedUser(): GoogleUserProfile? {

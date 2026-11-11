@@ -945,6 +945,7 @@ class SpeechSessionController(
     private var consecutiveEmptyNoMatch = 0
     private var silentCycleCount = 0
     private var lastReportedRms = -1f
+    private var preferOfflineFallback = false
 
     private var isCurrentlyListening = false
     private var isStartingListen = false
@@ -1216,6 +1217,7 @@ class SpeechSessionController(
 
     fun startContinuousListening() {
         silentCycleCount = 0
+        preferOfflineFallback = false
         muteSystemSounds()
         val alreadyActive = shouldStayListening && !isPausedForTts && !isPausedForTransition &&
             (isCurrentlyListening || isStartingListen || isProcessingSpeech)
@@ -1498,12 +1500,28 @@ class SpeechSessionController(
                         return
                     }
 
+                    // On network/server disruption, automatically try on-device offline recognition next
+                    if (error == SpeechRecognizer.ERROR_NETWORK ||
+                        error == SpeechRecognizer.ERROR_NETWORK_TIMEOUT ||
+                        error == SpeechRecognizer.ERROR_SERVER
+                    ) {
+                        if (!preferOfflineFallback) {
+                            preferOfflineFallback = true
+                            consecutiveErrors = 0
+                            scheduleListenRestart(350L)
+                            return
+                        }
+                    }
+
                     // If language is not supported or errors repeat, alternate engine (Google <-> Default)
                     if (error == 12 /* ERROR_LANGUAGE_NOT_SUPPORTED */ ||
                         error == 13 /* ERROR_LANGUAGE_UNAVAILABLE */ ||
                         error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY ||
                         consecutiveErrors >= 3
                     ) {
+                        if (preferOfflineFallback && (error == 12 || error == 13)) {
+                            preferOfflineFallback = false
+                        }
                         consecutiveErrors = 0
                         useDefaultFallbackRecognizer = !useDefaultFallbackRecognizer
                         recreateRecognizerAndListen()
@@ -1626,9 +1644,8 @@ class SpeechSessionController(
             putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, true)
             putExtra("android.speech.extra.EXTRA_ADDITIONAL_LANGUAGES", arrayOf(localeTag, altLocaleTag, langCode))
             putExtra("android.speech.extra.LANGUAGE", localeTag)
-            // Critical: setting EXTRA_PREFER_OFFLINE = false prevents the recognizer from failing
-            // or falling back to the phone's system language (Czech/English) when the foreign offline pack isn't installed!
-            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, false)
+            // Use online mode by default, falling back automatically to on-device ASR if network drops
+            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, preferOfflineFallback)
             putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 10)
