@@ -1,8 +1,14 @@
 package cz.slovickaspeak.app.ui
 
 import android.content.res.Configuration
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -30,18 +36,25 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import kotlin.math.PI
+import kotlin.math.sin
 import cz.slovickaspeak.app.data.DeckMemorySummary
 import cz.slovickaspeak.app.model.CefrLevel
 import cz.slovickaspeak.app.model.LearningLanguage
@@ -135,6 +148,7 @@ fun DeckSelectionScreen(
                 ) {
                     item {
                         DeckHeaderRow(
+                            selectedLanguage = selectedLanguage,
                             strings = strings,
                             onOpenLeaderboard = {
                                 settingsInitialTab = 1
@@ -215,14 +229,18 @@ fun DeckSelectionScreen(
         } else {
             // Portrait (na vysku): Nechano plne roztazene pres celou sirku podle zadani
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = 20.dp,
+                    end = 20.dp,
+                    top = innerPadding.calculateTopPadding() + 18.dp,
+                    bottom = innerPadding.calculateBottomPadding() + 18.dp
+                ),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 item {
                     DeckHeaderRow(
+                        selectedLanguage = selectedLanguage,
                         strings = strings,
                         onOpenLeaderboard = {
                             settingsInitialTab = 1
@@ -443,65 +461,414 @@ private fun LingoWordsHeaderMark(
 }
 
 @Composable
+private fun WavingLanguageFlagBackdrop(
+    selectedLanguage: LearningLanguage,
+    modifier: Modifier = Modifier
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "headerFlagWave")
+    val wavePhase by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = (2.0 * PI).toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 5600, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "headerFlagWavePhase"
+    )
+
+    Crossfade(
+        targetState = selectedLanguage,
+        animationSpec = tween(durationMillis = 420),
+        modifier = modifier,
+        label = "headerFlagCrossfade"
+    ) { language ->
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+        ) {
+            val w = size.width
+            val h = size.height
+            if (w <= 0f || h <= 0f) return@Canvas
+
+            val dark = isDarkThemeActive
+            val whiteBeamAlpha = if (dark) 0.16f else 0.44f
+            val whiteCenterAlpha = if (dark) 0.15f else 0.54f
+            val ribbonGain = if (dark) 0.14f else 0.10f
+            val amp = (h * 0.068f).coerceAtLeast(3.dp.toPx())
+            val steps = 28
+
+            fun waveY(xFrac: Float, baseY: Float, phaseShift: Float = 0f): Float {
+                return baseY + sin(xFrac * 2f * PI.toFloat() * 1.45f - wavePhase + phaseShift) * amp
+            }
+
+            fun horizontalWaveRibbon(
+                topFrac: Float,
+                bottomFrac: Float,
+                phaseShift: Float = 0f
+            ): Path = Path().apply {
+                for (i in 0..steps) {
+                    val f = i / steps.toFloat()
+                    val x = w * f
+                    val y = waveY(f, h * topFrac, phaseShift)
+                    if (i == 0) moveTo(x, y) else lineTo(x, y)
+                }
+                for (i in steps downTo 0) {
+                    val f = i / steps.toFloat()
+                    val x = w * f
+                    val y = waveY(f, h * bottomFrac, phaseShift + 0.35f)
+                    lineTo(x, y)
+                }
+                close()
+            }
+
+            fun verticalWaveRibbon(
+                leftFrac: Float,
+                rightFrac: Float,
+                tiltFrac: Float = 0.055f,
+                phaseShift: Float = 0f
+            ): Path = Path().apply {
+                for (i in 0..steps) {
+                    val yf = i / steps.toFloat()
+                    val ripple = sin(yf * PI.toFloat() * 1.4f - wavePhase + phaseShift) * (w * 0.022f)
+                    val x = w * (leftFrac + (yf - 0.5f) * tiltFrac) + ripple
+                    val y = h * yf
+                    if (i == 0) moveTo(x, y) else lineTo(x, y)
+                }
+                for (i in steps downTo 0) {
+                    val yf = i / steps.toFloat()
+                    val ripple = sin(yf * PI.toFloat() * 1.4f - wavePhase + phaseShift + 0.5f) * (w * 0.022f)
+                    val x = w * (rightFrac + (yf - 0.5f) * tiltFrac) + ripple
+                    val y = h * yf
+                    lineTo(x, y)
+                }
+                close()
+            }
+
+            when (language) {
+                LearningLanguage.ENGLISH -> {
+                    val ukBlue = Color(0xFF012169)
+                    val ukRed = Color(0xFFC8102E)
+
+                    // Soft Royal Blue sea wash
+                    drawRect(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                ukBlue.copy(alpha = 0.16f),
+                                ukBlue.copy(alpha = 0.22f),
+                                ukBlue.copy(alpha = 0.14f)
+                            ),
+                            start = Offset(0f, waveY(0f, h * 0.15f)),
+                            end = Offset(w, waveY(1f, h * 0.85f))
+                        )
+                    )
+                    // Soft diagonal St. Andrew (white) & St. Patrick (red) glow beams
+                    val diagShift = sin(wavePhase) * (h * 0.07f)
+                    drawLine(
+                        color = Color.White.copy(alpha = whiteBeamAlpha),
+                        start = Offset(0f, -h * 0.08f + diagShift),
+                        end = Offset(w, h * 1.08f - diagShift),
+                        strokeWidth = h * 0.30f
+                    )
+                    drawLine(
+                        color = Color.White.copy(alpha = whiteBeamAlpha),
+                        start = Offset(0f, h * 1.08f - diagShift),
+                        end = Offset(w, -h * 0.08f + diagShift),
+                        strokeWidth = h * 0.30f
+                    )
+                    drawLine(
+                        color = ukRed.copy(alpha = if (dark) 0.24f else 0.17f),
+                        start = Offset(0f, -h * 0.08f + diagShift),
+                        end = Offset(w, h * 1.08f - diagShift),
+                        strokeWidth = h * 0.12f
+                    )
+                    drawLine(
+                        color = ukRed.copy(alpha = if (dark) 0.24f else 0.17f),
+                        start = Offset(0f, h * 1.08f - diagShift),
+                        end = Offset(w, -h * 0.08f + diagShift),
+                        strokeWidth = h * 0.12f
+                    )
+                    // Soft waving St. George cross halo & crimson ribbon
+                    drawPath(
+                        path = horizontalWaveRibbon(0.32f, 0.68f, phaseShift = 0.2f),
+                        color = Color.White.copy(alpha = whiteBeamAlpha)
+                    )
+                    drawPath(
+                        path = verticalWaveRibbon(0.37f, 0.49f, tiltFrac = 0.03f, phaseShift = 0.4f),
+                        color = Color.White.copy(alpha = whiteBeamAlpha * 0.9f)
+                    )
+                    drawPath(
+                        path = horizontalWaveRibbon(0.41f, 0.59f, phaseShift = 0.25f),
+                        color = ukRed.copy(alpha = if (dark) 0.30f else 0.22f)
+                    )
+                    drawPath(
+                        path = verticalWaveRibbon(0.405f, 0.455f, tiltFrac = 0.03f, phaseShift = 0.45f),
+                        color = ukRed.copy(alpha = if (dark) 0.28f else 0.20f)
+                    )
+                }
+
+                LearningLanguage.SPANISH -> {
+                    val esRed = Color(0xFFC60B1E)
+                    val esGold = Color(0xFFFFC400)
+                    val shift = sin(wavePhase) * 0.04f
+
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0.0f to esRed.copy(alpha = if (dark) 0.28f else 0.22f),
+                                (0.26f + shift) to esRed.copy(alpha = if (dark) 0.24f else 0.18f),
+                                (0.36f + shift) to esGold.copy(alpha = if (dark) 0.26f else 0.30f),
+                                (0.64f - shift) to esGold.copy(alpha = if (dark) 0.28f else 0.32f),
+                                (0.74f - shift) to esRed.copy(alpha = if (dark) 0.24f else 0.18f),
+                                1.0f to esRed.copy(alpha = if (dark) 0.28f else 0.22f)
+                            )
+                        )
+                    )
+                    drawPath(
+                        path = horizontalWaveRibbon(-0.08f, 0.29f, phaseShift = 0f),
+                        color = esRed.copy(alpha = ribbonGain + 0.04f)
+                    )
+                    drawPath(
+                        path = horizontalWaveRibbon(0.28f, 0.72f, phaseShift = 0.3f),
+                        color = esGold.copy(alpha = ribbonGain + 0.08f)
+                    )
+                    drawPath(
+                        path = horizontalWaveRibbon(0.71f, 1.08f, phaseShift = 0.6f),
+                        color = esRed.copy(alpha = ribbonGain + 0.04f)
+                    )
+                }
+
+                LearningLanguage.GERMAN -> {
+                    val deBlack = if (dark) Color(0xFF4A4A55) else Color(0xFF1C1C22)
+                    val deRed = Color(0xFFDD0000)
+                    val deGold = Color(0xFFFFCE00)
+                    val shift = sin(wavePhase) * 0.04f
+
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0.0f to deBlack.copy(alpha = if (dark) 0.24f else 0.13f),
+                                (0.31f + shift) to deBlack.copy(alpha = if (dark) 0.20f else 0.12f),
+                                (0.40f + shift) to deRed.copy(alpha = if (dark) 0.28f else 0.22f),
+                                (0.63f - shift) to deRed.copy(alpha = if (dark) 0.28f else 0.22f),
+                                (0.72f - shift) to deGold.copy(alpha = if (dark) 0.26f else 0.32f),
+                                1.0f to deGold.copy(alpha = if (dark) 0.24f else 0.28f)
+                            )
+                        )
+                    )
+                    drawPath(
+                        path = horizontalWaveRibbon(-0.08f, 0.34f, phaseShift = 0f),
+                        color = deBlack.copy(alpha = if (dark) 0.14f else 0.08f)
+                    )
+                    drawPath(
+                        path = horizontalWaveRibbon(0.33f, 0.67f, phaseShift = 0.35f),
+                        color = deRed.copy(alpha = ribbonGain + 0.04f)
+                    )
+                    drawPath(
+                        path = horizontalWaveRibbon(0.66f, 1.08f, phaseShift = 0.7f),
+                        color = deGold.copy(alpha = ribbonGain + 0.08f)
+                    )
+                }
+
+                LearningLanguage.FRENCH -> {
+                    val frBlue = Color(0xFF0055A4)
+                    val frRed = Color(0xFFEF4135)
+                    val shift = sin(wavePhase) * 0.03f
+
+                    drawRect(
+                        brush = Brush.linearGradient(
+                            colorStops = arrayOf(
+                                0.0f to frBlue.copy(alpha = if (dark) 0.32f else 0.24f),
+                                (0.31f + shift) to frBlue.copy(alpha = if (dark) 0.26f else 0.19f),
+                                (0.43f + shift) to Color.White.copy(alpha = whiteCenterAlpha),
+                                (0.57f - shift) to Color.White.copy(alpha = whiteCenterAlpha),
+                                (0.69f - shift) to frRed.copy(alpha = if (dark) 0.26f else 0.19f),
+                                1.0f to frRed.copy(alpha = if (dark) 0.32f else 0.24f)
+                            ),
+                            start = Offset(0f, waveY(0f, h * 0.30f)),
+                            end = Offset(w, waveY(1f, h * 0.70f))
+                        )
+                    )
+                    drawPath(
+                        path = verticalWaveRibbon(-0.04f, 0.35f, tiltFrac = 0.06f, phaseShift = 0f),
+                        color = frBlue.copy(alpha = 0.08f)
+                    )
+                    drawPath(
+                        path = verticalWaveRibbon(0.33f, 0.67f, tiltFrac = 0.06f, phaseShift = 0.4f),
+                        color = Color.White.copy(alpha = if (dark) 0.08f else 0.16f)
+                    )
+                    drawPath(
+                        path = verticalWaveRibbon(0.65f, 1.04f, tiltFrac = 0.06f, phaseShift = 0.8f),
+                        color = frRed.copy(alpha = 0.08f)
+                    )
+                }
+
+                LearningLanguage.ITALIAN -> {
+                    val itGreen = Color(0xFF009246)
+                    val itRed = Color(0xFFCE2B37)
+                    val shift = sin(wavePhase) * 0.03f
+
+                    drawRect(
+                        brush = Brush.linearGradient(
+                            colorStops = arrayOf(
+                                0.0f to itGreen.copy(alpha = if (dark) 0.30f else 0.23f),
+                                (0.31f + shift) to itGreen.copy(alpha = if (dark) 0.24f else 0.18f),
+                                (0.43f + shift) to Color.White.copy(alpha = whiteCenterAlpha),
+                                (0.57f - shift) to Color.White.copy(alpha = whiteCenterAlpha),
+                                (0.69f - shift) to itRed.copy(alpha = if (dark) 0.26f else 0.19f),
+                                1.0f to itRed.copy(alpha = if (dark) 0.32f else 0.24f)
+                            ),
+                            start = Offset(0f, waveY(0f, h * 0.30f)),
+                            end = Offset(w, waveY(1f, h * 0.70f))
+                        )
+                    )
+                    drawPath(
+                        path = verticalWaveRibbon(-0.04f, 0.35f, tiltFrac = 0.06f, phaseShift = 0f),
+                        color = itGreen.copy(alpha = 0.08f)
+                    )
+                    drawPath(
+                        path = verticalWaveRibbon(0.33f, 0.67f, tiltFrac = 0.06f, phaseShift = 0.4f),
+                        color = Color.White.copy(alpha = if (dark) 0.08f else 0.16f)
+                    )
+                    drawPath(
+                        path = verticalWaveRibbon(0.65f, 1.04f, tiltFrac = 0.06f, phaseShift = 0.8f),
+                        color = itRed.copy(alpha = 0.08f)
+                    )
+                }
+            }
+
+            // Moving diagonal silk-fold highlights (creates realistic 3D cloth wave shimmer)
+            val sheenMax = if (dark) 0.10f else 0.24f
+            val sheenStops = Array(8) { idx ->
+                val f = idx / 7f
+                val crest = ((sin(f * 2f * PI.toFloat() * 1.45f - wavePhase) + 1f) * 0.5f)
+                f to Color.White.copy(alpha = 0.01f + crest * sheenMax)
+            }
+            drawRect(
+                brush = Brush.linearGradient(
+                    colorStops = sheenStops,
+                    start = Offset(0f, 0f),
+                    end = Offset(w, h * 0.45f)
+                )
+            )
+
+            // Soft feathered fade on top/bottom & left/right edges so flag shines broadly above & below header
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colorStops = arrayOf(
+                        0.0f to Color.Transparent,
+                        0.22f to Color.White.copy(alpha = 0.85f),
+                        0.40f to Color.White,
+                        0.58f to Color.White,
+                        0.80f to Color.White.copy(alpha = 0.45f),
+                        1.0f to Color.Transparent
+                    )
+                ),
+                blendMode = BlendMode.DstIn
+            )
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    colorStops = arrayOf(
+                        0.0f to Color.Transparent,
+                        0.04f to Color.White.copy(alpha = 0.72f),
+                        0.18f to Color.White,
+                        0.86f to Color.White.copy(alpha = 0.88f),
+                        1.0f to Color.Transparent
+                    )
+                ),
+                blendMode = BlendMode.DstIn
+            )
+        }
+    }
+}
+
+@Composable
 private fun DeckHeaderRow(
+    selectedLanguage: LearningLanguage,
     strings: UiStrings,
     onOpenLeaderboard: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            LingoWordsHeaderMark()
-            Text(
-                text = strings.appHeaderTitle,
-                fontSize = 30.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextDark,
-                letterSpacing = (-0.5).sp
-            )
-        }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            // Leaderboard shortcut button (Denní žebříček)
-            Surface(
-                shape = CircleShape,
-                color = CardSurface,
-                border = BorderStroke(0.5.dp, CardBorderGray),
-                modifier = Modifier
-                    .size(42.dp)
-                    .shadow(4.dp, CircleShape, spotColor = Color.Black.copy(alpha = 0.08f))
-                    .clip(CircleShape)
-                    .clickable { onOpenLeaderboard() }
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(text = "🏆", fontSize = 18.sp)
+        WavingLanguageFlagBackdrop(
+            selectedLanguage = selectedLanguage,
+            modifier = Modifier
+                .matchParentSize()
+                .layout { measurable, constraints ->
+                    val extraW = 24.dp.roundToPx()
+                    val extraTop = 44.dp.roundToPx()
+                    val extraBottom = 46.dp.roundToPx()
+                    val expandedW = (constraints.maxWidth + extraW * 2).coerceAtLeast(1)
+                    val expandedH = (constraints.maxHeight + extraTop + extraBottom).coerceAtLeast(1)
+                    val placeable = measurable.measure(Constraints.fixed(expandedW, expandedH))
+                    layout(constraints.maxWidth, constraints.maxHeight) {
+                        placeable.place(-extraW, -extraTop)
+                    }
                 }
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                LingoWordsHeaderMark()
+                Text(
+                    text = strings.appHeaderTitle,
+                    fontSize = 30.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextDark,
+                    letterSpacing = (-0.5).sp
+                )
             }
 
-            // Settings gear button (Nastavení)
-            Surface(
-                shape = CircleShape,
-                color = CardSurface,
-                border = BorderStroke(0.5.dp, CardBorderGray),
-                modifier = Modifier
-                    .size(42.dp)
-                    .shadow(4.dp, CircleShape, spotColor = Color.Black.copy(alpha = 0.08f))
-                    .clip(CircleShape)
-                    .clickable { onOpenSettings() }
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = strings.settingsAndLeaderboard,
-                        tint = TextDark,
-                        modifier = Modifier.size(20.dp)
-                    )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Leaderboard shortcut button (Denní žebříček)
+                Surface(
+                    shape = CircleShape,
+                    color = CardSurface,
+                    border = BorderStroke(0.5.dp, CardBorderGray),
+                    modifier = Modifier
+                        .size(42.dp)
+                        .shadow(4.dp, CircleShape, spotColor = Color.Black.copy(alpha = 0.08f))
+                        .clip(CircleShape)
+                        .clickable { onOpenLeaderboard() }
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(text = "🏆", fontSize = 18.sp)
+                    }
+                }
+
+                // Settings gear button (Nastavení)
+                Surface(
+                    shape = CircleShape,
+                    color = CardSurface,
+                    border = BorderStroke(0.5.dp, CardBorderGray),
+                    modifier = Modifier
+                        .size(42.dp)
+                        .shadow(4.dp, CircleShape, spotColor = Color.Black.copy(alpha = 0.08f))
+                        .clip(CircleShape)
+                        .clickable { onOpenSettings() }
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = strings.settingsAndLeaderboard,
+                            tint = TextDark,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
         }
@@ -514,6 +881,9 @@ private fun FilterDropdownPill(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+    val screenWidthDp = LocalConfiguration.current.screenWidthDp
+    var fontSizeSp by remember(label, screenWidthDp) { mutableFloatStateOf(12f) }
+
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = SurfaceBg,
@@ -528,16 +898,22 @@ private fun FilterDropdownPill(
                 .fillMaxSize()
                 .padding(horizontal = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
+            horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterHorizontally)
         ) {
             Text(
                 text = label,
-                fontSize = 11.5.sp,
+                fontSize = fontSizeSp.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = TextDark,
                 maxLines = 1,
                 softWrap = false,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
+                onTextLayout = { result ->
+                    if (result.hasVisualOverflow && fontSizeSp > 8.5f) {
+                        fontSizeSp = (fontSizeSp - 0.5f).coerceAtLeast(8.5f)
+                    }
+                }
             )
             Text(
                 text = "▾",
@@ -585,8 +961,8 @@ private fun DeckGoalIndicatorCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Learning Language Dropdown (slightly wider for Francouzština / Španělština)
-                Box(modifier = Modifier.weight(1.22f)) {
+                // Learning Language Dropdown (equal 1/3 pill width)
+                Box(modifier = Modifier.weight(1f)) {
                     FilterDropdownPill(
                         label = "${selectedLanguage.flagEmoji} ${selectedLanguage.localizedTitle(strings.isCzech)}",
                         modifier = Modifier.fillMaxWidth(),
@@ -645,8 +1021,8 @@ private fun DeckGoalIndicatorCard(
                     }
                 }
 
-                // CEFR Level Dropdown (compact A1-C2 label on pill, full description in menu)
-                Box(modifier = Modifier.weight(0.78f)) {
+                // CEFR Level Dropdown (equal 1/3 pill width, compact A1-C2 label on pill)
+                Box(modifier = Modifier.weight(1f)) {
                     FilterDropdownPill(
                         label = selectedLevel?.label ?: "A1–C2",
                         modifier = Modifier.fillMaxWidth(),
