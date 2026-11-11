@@ -5,7 +5,11 @@
   },
   "auth": {
     "providers": {
-      "anonymous": true
+      "anonymous": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "LingoWords",
+        "supportEmail": "radeck.vlk@gmail.com"
+      }
     }
   }
 }

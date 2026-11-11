@@ -10,6 +10,8 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import cz.slovickaspeak.app.model.AnswerMethod
@@ -138,6 +140,9 @@ class ProgressStateHolder(context: Context) {
 
     private var lastOtaCheckMillis = prefs.getLong("last_ota_check_millis", 0L)
     private var lastCloudPushMillis = 0L
+    private var lastBackupPushMillis = 0L
+    @Volatile
+    private var initialBackupSyncDoneForUid: String? = null
 
     private fun dateKeyForOffsetDays(offsetDays: Int): String {
         val cal = Calendar.getInstance()
@@ -472,6 +477,12 @@ class ProgressStateHolder(context: Context) {
         return lang in listOf("cs", "sk", "ces", "cze")
     }
 
+    var isFullCloudBackupActive by mutableStateOf(checkGoogleProviderSignedIn())
+        private set
+
+    var isSyncingBackup by mutableStateOf(false)
+        private set
+
     var isSyncingCloud by mutableStateOf(false)
         private set
 
@@ -582,6 +593,9 @@ class ProgressStateHolder(context: Context) {
 
     init {
         ioExecutor.execute { OtaUpdater.cleanupCachedUpdates(appContext) }
+        if (isFullCloudBackupActive) {
+            pullAndMergeCloudBackup(pushMergedBack = true)
+        }
         refreshFromCloud()
         checkForOtaUpdate(manual = false)
         if (studyReminderEnabled) {
@@ -745,16 +759,19 @@ class ProgressStateHolder(context: Context) {
         isDarkMode = dark
         cz.slovickaspeak.app.ui.theme.isDarkThemeActive = dark
         prefs.edit().putBoolean("is_dark_mode", dark).apply()
+        pushFullBackupToCloud(force = true)
     }
 
     fun setAutoPronounce(enabled: Boolean) {
         autoPronounceEnabled = enabled
         prefs.edit().putBoolean("auto_pronounce_enabled", enabled).apply()
+        pushFullBackupToCloud(force = true)
     }
 
     fun updatePauseCardWhileSpeaking(enabled: Boolean) {
         pauseCardWhileSpeaking = enabled
         prefs.edit().putBoolean("pause_card_while_speaking", enabled).apply()
+        pushFullBackupToCloud(force = true)
     }
 
     fun updateStudyReminder(
@@ -778,6 +795,7 @@ class ProgressStateHolder(context: Context) {
             hour = h,
             minute = m
         )
+        pushFullBackupToCloud(force = true)
     }
 
     fun updateSelectedLanguage(language: cz.slovickaspeak.app.model.LearningLanguage) {
@@ -801,12 +819,14 @@ class ProgressStateHolder(context: Context) {
         } else {
             prefs.edit().putString("selected_cefr_level", level.name).apply()
         }
+        pushFullBackupToCloud(force = true)
     }
 
     fun updateStudyDirection(direction: cz.slovickaspeak.app.model.StudyDirection) {
         studyDirection = direction
         prefs.edit().putString("study_direction", direction.name).apply()
         srsRevision += 1
+        pushFullBackupToCloud(force = true)
     }
 
     fun recordCardAttempt(
@@ -922,7 +942,7 @@ class ProgressStateHolder(context: Context) {
         return firstName
     }
 
-    fun signInWithGoogle(displayName: String, email: String) {
+    private fun saveLocalGoogleProfile(displayName: String, email: String): GoogleUserProfile {
         val cleanEmail = email.trim().lowercase(Locale.US)
         val cleanName = formatDefaultDisplayName(displayName, cleanEmail)
         val codeSuffix = abs(cleanEmail.hashCode()) % 9000 + 1000
@@ -937,12 +957,44 @@ class ProgressStateHolder(context: Context) {
             .putString("google_email", profile.email)
             .putString("google_code", profile.inviteCode)
             .apply()
-        pushMyProgressToCloud()
+        return profile
+    }
+
+    fun signInWithGoogle(displayName: String, email: String) {
+        saveLocalGoogleProfile(displayName, email)
+        pushMyProgressToCloud(force = true)
         refreshFromCloud()
+    }
+
+    fun signInWithGoogleFirebase(idToken: String, displayName: String, email: String) {
+        saveLocalGoogleProfile(displayName, email)
+        val credential = GoogleAuthProvider.getCredential(idToken, null)
+        lastSyncStatus = if (isCzechLocale()) "Přihlašování přes Google..." else "Signing in with Google..."
+        FirebaseAuth.getInstance().signInWithCredential(credential)
+            .addOnSuccessListener { result ->
+                val user = result.user
+                isFullCloudBackupActive = user != null && !user.isAnonymous
+                pullAndMergeCloudBackup(pushMergedBack = true) {
+                    pushMyProgressToCloud(force = true)
+                    refreshFromCloud()
+                }
+            }
+            .addOnFailureListener { e ->
+                android.util.Log.w("LingoSync", "Google signInWithCredential failed", e)
+                isFullCloudBackupActive = checkGoogleProviderSignedIn()
+                lastSyncOnlineOk = false
+                lastSyncStatus = formatCloudErrorStatus(e)
+            }
     }
 
     fun signOutGoogle() {
         googleUser = null
+        isFullCloudBackupActive = false
+        initialBackupSyncDoneForUid = null
+        try {
+            FirebaseAuth.getInstance().signOut()
+        } catch (_: Throwable) {
+        }
         prefs.edit()
             .remove("google_name")
             .remove("google_email")
@@ -999,6 +1051,15 @@ class ProgressStateHolder(context: Context) {
     fun removeFriend(friendId: String) {
         friends.removeAll { it.id == friendId }
         saveFriends()
+    }
+
+    private fun checkGoogleProviderSignedIn(): Boolean {
+        return try {
+            val user = FirebaseAuth.getInstance().currentUser
+            user != null && !user.isAnonymous
+        } catch (_: Throwable) {
+            false
+        }
     }
 
     private fun ensureValidInviteCode(rawCode: String, email: String): String {
@@ -1063,6 +1124,7 @@ class ProgressStateHolder(context: Context) {
      * the user has connected an account (googleUser != null with email), without storing PII email.
      */
     fun pushMyProgressToCloud(force: Boolean = true) {
+        pushFullBackupToCloud(force = force)
         val user = googleUser ?: return
         if (!user.email.contains("@")) return
         val now = System.currentTimeMillis()
@@ -1119,6 +1181,289 @@ class ProgressStateHolder(context: Context) {
                     lastSyncStatus = formatCloudErrorStatus(e)
                 }
         }
+    }
+
+    /**
+     * Uploads a full cross-device backup (`user_backups/{uid}`) containing all 5 languages'
+     * SRS memory, mastered/review word sets, weekly logs, lifetime totals, and app settings.
+     * Only active when authenticated with a non-anonymous Google account.
+     */
+    fun pushFullBackupToCloud(force: Boolean = false) {
+        val fbUser = try {
+            FirebaseAuth.getInstance().currentUser
+        } catch (_: Throwable) {
+            null
+        } ?: return
+        if (fbUser.isAnonymous) return
+        val uid = fbUser.uid
+        if (initialBackupSyncDoneForUid != uid) return
+
+        val now = System.currentTimeMillis()
+        if (!force && now - lastBackupPushMillis < 60_000L) return
+        lastBackupPushMillis = now
+
+        val weeklySerialized = weeklyDailyStats.entries.joinToString("\n") { (d, p) ->
+            "$d|${p.first}|${p.second}"
+        }.take(20000)
+        val srsSerialized = wordSrsMap.values.joinToString("\n") {
+            "${it.wordId}|${it.box}|${it.lapses}|${it.dueAtMillis}"
+        }.take(600000)
+        val masteredSerialized = masteredWordIds.joinToString("\n").take(400000)
+        val reviewSerialized = needsReviewWordIds.joinToString("\n").take(200000)
+        val rawLastStudy = prefs.getString("last_study_date", null).orEmpty()
+        val safeLastStudy = if (Regex("^[0-9]{4}-[0-9]{2}-[0-9]{2}$").matches(rawLastStudy)) rawLastStudy else ""
+
+        val backupMap = hashMapOf<String, Any>(
+            "uid" to uid,
+            "updatedAt" to now,
+            "dailyGoal" to dailyGoalWords.coerceIn(1, 500),
+            "isDarkMode" to isDarkMode,
+            "autoPronounceEnabled" to autoPronounceEnabled,
+            "pauseCardWhileSpeaking" to pauseCardWhileSpeaking,
+            "studyReminderEnabled" to studyReminderEnabled,
+            "studyReminderHour" to studyReminderHour.coerceIn(0, 23),
+            "studyReminderMinute" to studyReminderMinute.coerceIn(0, 59),
+            "selectedLanguage" to selectedLanguage.name,
+            "selectedCefrLevel" to (selectedCefrLevel?.name.orEmpty()),
+            "studyDirection" to studyDirection.name,
+            "todayDate" to todayKey,
+            "todayCompleted" to todayCompletedWords.coerceIn(0, 5000),
+            "todayBaseXp" to todayBaseXp.coerceIn(0, 10000),
+            "weeklyDailyLog" to weeklySerialized,
+            "totalAttempts" to totalAttempts.coerceIn(0, 5000000),
+            "totalCorrect" to totalCorrect.coerceIn(0, 5000000),
+            "totalSpoken" to totalSpokenCorrect.coerceIn(0, 2000000),
+            "completedSessions" to completedSessions.coerceIn(0, 200000),
+            "streakDays" to streakDays.coerceIn(0, 10000),
+            "lastStudyDate" to safeLastStudy,
+            "masteredWordIds" to masteredSerialized,
+            "needsReviewWordIds" to reviewSerialized,
+            "wordSrsStats" to srsSerialized
+        )
+
+        FirebaseFirestore.getInstance().collection("user_backups")
+            .document(uid)
+            .set(backupMap)
+            .addOnSuccessListener {
+                android.util.Log.d("LingoSync", "Full backup saved uid=$uid words=${masteredWordIds.size} srs=${wordSrsMap.size}")
+            }
+            .addOnFailureListener { e ->
+                android.util.Log.w("LingoSync", "Full backup write FAILED uid=$uid err=${e.message}", e)
+            }
+    }
+
+    /**
+     * Downloads and merges the user's private full backup (`user_backups/{uid}`).
+     * On a fresh device or reinstall, restores all words, SRS states, streaks, stats, and settings.
+     */
+    fun pullAndMergeCloudBackup(
+        pushMergedBack: Boolean = true,
+        onComplete: (() -> Unit)? = null
+    ) {
+        val fbUser = try {
+            FirebaseAuth.getInstance().currentUser
+        } catch (_: Throwable) {
+            null
+        }
+        if (fbUser == null || fbUser.isAnonymous) {
+            isFullCloudBackupActive = false
+            onComplete?.invoke()
+            return
+        }
+        if (isSyncingBackup) {
+            onComplete?.invoke()
+            return
+        }
+        isSyncingBackup = true
+        isFullCloudBackupActive = true
+        val uid = fbUser.uid
+
+        FirebaseFirestore.getInstance().collection("user_backups")
+            .document(uid)
+            .get()
+            .addOnSuccessListener { doc ->
+                try {
+                    if (doc.exists()) {
+                        val isFreshLocal = totalAttempts == 0 &&
+                            wordSrsMap.isEmpty() &&
+                            masteredWordIds.isEmpty() &&
+                            needsReviewWordIds.isEmpty()
+                        mergeAndApplyCloudBackup(doc, isFreshLocal)
+                        initialBackupSyncDoneForUid = uid
+                        if (!isFreshLocal && pushMergedBack) {
+                            pushFullBackupToCloud(force = true)
+                        }
+                        lastSyncOnlineOk = true
+                        lastSyncStatus = if (isCzechLocale()) {
+                            "Záloha účtu obnovena ✓"
+                        } else {
+                            "Account backup synced ✓"
+                        }
+                    } else {
+                        initialBackupSyncDoneForUid = uid
+                        if (pushMergedBack) {
+                            pushFullBackupToCloud(force = true)
+                        }
+                        lastSyncOnlineOk = true
+                        lastSyncStatus = if (isCzechLocale()) {
+                            "Plná záloha účtu aktivní ✓"
+                        } else {
+                            "Full account backup active ✓"
+                        }
+                    }
+                } finally {
+                    isSyncingBackup = false
+                    onComplete?.invoke()
+                }
+            }
+            .addOnFailureListener { e ->
+                android.util.Log.w("LingoSync", "Full backup pull FAILED uid=$uid err=${e.message}", e)
+                isSyncingBackup = false
+                onComplete?.invoke()
+            }
+    }
+
+    private fun mergeAndApplyCloudBackup(doc: DocumentSnapshot, isFreshLocal: Boolean) {
+        // 1. Restore preferences when device is fresh (or initially unconfigured)
+        if (isFreshLocal) {
+            doc.getLong("dailyGoal")?.toInt()?.coerceIn(5, 200)?.let { goal ->
+                dailyGoalWords = goal
+                prefs.edit().putInt("daily_goal", goal).apply()
+            }
+            doc.getBoolean("isDarkMode")?.let { dark ->
+                isDarkMode = dark
+                cz.slovickaspeak.app.ui.theme.isDarkThemeActive = dark
+                prefs.edit().putBoolean("is_dark_mode", dark).apply()
+            }
+            doc.getBoolean("autoPronounceEnabled")?.let { autoP ->
+                autoPronounceEnabled = autoP
+                prefs.edit().putBoolean("auto_pronounce_enabled", autoP).apply()
+            }
+            doc.getBoolean("pauseCardWhileSpeaking")?.let { pauseC ->
+                pauseCardWhileSpeaking = pauseC
+                prefs.edit().putBoolean("pause_card_while_speaking", pauseC).apply()
+            }
+            val remEnabled = doc.getBoolean("studyReminderEnabled")
+            val remHour = doc.getLong("studyReminderHour")?.toInt()?.coerceIn(0, 23)
+            val remMin = doc.getLong("studyReminderMinute")?.toInt()?.coerceIn(0, 59)
+            if (remEnabled != null) {
+                studyReminderEnabled = remEnabled
+                if (remHour != null) studyReminderHour = remHour
+                if (remMin != null) studyReminderMinute = remMin
+                prefs.edit()
+                    .putBoolean("study_reminder_enabled", studyReminderEnabled)
+                    .putInt("study_reminder_hour", studyReminderHour)
+                    .putInt("study_reminder_minute", studyReminderMinute)
+                    .apply()
+                cz.slovickaspeak.app.notifications.StudyReminderScheduler.scheduleOrCancel(
+                    context = appContext,
+                    enabled = studyReminderEnabled,
+                    hour = studyReminderHour,
+                    minute = studyReminderMinute
+                )
+            }
+            doc.getString("selectedLanguage")?.let { langName ->
+                cz.slovickaspeak.app.model.LearningLanguage.entries.find { it.name == langName }?.let { lang ->
+                    selectedLanguage = lang
+                    hasSelectedInitialLanguage = true
+                    prefs.edit()
+                        .putString("selected_learning_language", lang.name)
+                        .putBoolean("has_selected_initial_language", true)
+                        .apply()
+                }
+            }
+            doc.getString("selectedCefrLevel")?.let { lvlName ->
+                val lvl = cz.slovickaspeak.app.model.CefrLevel.entries.find { it.name == lvlName }
+                selectedCefrLevel = lvl
+                if (lvl == null) {
+                    prefs.edit().remove("selected_cefr_level").apply()
+                } else {
+                    prefs.edit().putString("selected_cefr_level", lvl.name).apply()
+                }
+            }
+            doc.getString("studyDirection")?.let { dirName ->
+                cz.slovickaspeak.app.model.StudyDirection.entries.find { it.name == dirName }?.let { dir ->
+                    studyDirection = dir
+                    prefs.edit().putString("study_direction", dir.name).apply()
+                }
+            }
+        }
+
+        // 2. Merge lifetime & daily stats cleanly (keeping maximum verified progress)
+        totalAttempts = maxOf(totalAttempts, (doc.getLong("totalAttempts")?.toInt() ?: 0).coerceAtLeast(0))
+        totalCorrect = maxOf(totalCorrect, (doc.getLong("totalCorrect")?.toInt() ?: 0).coerceAtLeast(0))
+        totalSpokenCorrect = maxOf(totalSpokenCorrect, (doc.getLong("totalSpoken")?.toInt() ?: 0).coerceAtLeast(0))
+        completedSessions = maxOf(completedSessions, (doc.getLong("completedSessions")?.toInt() ?: 0).coerceAtLeast(0))
+        streakDays = maxOf(streakDays, (doc.getLong("streakDays")?.toInt() ?: 0).coerceAtLeast(0))
+
+        val remoteLastStudy = doc.getString("lastStudyDate").orEmpty()
+        val localLastStudy = prefs.getString("last_study_date", null).orEmpty()
+        if (remoteLastStudy > localLastStudy) {
+            prefs.edit().putString("last_study_date", remoteLastStudy).apply()
+        }
+
+        val remoteTodayDate = doc.getString("todayDate").orEmpty()
+        if (remoteTodayDate == todayKey) {
+            val remoteTodayDone = (doc.getLong("todayCompleted")?.toInt() ?: 0).coerceAtLeast(0)
+            val remoteTodayBase = (doc.getLong("todayBaseXp")?.toInt() ?: 0).coerceAtLeast(0)
+            if (remoteTodayDone > todayCompletedWords) todayCompletedWords = remoteTodayDone
+            if (remoteTodayBase > todayBaseXp) todayBaseXp = remoteTodayBase
+        }
+
+        // Merge weekly daily log
+        val remoteWeeklyRaw = doc.getString("weeklyDailyLog").orEmpty()
+        val weekStart = currentWeekStartKey()
+        remoteWeeklyRaw.split("\n").forEach { line ->
+            val parts = line.split("|")
+            if (parts.size >= 3) {
+                val d = parts[0].trim()
+                val c = parts[1].toIntOrNull() ?: 0
+                val xp = parts[2].toIntOrNull() ?: c
+                if (d >= weekStart) {
+                    val prev = weeklyDailyStats[d]
+                    weeklyDailyStats[d] = maxOf(c, prev?.first ?: 0) to maxOf(xp, prev?.second ?: 0)
+                }
+            }
+        }
+        updateTodayInWeeklyLog()
+
+        // 3. Merge full SRS memory + mastered / needsReview sets across all 5 languages
+        val remoteMastered = doc.getString("masteredWordIds").orEmpty()
+            .split("\n").map { it.trim() }.filter { it.isNotEmpty() }
+        masteredWordIds.addAll(remoteMastered)
+
+        val remoteNeedsReview = doc.getString("needsReviewWordIds").orEmpty()
+            .split("\n").map { it.trim() }.filter { it.isNotEmpty() }
+        if (isFreshLocal) {
+            needsReviewWordIds.addAll(remoteNeedsReview)
+        }
+
+        val remoteSrsRaw = doc.getString("wordSrsStats").orEmpty()
+        remoteSrsRaw.split("\n").forEach { line ->
+            val parts = line.split("|")
+            if (parts.size >= 4) {
+                val id = parts[0].trim()
+                val box = parts[1].toIntOrNull() ?: 0
+                val lapses = parts[2].toIntOrNull() ?: 0
+                val due = parts[3].toLongOrNull() ?: 0L
+                if (id.isNotEmpty()) {
+                    val localStat = wordSrsMap[id]
+                    if (localStat == null || box > localStat.box || (box == localStat.box && due > localStat.dueAtMillis)) {
+                        wordSrsMap[id] = WordSrsStat(id, box, maxOf(lapses, localStat?.lapses ?: 0), due)
+                    }
+                }
+            }
+        }
+        // Keep review set aligned with merged SRS states
+        for (id in remoteNeedsReview) {
+            val st = wordSrsMap[id]
+            if (st == null || st.box == 0) {
+                needsReviewWordIds.add(id)
+            }
+        }
+
+        srsRevision += 1
+        saveStats()
     }
 
     /**

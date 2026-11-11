@@ -1,7 +1,6 @@
 package cz.slovickaspeak.app.ui
 
 import android.Manifest
-import android.accounts.AccountManager
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -9,6 +8,9 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.core.content.ContextCompat
 import androidx.activity.result.contract.ActivityResultContracts
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -88,6 +90,9 @@ fun AppleFullSettingsDialog(
     LaunchedEffect(Unit) {
         progressState.pushMyProgressToCloud(force = true)
     }
+    LaunchedEffect(progressState.googleUser) {
+        showGoogleEmailPrompt = false
+    }
     LaunchedEffect(selectedTab, progressState.googleUser, showCompleteStatsInModal, lifecycleOwner) {
         if (selectedTab == 1 && progressState.googleUser != null && !showCompleteStatsInModal) {
             lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
@@ -99,21 +104,35 @@ fun AppleFullSettingsDialog(
         }
     }
 
+    val googleSignInClient = remember(context) {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(context.getString(cz.slovickaspeak.app.R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+        GoogleSignIn.getClient(context, gso)
+    }
     val googleAccountLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val email = result.data?.getStringExtra(AccountManager.KEY_ACCOUNT_NAME)
-            if (!email.isNullOrBlank()) {
-                val derivedName = email.substringBefore("@")
-                    .split(".", "_", "-")
-                    .joinToString(" ") { part -> part.replaceFirstChar { it.uppercase() } }
-                progressState.signInWithGoogle(derivedName, email)
-            } else {
+        try {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            val account = task.getResult(ApiException::class.java)
+            val idToken = account?.idToken
+            val email = account?.email
+            if (!idToken.isNullOrBlank() && !email.isNullOrBlank()) {
+                val derivedName = account.displayName?.takeIf { it.isNotBlank() }
+                    ?: email.substringBefore("@")
+                        .split(".", "_", "-")
+                        .joinToString(" ") { part -> part.replaceFirstChar { it.uppercase() } }
+                progressState.signInWithGoogleFirebase(idToken, derivedName, email)
+                showGoogleEmailPrompt = false
+            } else if (progressState.googleUser == null) {
                 showGoogleEmailPrompt = true
             }
-        } else {
-            showGoogleEmailPrompt = true
+        } catch (_: ApiException) {
+            if (progressState.googleUser == null) showGoogleEmailPrompt = true
+        } catch (_: Exception) {
+            if (progressState.googleUser == null) showGoogleEmailPrompt = true
         }
     }
 
@@ -305,18 +324,7 @@ fun AppleFullSettingsDialog(
                             },
                             onStartGoogleSignIn = {
                                 try {
-                                    @Suppress("DEPRECATION")
-                                    val intent = AccountManager.newChooseAccountIntent(
-                                        null,
-                                        null,
-                                        arrayOf("com.google"),
-                                        false,
-                                        null,
-                                        null,
-                                        null,
-                                        null
-                                    )
-                                    googleAccountLauncher.launch(intent)
+                                    googleAccountLauncher.launch(googleSignInClient.signInIntent)
                                 } catch (_: Exception) {
                                     showGoogleEmailPrompt = true
                                 }
@@ -1764,8 +1772,79 @@ private fun GoogleAccountSectionCard(
                                     color = TextMuted
                                 )
                             }
-                            TextButton(onClick = { progressState.signOutGoogle() }) {
+                            val cardContext = LocalContext.current
+                            TextButton(
+                                onClick = {
+                                    try {
+                                        GoogleSignIn.getClient(
+                                            cardContext,
+                                            GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).build()
+                                        ).signOut()
+                                    } catch (_: Exception) {
+                                    }
+                                    progressState.signOutGoogle()
+                                }
+                            ) {
                                 Text(strings.googleSignOutButton, color = AppleRed, fontSize = 12.sp)
+                            }
+                        }
+
+                        val fullBackupActive = progressState.isFullCloudBackupActive
+                        val syncingBackup = progressState.isSyncingBackup
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (fullBackupActive) {
+                                AppleGreen.copy(alpha = 0.12f)
+                            } else {
+                                AppleOrange.copy(alpha = 0.12f)
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = when {
+                                        fullBackupActive && syncingBackup -> if (strings.isCzech) {
+                                            "☁️ Synchronizuji zálohu účtu..."
+                                        } else {
+                                            "☁️ Syncing full cloud backup..."
+                                        }
+                                        fullBackupActive -> if (strings.isCzech) {
+                                            "☁️ Plná záloha účtu aktivní"
+                                        } else {
+                                            "☁️ Full cloud backup active"
+                                        }
+                                        else -> if (strings.isCzech) {
+                                            "⚠️ Jen lokální profil / žebříček — připoj Google účet pro obnovu slovíček na jiném telefonu."
+                                        } else {
+                                            "⚠️ Local profile / leaderboard only — connect Google for full cross-device word backup."
+                                        }
+                                    },
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (fullBackupActive) AppleGreenDark else AppleOrange
+                                )
+                                if (!fullBackupActive) {
+                                    OutlinedButton(
+                                        onClick = onStartGoogleSignIn,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(10.dp),
+                                        border = BorderStroke(1.dp, AppleBlue.copy(alpha = 0.45f))
+                                    ) {
+                                        Text(
+                                            text = if (strings.isCzech) {
+                                                "🔐 Propojit Google pro plnou zálohu"
+                                            } else {
+                                                "🔐 Connect Google for full backup"
+                                            },
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = AppleBlue
+                                        )
+                                    }
+                                }
                             }
                         }
 

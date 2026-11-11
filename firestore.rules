@@ -34,6 +34,38 @@ rules_version = '2';
 //   - catalogWordCount: int (required, 0..50000)
 //   - ts: int (required, >= 0)
 //
+// Collection: user_backups
+// Document ID: {uid} (Non-anonymous Firebase Auth UID, e.g., Google Sign-In)
+// Access Pattern:
+//   - Read / Create / Update / Delete: Strictly the non-anonymous document owner
+//     (request.auth.uid == uid && request.auth.token.firebase.sign_in_provider != 'anonymous')
+// Fields (all 25 fields required; no extraneous fields allowed):
+//   - uid: string (required, immutable, size 1..128, must equal {uid} and request.auth.uid)
+//   - updatedAt: int (required, >= 0)
+//   - dailyGoal: int (required, 1..500)
+//   - isDarkMode: bool (required)
+//   - autoPronounceEnabled: bool (required)
+//   - pauseCardWhileSpeaking: bool (required)
+//   - studyReminderEnabled: bool (required)
+//   - studyReminderHour: int (required, 0..23)
+//   - studyReminderMinute: int (required, 0..59)
+//   - selectedLanguage: string (required, in ['ENGLISH', 'SPANISH', 'GERMAN', 'FRENCH', 'ITALIAN'])
+//   - selectedCefrLevel: string (required, size 0..8)
+//   - studyDirection: string (required, in ['NATIVE_TO_FOREIGN', 'FOREIGN_TO_NATIVE', 'MIX'])
+//   - todayDate: string (required, size 10, matches '^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+//   - todayCompleted: int (required, 0..5000)
+//   - todayBaseXp: int (required, 0..10000)
+//   - weeklyDailyLog: string (required, size 0..20000)
+//   - totalAttempts: int (required, 0..5000000)
+//   - totalCorrect: int (required, 0..5000000)
+//   - totalSpoken: int (required, 0..2000000)
+//   - completedSessions: int (required, 0..200000)
+//   - streakDays: int (required, 0..10000)
+//   - lastStudyDate: string (required, size 0..10, '' or 'YYYY-MM-DD')
+//   - masteredWordIds: string (required, size 0..400000)
+//   - needsReviewWordIds: string (required, size 0..200000)
+//   - wordSrsStats: string (required, size 0..600000)
+//
 // ===============================================================
 
 service cloud.firestore {
@@ -51,6 +83,14 @@ service cloud.firestore {
     // Check if the authenticated user owns the document path UID
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Check if the authenticated owner signed in with a non-anonymous provider (e.g., Google Sign-In)
+    function isNonAnonymousOwner(userId) {
+      return isOwner(userId) &&
+        'firebase' in request.auth.token &&
+        'sign_in_provider' in request.auth.token.firebase &&
+        request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
 
     // Verify UID matches the authenticated caller on create
@@ -151,6 +191,71 @@ service cloud.firestore {
         data.ts >= 0;
     }
 
+    function isValidUserBackup(data, uid) {
+      let allowedFields = [
+        'uid',
+        'updatedAt',
+        'dailyGoal',
+        'isDarkMode',
+        'autoPronounceEnabled',
+        'pauseCardWhileSpeaking',
+        'studyReminderEnabled',
+        'studyReminderHour',
+        'studyReminderMinute',
+        'selectedLanguage',
+        'selectedCefrLevel',
+        'studyDirection',
+        'todayDate',
+        'todayCompleted',
+        'todayBaseXp',
+        'weeklyDailyLog',
+        'totalAttempts',
+        'totalCorrect',
+        'totalSpoken',
+        'completedSessions',
+        'streakDays',
+        'lastStudyDate',
+        'masteredWordIds',
+        'needsReviewWordIds',
+        'wordSrsStats'
+      ];
+
+      return hasRequiredFields(allowedFields) &&
+        hasOnlyAllowedFields(allowedFields) &&
+        validStringLength(data.uid, 1, 128) &&
+        data.uid == uid &&
+        data.uid == request.auth.uid &&
+        data.updatedAt is int &&
+        data.updatedAt >= 0 &&
+        isIntInRange(data.dailyGoal, 1, 500) &&
+        data.isDarkMode is bool &&
+        data.autoPronounceEnabled is bool &&
+        data.pauseCardWhileSpeaking is bool &&
+        data.studyReminderEnabled is bool &&
+        isIntInRange(data.studyReminderHour, 0, 23) &&
+        isIntInRange(data.studyReminderMinute, 0, 59) &&
+        validStringLength(data.selectedLanguage, 6, 7) &&
+        data.selectedLanguage in ['ENGLISH', 'SPANISH', 'GERMAN', 'FRENCH', 'ITALIAN'] &&
+        validStringLength(data.selectedCefrLevel, 0, 8) &&
+        validStringLength(data.studyDirection, 3, 17) &&
+        data.studyDirection in ['NATIVE_TO_FOREIGN', 'FOREIGN_TO_NATIVE', 'MIX'] &&
+        validStringLength(data.todayDate, 10, 10) &&
+        data.todayDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
+        isIntInRange(data.todayCompleted, 0, 5000) &&
+        isIntInRange(data.todayBaseXp, 0, 10000) &&
+        validStringLength(data.weeklyDailyLog, 0, 20000) &&
+        isIntInRange(data.totalAttempts, 0, 5000000) &&
+        isIntInRange(data.totalCorrect, 0, 5000000) &&
+        isIntInRange(data.totalSpoken, 0, 2000000) &&
+        isIntInRange(data.completedSessions, 0, 200000) &&
+        isIntInRange(data.streakDays, 0, 10000) &&
+        validStringLength(data.lastStudyDate, 0, 10) &&
+        (data.lastStudyDate == '' || data.lastStudyDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')) &&
+        validStringLength(data.masteredWordIds, 0, 400000) &&
+        validStringLength(data.needsReviewWordIds, 0, 200000) &&
+        validStringLength(data.wordSrsStats, 0, 600000);
+    }
+
     // ===============================================================
     // Collection Rules
     // ===============================================================
@@ -166,6 +271,19 @@ service cloud.firestore {
         areImmutableFieldsUnchanged(['uid']) &&
         isValidLeaderboardEntry(request.resource.data, uid);
       allow delete: if isOwner(uid);
+    }
+
+    // Private cross-device full-progress backup; strictly non-anonymous owner only
+    match /user_backups/{uid} {
+      allow read: if isNonAnonymousOwner(uid);
+      allow create: if isNonAnonymousOwner(uid) &&
+        uidUnchanged() &&
+        isValidUserBackup(request.resource.data, uid);
+      allow update: if isNonAnonymousOwner(uid) &&
+        uidNotModified() &&
+        areImmutableFieldsUnchanged(['uid']) &&
+        isValidUserBackup(request.resource.data, uid);
+      allow delete: if isNonAnonymousOwner(uid);
     }
 
     // Default deny for all other collections and nested subcollections
