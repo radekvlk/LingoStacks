@@ -968,9 +968,19 @@ class ProgressStateHolder(context: Context) {
 
     fun signInWithGoogleFirebase(idToken: String, displayName: String, email: String) {
         saveLocalGoogleProfile(displayName, email)
+        val auth = FirebaseAuth.getInstance()
+        val prevAnonUid = auth.currentUser?.takeIf { it.isAnonymous }?.uid
+        if (prevAnonUid != null) {
+            try {
+                FirebaseFirestore.getInstance().collection("leaderboard")
+                    .document(prevAnonUid)
+                    .delete()
+            } catch (_: Throwable) {
+            }
+        }
         val credential = GoogleAuthProvider.getCredential(idToken, null)
         lastSyncStatus = if (isCzechLocale()) "Přihlašování přes Google..." else "Signing in with Google..."
-        FirebaseAuth.getInstance().signInWithCredential(credential)
+        auth.signInWithCredential(credential)
             .addOnSuccessListener { result ->
                 val user = result.user
                 isFullCloudBackupActive = user != null && !user.isAnonymous
@@ -1556,6 +1566,11 @@ class ProgressStateHolder(context: Context) {
                     }
 
                     val myCode = ensureValidInviteCode(user.inviteCode, user.email)
+                    friends.removeAll { existing ->
+                        val codeUp = existing.emailOrCode.uppercase(Locale.US)
+                        codeUp.equals(myCode, ignoreCase = true) ||
+                            (existing.id.startsWith("cloud_") && codeUp !in bestByCode)
+                    }
                     val myRemote = bestByCode[myCode]?.second
                     if (myRemote != null && myRemote.lastActiveDate == todayKey) {
                         var updatedLocal = false

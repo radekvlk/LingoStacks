@@ -82,8 +82,8 @@ fun AppleFullSettingsDialog(
     var selectedTab by remember { mutableIntStateOf(initialTab) } // 0 = Goal & Stats, 1 = Leaderboard
     var showCompleteStatsInModal by remember { mutableStateOf(false) }
     var showGoogleEmailPrompt by remember { mutableStateOf(false) }
-    var manualGoogleEmail by remember { mutableStateOf("radek.vlk@gmail.com") }
-    var manualGoogleName by remember { mutableStateOf("Radek Vlk") }
+    var manualGoogleEmail by remember { mutableStateOf("") }
+    var manualGoogleName by remember { mutableStateOf("") }
 
     // Sync cloud leaderboard ONLY while Leaderboard tab is visible, in foreground (RESUMED), and user is signed in
     val lifecycleOwner = LocalLifecycleOwner.current
