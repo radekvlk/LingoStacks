@@ -48,8 +48,10 @@ class MainActivity : ComponentActivity() {
                 val observer = LifecycleEventObserver { _, event ->
                     if (event == Lifecycle.Event.ON_RESUME) {
                         progressState.checkNewDayRollover(alsoRefreshCloud = true)
-                        progressState.retryPendingOtaInstallIfPermitted()
-                        progressState.checkForOtaUpdate(manual = false)
+                        if (BuildConfig.ENABLE_OTA_UPDATES) {
+                            progressState.retryPendingOtaInstallIfPermitted()
+                            progressState.checkForOtaUpdate(manual = false)
+                        }
                     }
                 }
                 this@MainActivity.lifecycle.addObserver(observer)
@@ -80,7 +82,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                if (progressState.showOtaDialog) {
+                if (BuildConfig.ENABLE_OTA_UPDATES && progressState.showOtaDialog) {
                     cz.slovickaspeak.app.ui.OtaUpdateModalDialog(
                         progressState = progressState,
                         onDismiss = { progressState.closeOtaModal() }

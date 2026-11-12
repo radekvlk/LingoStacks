@@ -148,3 +148,13 @@ V sekci *App Content -> Data Safety* v Google Play Console klikněte na Start a 
 * **Přístup k aplikaci (App Access):** Zvolte **Všechny funkce jsou dostupné bez omezení** (nebo uveďte, že přihlášení je dobrovolné a nevyžaduje placený účet).
 * **Kategorie obchodu (Category):** **Vzdělávání (Education)**.
 * **Kontaktní e-mail:** Váš kontaktní e-mail (např. `radek.vlk.app@gmail.com`).
+
+## 6. Soubor balíčku pro nahrání do Google Play
+
+* **Název souboru:** `LingoStacks_v1.6.46_playstore.aab`
+* **Umístění:** Kořenový adresář projektu nebo `app/build/outputs/bundle/playstoreRelease/app-playstore-release.aab`
+* **Vlastnosti:** 
+  * 100% v souladu s Google Play Developer Policy.
+  * Zcela bez externích platebních odkazů (žádné Ko-fi ani PayPal).
+  * Zcela bez zakázaného oprávnění `REQUEST_INSTALL_PACKAGES` (aktualizace řídí výhradně Google Play).
+  * Podepsáno produkčním klíčem `lingowords.keystore`.

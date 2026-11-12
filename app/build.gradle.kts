@@ -21,6 +21,22 @@ android {
         }
     }
 
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("github") {
+            dimension = "distribution"
+            buildConfigField("Boolean", "IS_PLAY_STORE", "false")
+            buildConfigField("Boolean", "ENABLE_OTA_UPDATES", "true")
+            buildConfigField("Boolean", "SHOW_KOFI_DONATE", "true")
+        }
+        create("playstore") {
+            dimension = "distribution"
+            buildConfigField("Boolean", "IS_PLAY_STORE", "true")
+            buildConfigField("Boolean", "ENABLE_OTA_UPDATES", "false")
+            buildConfigField("Boolean", "SHOW_KOFI_DONATE", "false")
+        }
+    }
+
     signingConfigs {
         create("lingowords") {
             storeFile = file("lingowords.keystore")
@@ -60,7 +76,12 @@ android {
         val variant = this
         outputs.all {
             val output = this as? com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            output?.outputFileName = "LingoStacks_v${variant.versionName}.apk"
+            val flavor = variant.flavorName
+            if (flavor == "playstore") {
+                output?.outputFileName = "LingoStacks_v${variant.versionName}_playstore.apk"
+            } else {
+                output?.outputFileName = "LingoStacks_v${variant.versionName}.apk"
+            }
         }
     }
 }

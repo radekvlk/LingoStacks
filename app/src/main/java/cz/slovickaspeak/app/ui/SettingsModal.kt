@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
@@ -815,7 +816,11 @@ private fun AppVersionSectionCard(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "LingoStacks • GitHub OTA",
+                            text = if (cz.slovickaspeak.app.BuildConfig.IS_PLAY_STORE) {
+                                "LingoStacks • Google Play"
+                            } else {
+                                "LingoStacks • GitHub OTA"
+                            },
                             fontSize = 12.sp,
                             color = TextMuted,
                             maxLines = 1,
@@ -841,237 +846,380 @@ private fun AppVersionSectionCard(
                 }
             }
 
-            // Grouped iOS Settings Action List (GitHub link + Direct APK Share)
+            // Grouped iOS Settings Action List
             Surface(
                 shape = RoundedCornerShape(14.dp),
                 color = SurfaceBg,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                try {
-                                    uriHandler.openUri(githubReleasesUrl)
-                                } catch (_: Exception) {
+                    if (cz.slovickaspeak.app.BuildConfig.IS_PLAY_STORE) {
+                        // Google Play compliant actions (Web + Privacy Policy + Share)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    try {
+                                        uriHandler.openUri(projectWebsiteUrl)
+                                    } catch (_: Exception) {
+                                    }
                                 }
+                                .padding(horizontal = 13.dp, vertical = 11.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(26.dp)
+                                    .clip(RoundedCornerShape(7.dp))
+                                    .background(AppleBlueTint),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                    contentDescription = null,
+                                    tint = AppleBlue,
+                                    modifier = Modifier.size(14.dp)
+                                )
                             }
-                            .padding(horizontal = 13.dp, vertical = 11.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(26.dp)
-                                .clip(RoundedCornerShape(7.dp))
-                                .background(AppleBlueTint),
-                            contentAlignment = Alignment.Center
-                        ) {
+                            Text(
+                                text = if (strings.isCzech) "Webové stránky projektu" else "Official Website",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = TextDark,
+                                modifier = Modifier.weight(1f)
+                            )
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                 contentDescription = null,
-                                tint = AppleBlue,
-                                modifier = Modifier.size(14.dp)
+                                tint = TextMuted,
+                                modifier = Modifier.size(18.dp)
                             )
                         }
-                        Text(
-                            text = if (strings.isCzech) {
-                                "Nejnovější vydání na GitHubu"
-                            } else {
-                                "Download latest on GitHub"
-                            },
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = TextDark,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                            contentDescription = null,
-                            tint = TextMuted,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
 
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 49.dp)
-                            .height(0.5.dp)
-                            .background(CardBorderGray.copy(alpha = 0.45f))
-                    )
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(onClick = shareDirectApkLink)
-                            .padding(horizontal = 13.dp, vertical = 11.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
                         Box(
                             modifier = Modifier
-                                .size(26.dp)
-                                .clip(RoundedCornerShape(7.dp))
-                                .background(AppleBlueTint),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Share,
-                                contentDescription = null,
-                                tint = AppleBlue,
-                                modifier = Modifier.size(14.dp)
-                            )
-                        }
-                        Text(
-                            text = if (strings.isCzech) {
-                                "Sdílet odkaz ke stažení (APK)"
-                            } else {
-                                "Share direct APK link"
-                            },
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = TextDark,
-                            modifier = Modifier.weight(1f)
+                                .fillMaxWidth()
+                                .padding(start = 49.dp)
+                                .height(0.5.dp)
+                                .background(CardBorderGray.copy(alpha = 0.45f))
                         )
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                            contentDescription = null,
-                            tint = TextMuted,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
 
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 49.dp)
-                            .height(0.5.dp)
-                            .background(CardBorderGray.copy(alpha = 0.45f))
-                    )
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                try {
-                                    uriHandler.openUri("https://ko-fi.com/radekvlk")
-                                } catch (_: Exception) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    try {
+                                        uriHandler.openUri("https://radekvlk.github.io/LingoStacks/privacy.html")
+                                    } catch (_: Exception) {
+                                    }
                                 }
-                            }
-                            .padding(horizontal = 13.dp, vertical = 11.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(26.dp)
-                                .clip(RoundedCornerShape(7.dp))
-                                .background(Color(0xFFFF5E5B).copy(alpha = 0.14f)),
-                            contentAlignment = Alignment.Center
+                                .padding(horizontal = 13.dp, vertical = 11.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(26.dp)
+                                    .clip(RoundedCornerShape(7.dp))
+                                    .background(AppleGreenTint),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = null,
+                                    tint = AppleGreenDark,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                            Text(
+                                text = if (strings.isCzech) "Zásady ochrany soukromí" else "Privacy Policy",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = TextDark,
+                                modifier = Modifier.weight(1f)
+                            )
                             Icon(
-                                imageVector = Icons.Default.Favorite,
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                 contentDescription = null,
-                                tint = Color(0xFFFF5E5B),
-                                modifier = Modifier.size(14.dp)
+                                tint = TextMuted,
+                                modifier = Modifier.size(18.dp)
                             )
                         }
-                        Text(
-                            text = if (strings.isCzech) {
-                                "Podpořit vývoj (Ko-fi)"
-                            } else {
-                                "Support development (Ko-fi)"
-                            },
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = TextDark,
-                            modifier = Modifier.weight(1f)
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 49.dp)
+                                .height(0.5.dp)
+                                .background(CardBorderGray.copy(alpha = 0.45f))
                         )
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                            contentDescription = null,
-                            tint = TextMuted,
-                            modifier = Modifier.size(18.dp)
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(onClick = shareDirectApkLink)
+                                .padding(horizontal = 13.dp, vertical = 11.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(26.dp)
+                                    .clip(RoundedCornerShape(7.dp))
+                                    .background(AppleBlueTint),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Share,
+                                    contentDescription = null,
+                                    tint = AppleBlue,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                            Text(
+                                text = if (strings.isCzech) "Doporučit aplikaci" else "Share App",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = TextDark,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = TextMuted,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    } else {
+                        // GitHub direct release actions (Releases + Direct APK + Ko-fi donate)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    try {
+                                        uriHandler.openUri(githubReleasesUrl)
+                                    } catch (_: Exception) {
+                                    }
+                                }
+                                .padding(horizontal = 13.dp, vertical = 11.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(26.dp)
+                                    .clip(RoundedCornerShape(7.dp))
+                                    .background(AppleBlueTint),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                    contentDescription = null,
+                                    tint = AppleBlue,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                            Text(
+                                text = if (strings.isCzech) {
+                                    "Nejnovější vydání na GitHubu"
+                                } else {
+                                    "Download latest on GitHub"
+                                },
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = TextDark,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = TextMuted,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 49.dp)
+                                .height(0.5.dp)
+                                .background(CardBorderGray.copy(alpha = 0.45f))
                         )
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(onClick = shareDirectApkLink)
+                                .padding(horizontal = 13.dp, vertical = 11.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(26.dp)
+                                    .clip(RoundedCornerShape(7.dp))
+                                    .background(AppleBlueTint),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Share,
+                                    contentDescription = null,
+                                    tint = AppleBlue,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                            Text(
+                                text = if (strings.isCzech) {
+                                    "Sdílet odkaz ke stažení (APK)"
+                                } else {
+                                    "Share direct APK link"
+                                },
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = TextDark,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = TextMuted,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 49.dp)
+                                .height(0.5.dp)
+                                .background(CardBorderGray.copy(alpha = 0.45f))
+                        )
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    try {
+                                        uriHandler.openUri("https://ko-fi.com/radekvlk")
+                                    } catch (_: Exception) {
+                                    }
+                                }
+                                .padding(horizontal = 13.dp, vertical = 11.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(26.dp)
+                                    .clip(RoundedCornerShape(7.dp))
+                                    .background(Color(0xFFFF5E5B).copy(alpha = 0.14f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Favorite,
+                                    contentDescription = null,
+                                    tint = Color(0xFFFF5E5B),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                            Text(
+                                text = if (strings.isCzech) {
+                                    "Podpořit vývoj (Ko-fi)"
+                                } else {
+                                    "Support development (Ko-fi)"
+                                },
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = TextDark,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = TextMuted,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }
 
-            if (progressState.otaStatusMessage != null) {
-                Text(
-                    text = progressState.otaStatusMessage ?: "",
-                    fontSize = 11.5.sp,
-                    color = if (available != null) AppleGreenDark else TextMuted
-                )
-            }
-
-            // Full-width clean Apple tonal CTA button (no harsh wireframe outline)
-            if (available != null) {
-                Button(
-                    onClick = { progressState.openOtaModal() },
-                    shape = RoundedCornerShape(13.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = AppleGreen),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp)
-                ) {
+            if (cz.slovickaspeak.app.BuildConfig.ENABLE_OTA_UPDATES) {
+                if (progressState.otaStatusMessage != null) {
                     Text(
-                        text = if (strings.isCzech) {
-                            "Aktualizovat na v${available.versionName}"
-                        } else {
-                            "Update to v${available.versionName}"
-                        },
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.5.sp,
-                        color = Color.White,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        text = progressState.otaStatusMessage ?: "",
+                        fontSize = 11.5.sp,
+                        color = if (available != null) AppleGreenDark else TextMuted
                     )
                 }
-            } else {
-                Surface(
-                    shape = RoundedCornerShape(13.dp),
-                    color = AppleBlueTint,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp)
-                        .clip(RoundedCornerShape(13.dp))
-                        .clickable(enabled = !isChecking) {
-                            progressState.checkForOtaUpdate(manual = true)
-                        }
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
+
+                // Full-width clean Apple tonal CTA button (no harsh wireframe outline)
+                if (available != null) {
+                    Button(
+                        onClick = { progressState.openOtaModal() },
+                        shape = RoundedCornerShape(13.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = AppleGreen),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp)
                     ) {
-                        if (isChecking) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(15.dp),
-                                strokeWidth = 2.dp,
-                                color = AppleBlue
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = null,
-                                tint = AppleBlue,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(7.dp))
-                        }
                         Text(
-                            text = if (strings.isCzech) "Zkontrolovat aktualizace" else "Check for Updates",
-                            color = AppleBlue,
-                            fontWeight = FontWeight.SemiBold,
+                            text = if (strings.isCzech) {
+                                "Aktualizovat na v${available.versionName}"
+                            } else {
+                                "Update to v${available.versionName}"
+                            },
+                            fontWeight = FontWeight.Bold,
                             fontSize = 13.5.sp,
+                            color = Color.White,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
+                    }
+                } else {
+                    Surface(
+                        shape = RoundedCornerShape(13.dp),
+                        color = AppleBlueTint,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp)
+                            .clip(RoundedCornerShape(13.dp))
+                            .clickable(enabled = !isChecking) {
+                                progressState.checkForOtaUpdate(manual = true)
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            if (isChecking) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(15.dp),
+                                    strokeWidth = 2.dp,
+                                    color = AppleBlue
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = null,
+                                    tint = AppleBlue,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(7.dp))
+                            }
+                            Text(
+                                text = if (strings.isCzech) "Zkontrolovat aktualizace" else "Check for Updates",
+                                color = AppleBlue,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.5.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
             }
