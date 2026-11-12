@@ -104,7 +104,8 @@ class ProgressStateHolder(context: Context) {
 
     // GitHub Unified OTA Update State
     var otaRepoSlug by mutableStateOf(
-        prefs.getString("ota_github_repo", OtaUpdater.DEFAULT_GITHUB_REPO) ?: OtaUpdater.DEFAULT_GITHUB_REPO
+        (prefs.getString("ota_github_repo", OtaUpdater.DEFAULT_GITHUB_REPO) ?: OtaUpdater.DEFAULT_GITHUB_REPO)
+            .let { if (it.equals("radekvlk/LingoWords", ignoreCase = true)) OtaUpdater.DEFAULT_GITHUB_REPO else it }
     )
         private set
 
