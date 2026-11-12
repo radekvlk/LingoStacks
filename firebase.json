@@ -7,7 +7,7 @@
     "providers": {
       "anonymous": true,
       "googleSignIn": {
-        "oAuthBrandDisplayName": "LingoWords",
+        "oAuthBrandDisplayName": "LingoStacks",
         "supportEmail": "radeck.vlk@gmail.com"
       }
     }

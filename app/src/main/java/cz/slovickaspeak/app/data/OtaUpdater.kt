@@ -274,11 +274,11 @@ object OtaUpdater {
                 OtaReleaseInfo(
                     tagName = tagName,
                     versionName = cleanRemoteVersion,
-                    title = "LingoWords $tagName",
+                    title = "LingoStacks $tagName",
                     changelog = if (isCzech) {
-                        "Nová verze LingoWords $tagName je připravena ke stažení a instalaci."
+                        "Nová verze LingoStacks $tagName je připravena ke stažení a instalaci."
                     } else {
-                        "New LingoWords $tagName update is ready to download and install."
+                        "New LingoStacks $tagName update is ready to download and install."
                     },
                     apkDownloadUrl = apkUrl,
                     apkFileName = apkName,

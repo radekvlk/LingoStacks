@@ -99,8 +99,8 @@ fun getUiStrings(isCs: Boolean): UiStrings {
     return if (isCs) {
         UiStrings(
             isCzech = true,
-            appHeaderSubtitle = "LINGOWORDS",
-            appHeaderTitle = "LingoWords",
+            appHeaderSubtitle = "LINGOSTACKS",
+            appHeaderTitle = "LingoStacks",
             learningLanguageTitle = "🌍 Jazyk k učení",
             allLevelsLabel = "Všechny úrovně (A1–C2)",
             remainingOfGoal = { rem, total -> "Zbývá $rem z $total" },
@@ -150,7 +150,7 @@ fun getUiStrings(isCs: Boolean): UiStrings {
             inviteInputPlaceholder = "Kód SLOV-... nebo Gmail",
             shareInviteButton = "Sdílet pozvánku příteli",
             shareChooserTitle = "Pozvat přítele ke sdílení pokroku",
-            shareMessage = { code -> "Pojď se se mnou učit slovíčka v aplikaci LingoWords a porovnat se v denním žebříčku! Zadej v Nastavení můj kód: $code" },
+            shareMessage = { code -> "Pojď se se mnou učit slovíčka v aplikaci LingoStacks a porovnat se v denním žebříčku! Zadej v Nastavení můj kód: $code" },
             googleSectionTitle = "Google účet a profil v žebříčku",
             googleSignOutHint = { _ -> "Pro zařazení do denního žebříčku se prosím propojte s Google účtem:" },
             googleSignInButton = "Přihlásit se přes Google",
@@ -208,8 +208,8 @@ fun getUiStrings(isCs: Boolean): UiStrings {
             methodSpoken = "Vysloveno hlasem 🎙️",
             methodSwipedKnow = "Označeno: Vím 👉",
             methodSwipedDontKnow = "Označeno: Nevím 👈",
-            appVersionInfo = { v -> "LingoWords v$v" },
-            initialLanguageWelcomeTitle = "Vítejte v LingoWords!",
+            appVersionInfo = { v -> "LingoStacks v$v" },
+            initialLanguageWelcomeTitle = "Vítejte v LingoStacks!",
             initialLanguageWelcomeSubtitle = "Který jazyk se chcete učit?",
             initialLanguageChooseHint = "Volbu můžete kdykoliv změnit v Nastavení.",
             initialLanguageConfirmButton = "Začít se učit"
@@ -217,8 +217,8 @@ fun getUiStrings(isCs: Boolean): UiStrings {
     } else {
         UiStrings(
             isCzech = false,
-            appHeaderSubtitle = "LINGOWORDS",
-            appHeaderTitle = "LingoWords",
+            appHeaderSubtitle = "LINGOSTACKS",
+            appHeaderTitle = "LingoStacks",
             learningLanguageTitle = "🌍 Language to Learn",
             allLevelsLabel = "All Levels (A1–C2)",
             remainingOfGoal = { rem, total -> "$rem of $total left" },
@@ -268,7 +268,7 @@ fun getUiStrings(isCs: Boolean): UiStrings {
             inviteInputPlaceholder = "Code SLOV-... or Gmail",
             shareInviteButton = "Share Invite Link",
             shareChooserTitle = "Invite a friend to share progress",
-            shareMessage = { code -> "Join me in LingoWords and compete on the daily leaderboard! Enter my invite code in Settings: $code" },
+            shareMessage = { code -> "Join me in LingoStacks and compete on the daily leaderboard! Enter my invite code in Settings: $code" },
             googleSectionTitle = "Google Account & Leaderboard Profile",
             googleSignOutHint = { _ -> "Connect your Google account to join the daily leaderboard:" },
             googleSignInButton = "Sign in with Google",
@@ -326,8 +326,8 @@ fun getUiStrings(isCs: Boolean): UiStrings {
             methodSpoken = "Spoken by voice 🎙️",
             methodSwipedKnow = "Marked: Known 👉",
             methodSwipedDontKnow = "Marked: Unknown 👈",
-            appVersionInfo = { v -> "LingoWords v$v" },
-            initialLanguageWelcomeTitle = "Welcome to LingoWords!",
+            appVersionInfo = { v -> "LingoStacks v$v" },
+            initialLanguageWelcomeTitle = "Welcome to LingoStacks!",
             initialLanguageWelcomeSubtitle = "Which language do you want to learn?",
             initialLanguageChooseHint = "You can change this anytime in Settings.",
             initialLanguageConfirmButton = "Start Learning"

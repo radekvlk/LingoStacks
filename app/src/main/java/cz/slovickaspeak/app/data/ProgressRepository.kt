@@ -1888,9 +1888,9 @@ class ProgressStateHolder(context: Context) {
             OtaInstallResult.NEEDS_INSTALL_PERMISSION -> {
                 otaNeedsInstallPermission = true
                 otaStatusMessage = if (isCs) {
-                    "Povolte prosím instalaci z tohoto zdroje pro LingoWords."
+                    "Povolte prosím instalaci z tohoto zdroje pro LingoStacks."
                 } else {
-                    "Please allow installing updates from this source for LingoWords."
+                    "Please allow installing updates from this source for LingoStacks."
                 }
             }
             OtaInstallResult.ERROR -> {

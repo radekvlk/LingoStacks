@@ -117,7 +117,7 @@ object StudyReminderScheduler {
         val isCs = isCzechLocale()
         val remaining = (dailyGoal - todayDone).coerceAtLeast(1)
 
-        val title = if (isCs) "🗣️ Čas na slovíčka!" else "🗣️ Time to practice LingoWords!"
+        val title = if (isCs) "🗣️ Čas na slovíčka!" else "🗣️ Time to practice LingoStacks!"
         val body = if (todayDone > 0) {
             if (isCs) {
                 "Dnes už máš $todayDone slov. Stačí ještě $remaining do splnění denního cíle!"

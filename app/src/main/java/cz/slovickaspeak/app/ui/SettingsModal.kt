@@ -739,13 +739,13 @@ private fun AppVersionSectionCard(
 
     val shareDirectApkLink: () -> Unit = {
         val shareBody = if (strings.isCzech) {
-            "Stáhni si LingoWords v$targetShareVersion (APK): $directApkDownloadUrl"
+            "Stáhni si LingoStacks v$targetShareVersion (APK): $directApkDownloadUrl"
         } else {
-            "Download LingoWords v$targetShareVersion (APK): $directApkDownloadUrl"
+            "Download LingoStacks v$targetShareVersion (APK): $directApkDownloadUrl"
         }
         val sendIntent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_SUBJECT, "LingoWords v$targetShareVersion")
+            putExtra(Intent.EXTRA_SUBJECT, "LingoStacks v$targetShareVersion")
             putExtra(Intent.EXTRA_TEXT, shareBody)
         }
         val chooser = Intent.createChooser(
@@ -803,7 +803,7 @@ private fun AppVersionSectionCard(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "LingoWords • GitHub OTA",
+                            text = "LingoStacks • GitHub OTA",
                             fontSize = 12.sp,
                             color = TextMuted,
                             maxLines = 1,
@@ -2080,9 +2080,9 @@ fun OtaUpdateModalDialog(
                     ) {
                         Text(
                             text = if (strings.isCzech) {
-                                "Pro přímou instalaci OTA je potřeba jednorázově povolit instalaci aplikací z LingoWords v nastavení Androidu."
+                                "Pro přímou instalaci OTA je potřeba jednorázově povolit instalaci aplikací z LingoStacks v nastavení Androidu."
                             } else {
-                                "Please allow LingoWords to install app updates once in Android Settings."
+                                "Please allow LingoStacks to install app updates once in Android Settings."
                             },
                             fontSize = 12.sp,
                             color = TextDark,

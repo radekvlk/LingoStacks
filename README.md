@@ -1,4 +1,4 @@
-# 🗣️ LingoWords — Chytrá hlasová výuka slovíček pro Android
+# 🗣️ LingoStacks — Chytrá hlasová výuka slovíček pro Android
 
 Moderní Android aplikace v designu **Cupertino Glass** pro aktivní procvičování **5 světových jazyků** (angličtina, španělština, němčina, francouzština a italština) hlasem, gesty a chytrou metodou opakování (*Spaced Repetition*).
 
