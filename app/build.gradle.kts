@@ -13,8 +13,8 @@ android {
         applicationId = "cz.slovickaspeak.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 63
-        versionName = "1.6.43"
+        versionCode = 64
+        versionName = "1.6.44"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -60,7 +60,7 @@ android {
         val variant = this
         outputs.all {
             val output = this as? com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            output?.outputFileName = "LingoWords_v${variant.versionName}.apk"
+            output?.outputFileName = "LingoStacks_v${variant.versionName}.apk"
         }
     }
 }

@@ -39,7 +39,7 @@ sealed interface OtaCheckResult {
 }
 
 object OtaUpdater {
-    const val DEFAULT_GITHUB_REPO = "radekvlk/LingoWords"
+    const val DEFAULT_GITHUB_REPO = "radekvlk/LingoStacks"
 
     /**
      * Normalizes either "owner/repo" or "https://github.com/owner/repo" into "owner/repo".
@@ -112,7 +112,7 @@ object OtaUpdater {
                 readTimeout = 7000
                 setRequestProperty("Cache-Control", "no-cache")
                 setRequestProperty("Accept", "application/vnd.github+json")
-                setRequestProperty("User-Agent", "LingoWords-Android/${BuildConfig.VERSION_NAME}")
+                setRequestProperty("User-Agent", "LingoStacks-Android/${BuildConfig.VERSION_NAME}")
             }
 
             val code = conn.responseCode
@@ -157,7 +157,7 @@ object OtaUpdater {
                     if (name.endsWith(".apk", ignoreCase = true)) {
                         val dlUrl = asset.optString("browser_download_url", "")
                         val size = asset.optLong("size", 0L)
-                        if (chosenUrl.isEmpty() || name.contains("LingoWords", ignoreCase = true)) {
+                        if (chosenUrl.isEmpty() || name.contains("LingoStacks", ignoreCase = true) || name.contains("LingoWords", ignoreCase = true)) {
                             chosenUrl = dlUrl
                             chosenName = name
                             chosenSize = size
@@ -218,7 +218,7 @@ object OtaUpdater {
                 connectTimeout = 7000
                 readTimeout = 7000
                 setRequestProperty("Cache-Control", "no-cache")
-                setRequestProperty("User-Agent", "LingoWords-Android/${BuildConfig.VERSION_NAME}")
+                setRequestProperty("User-Agent", "LingoStacks-Android/${BuildConfig.VERSION_NAME}")
             }
             val code = conn.responseCode
             val location = conn.getHeaderField("Location") ?: ""
@@ -247,15 +247,15 @@ object OtaUpdater {
             }
 
             // Inspect expanded_assets HTML fragment to find the exact .apk download link
-            var apkUrl = "https://github.com/$slug/releases/download/$tagName/LingoWords_$tagName.apk"
-            var apkName = "LingoWords_$tagName.apk"
+            var apkUrl = "https://github.com/$slug/releases/download/$tagName/LingoStacks_$tagName.apk"
+            var apkName = "LingoStacks_$tagName.apk"
             try {
                 val assetsUrl = URL("https://github.com/$slug/releases/expanded_assets/$tagName")
                 val assetsConn = (assetsUrl.openConnection() as HttpURLConnection).apply {
                     requestMethod = "GET"
                     connectTimeout = 6000
                     readTimeout = 6000
-                    setRequestProperty("User-Agent", "LingoWords-Android/${BuildConfig.VERSION_NAME}")
+                    setRequestProperty("User-Agent", "LingoStacks-Android/${BuildConfig.VERSION_NAME}")
                 }
                 if (assetsConn.responseCode in 200..299) {
                     val html = assetsConn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
@@ -352,8 +352,8 @@ object OtaUpdater {
             if (!exists()) mkdirs()
         }
 
-        val targetFile = File(updatesDir, "LingoWords_v${release.versionName}.apk")
-        val tempFile = File(updatesDir, "LingoWords_v${release.versionName}.apk.tmp")
+        val targetFile = File(updatesDir, "LingoStacks_v${release.versionName}.apk")
+        val tempFile = File(updatesDir, "LingoStacks_v${release.versionName}.apk.tmp")
 
         var currentUrl = release.apkDownloadUrl
         var conn: HttpURLConnection? = null
@@ -363,7 +363,7 @@ object OtaUpdater {
                 instanceFollowRedirects = false
                 connectTimeout = 12000
                 readTimeout = 20000
-                setRequestProperty("User-Agent", "LingoWords-Android/${BuildConfig.VERSION_NAME}")
+                setRequestProperty("User-Agent", "LingoStacks-Android/${BuildConfig.VERSION_NAME}")
             }
             val status = attempt.responseCode
             if (status in 300..399) {

@@ -735,7 +735,7 @@ private fun AppVersionSectionCard(
     val githubReleasesUrl = "https://github.com/$cleanSlug/releases/latest"
     val targetShareVersion = available?.versionName ?: versionName
     val directApkDownloadUrl = available?.apkDownloadUrl?.takeIf { it.isNotBlank() }
-        ?: "https://github.com/$cleanSlug/releases/download/v$versionName/LingoWords_v$versionName.apk"
+        ?: "https://github.com/$cleanSlug/releases/download/v$versionName/LingoStacks_v$versionName.apk"
 
     val shareDirectApkLink: () -> Unit = {
         val shareBody = if (strings.isCzech) {
