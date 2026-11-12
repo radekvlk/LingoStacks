@@ -26,12 +26,23 @@ android {
         create("github") {
             dimension = "distribution"
             buildConfigField("Boolean", "IS_PLAY_STORE", "false")
+            buildConfigField("Boolean", "IS_BETA", "false")
             buildConfigField("Boolean", "ENABLE_OTA_UPDATES", "true")
             buildConfigField("Boolean", "SHOW_KOFI_DONATE", "true")
+        }
+        create("beta") {
+            dimension = "distribution"
+            applicationIdSuffix = ".beta"
+            versionNameSuffix = "-beta"
+            buildConfigField("Boolean", "IS_PLAY_STORE", "false")
+            buildConfigField("Boolean", "IS_BETA", "true")
+            buildConfigField("Boolean", "ENABLE_OTA_UPDATES", "true")
+            buildConfigField("Boolean", "SHOW_KOFI_DONATE", "false")
         }
         create("playstore") {
             dimension = "distribution"
             buildConfigField("Boolean", "IS_PLAY_STORE", "true")
+            buildConfigField("Boolean", "IS_BETA", "false")
             buildConfigField("Boolean", "ENABLE_OTA_UPDATES", "false")
             buildConfigField("Boolean", "SHOW_KOFI_DONATE", "false")
         }
@@ -77,10 +88,10 @@ android {
         outputs.all {
             val output = this as? com.android.build.gradle.internal.api.BaseVariantOutputImpl
             val flavor = variant.flavorName
-            if (flavor == "playstore") {
-                output?.outputFileName = "LingoStacks_v${variant.versionName}_playstore.apk"
-            } else {
-                output?.outputFileName = "LingoStacks_v${variant.versionName}.apk"
+            when (flavor) {
+                "playstore" -> output?.outputFileName = "LingoStacks_v${variant.versionName}_playstore.apk"
+                "beta" -> output?.outputFileName = "LingoStacks_beta.apk"
+                else -> output?.outputFileName = "LingoStacks_v${variant.versionName}.apk"
             }
         }
     }

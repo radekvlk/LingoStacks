@@ -103,8 +103,14 @@ object OtaUpdater {
             )
         }
 
+        val isBeta = BuildConfig.IS_BETA
         return try {
-            val url = URL("https://api.github.com/repos/$slug/releases/latest")
+            val apiUrl = if (isBeta) {
+                "https://api.github.com/repos/$slug/releases?per_page=15"
+            } else {
+                "https://api.github.com/repos/$slug/releases/latest"
+            }
+            val url = URL(apiUrl)
             val conn = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 useCaches = false
@@ -118,7 +124,6 @@ object OtaUpdater {
             val code = conn.responseCode
             if (code == 403 || code == 429) {
                 conn.disconnect()
-                // Unauthenticated api.github.com rate limit reached: use unlimited web redirect fallback!
                 return checkViaWebRedirect(slug, isCzech)
             }
             if (code == 404) {
@@ -139,14 +144,30 @@ object OtaUpdater {
             val bodyStr = conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
             conn.disconnect()
 
-            val json = JSONObject(bodyStr)
-            val tagName = json.optString("tag_name", "").trim()
-            val cleanRemoteVersion = tagName.removePrefix("v").removePrefix("V").trim()
-            val releaseTitle = json.optString("name", tagName).ifBlank { "v$cleanRemoteVersion" }
-            val rawChangelog = json.optString("body", "").trim()
-            val publishedAt = json.optString("published_at", "").take(10)
+            val targetJson: JSONObject = if (isBeta) {
+                val array = org.json.JSONArray(bodyStr)
+                var found: JSONObject? = null
+                for (j in 0 until array.length()) {
+                    val rel = array.optJSONObject(j) ?: continue
+                    val tag = rel.optString("tag_name", "").lowercase()
+                    val isPre = rel.optBoolean("prerelease", false)
+                    if (isPre || tag.contains("beta")) {
+                        found = rel
+                        break
+                    }
+                }
+                found ?: return OtaCheckResult.UpToDate(BuildConfig.VERSION_NAME)
+            } else {
+                JSONObject(bodyStr)
+            }
 
-            val assets = json.optJSONArray("assets")
+            val tagName = targetJson.optString("tag_name", "").trim()
+            val cleanRemoteVersion = tagName.removePrefix("v").removePrefix("V").trim()
+            val releaseTitle = targetJson.optString("name", tagName).ifBlank { "v$cleanRemoteVersion" }
+            val rawChangelog = targetJson.optString("body", "").trim()
+            val publishedAt = targetJson.optString("published_at", "").take(10)
+
+            val assets = targetJson.optJSONArray("assets")
             var chosenUrl = ""
             var chosenName = ""
             var chosenSize = 0L
@@ -157,10 +178,20 @@ object OtaUpdater {
                     if (name.endsWith(".apk", ignoreCase = true)) {
                         val dlUrl = asset.optString("browser_download_url", "")
                         val size = asset.optLong("size", 0L)
-                        if (chosenUrl.isEmpty() || name.contains("LingoStacks", ignoreCase = true) || name.contains("LingoWords", ignoreCase = true)) {
-                            chosenUrl = dlUrl
-                            chosenName = name
-                            chosenSize = size
+                        val nameLower = name.lowercase()
+                        if (isBeta) {
+                            if (nameLower.contains("beta")) {
+                                chosenUrl = dlUrl
+                                chosenName = name
+                                chosenSize = size
+                                break
+                            }
+                        } else {
+                            if (!nameLower.contains("beta") && (chosenUrl.isEmpty() || name.contains("LingoStacks", ignoreCase = true))) {
+                                chosenUrl = dlUrl
+                                chosenName = name
+                                chosenSize = size
+                            }
                         }
                     }
                 }
@@ -169,9 +200,9 @@ object OtaUpdater {
             if (cleanRemoteVersion.isEmpty() || chosenUrl.isEmpty()) {
                 return OtaCheckResult.RepoNotReady(
                     if (isCzech) {
-                        "Vydání $tagName neobsahuje přiložený .apk soubor."
+                        "Vydání $tagName neobsahuje přiložený odpovídající .apk soubor."
                     } else {
-                        "Release $tagName does not contain an attached .apk file."
+                        "Release $tagName does not contain a matching .apk file."
                     }
                 )
             }
