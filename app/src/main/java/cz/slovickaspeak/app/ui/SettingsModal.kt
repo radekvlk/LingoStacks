@@ -55,6 +55,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
@@ -734,6 +735,7 @@ private fun AppVersionSectionCard(
     val uriHandler = LocalUriHandler.current
     val cleanSlug = cz.slovickaspeak.app.data.OtaUpdater.normalizeRepoSlug(progressState.otaRepoSlug)
     val githubReleasesUrl = "https://github.com/$cleanSlug/releases/latest"
+    val projectWebsiteUrl = "https://radekvlk.github.io/LingoStacks/"
     val targetShareVersion = available?.versionName ?: versionName
     val directApkDownloadUrl = available?.apkDownloadUrl?.takeIf { it.isNotBlank() }
         ?: "https://github.com/$cleanSlug/releases/latest/download/LingoStacks.apk"
@@ -769,9 +771,18 @@ private fun AppVersionSectionCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Apple Settings Style Header: rounded-square vector icon + title + neutral version pill
+            // Apple Settings Style Header: clickable to open project website + AppleBlue version pill
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable {
+                        try {
+                            uriHandler.openUri(projectWebsiteUrl)
+                        } catch (_: Exception) {
+                        }
+                    }
+                    .padding(vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -817,14 +828,14 @@ private fun AppVersionSectionCard(
 
                 Surface(
                     shape = RoundedCornerShape(9.dp),
-                    color = SurfaceBg,
-                    border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.7f))
+                    color = AppleBlueTint,
+                    border = BorderStroke(0.5.dp, AppleBlue.copy(alpha = 0.28f))
                 ) {
                     Text(
                         text = "v$versionName",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = TextDark,
+                        color = AppleBlue,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                     )
                 }
@@ -1064,6 +1075,20 @@ private fun AppVersionSectionCard(
                     }
                 }
             }
+
+            Text(
+                text = if (strings.isCzech) {
+                    "© 2026 Radek Vlk • Všechna práva vyhrazena"
+                } else {
+                    "© 2026 Radek Vlk • All Rights Reserved"
+                },
+                fontSize = 11.sp,
+                color = TextMuted,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 2.dp)
+            )
         }
     }
 }
