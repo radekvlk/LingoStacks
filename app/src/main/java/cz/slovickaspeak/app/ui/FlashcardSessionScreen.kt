@@ -120,10 +120,19 @@ fun FlashcardSessionScreen(
     // - Prioritizes words previously not known, then new words, then mastered words.
     // - Whenever a word is answered "Nevím" (isCorrect == false), it is re-inserted a few cards ahead
     //   so it keeps re-appearing until the user masters all target words!
+    val initialTargetWords = remember(wordsToPractice, dailyGoalWords) {
+        progressState.prioritizeWordsForSession(wordsToPractice, dailyGoalWords)
+    }
     val sessionQueue = remember(wordsToPractice, dailyGoalWords) {
         mutableStateListOf<VocabWord>().apply {
-            addAll(progressState.prioritizeWordsForSession(wordsToPractice, dailyGoalWords))
+            addAll(initialTargetWords)
         }
+    }
+    val sessionTargetCount = remember(initialTargetWords) {
+        initialTargetWords.map { it.id }.distinct().size.coerceAtLeast(1)
+    }
+    val masteredWordIdsInSession = remember(dailyGoalWords) {
+        mutableStateListOf<String>()
     }
 
     var currentIndex by remember(dailyGoalWords) { mutableIntStateOf(0) }
@@ -374,10 +383,13 @@ fun FlashcardSessionScreen(
                 else -> {
                     // Unassisted mastery confirmed!
                     masteredInSessionCount += 1
+                    if (word.id !in masteredWordIdsInSession) {
+                        masteredWordIdsInSession.add(word.id)
+                    }
                 }
             }
 
-            if (masteredInSessionCount >= dailyGoalWords || currentIndex + 1 >= sessionQueue.size) {
+            if (masteredWordIdsInSession.size >= sessionTargetCount || currentIndex + 1 >= sessionQueue.size) {
                 // Only on the very last card: let final pronunciation finish before disposing SpeechController
                 val startWait = SystemClock.uptimeMillis()
                 while (!speechFinished && SystemClock.uptimeMillis() - startWait < 1000L) {
@@ -560,9 +572,10 @@ fun FlashcardSessionScreen(
 
     if (currentWord == null) return
 
-    val totalSessionCards = sessionQueue.size.coerceAtLeast(1)
+    val masteredCount = masteredWordIdsInSession.size.coerceAtMost(sessionTargetCount)
+    val remainingCount = (sessionTargetCount - masteredCount).coerceAtLeast(0)
     val sessionProgressFraction by animateFloatAsState(
-        targetValue = ((currentIndex + 1).toFloat() / totalSessionCards.toFloat()).coerceIn(0f, 1f),
+        targetValue = (masteredCount.toFloat() / sessionTargetCount.toFloat()).coerceIn(0f, 1f),
         animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
         label = "sessionProgressBar"
     )
@@ -745,8 +758,9 @@ fun FlashcardSessionScreen(
                     AppleSessionTopBar(
                         strings = strings,
                         progressState = progressState,
-                        currentIndex = currentIndex,
-                        totalSessionCards = totalSessionCards,
+                        masteredCount = masteredCount,
+                        sessionTargetCount = sessionTargetCount,
+                        remainingCount = remainingCount,
                         sessionProgressFraction = sessionProgressFraction,
                         onCloseSession = {
                             speechControllerRef?.stopListening()
@@ -882,8 +896,9 @@ fun FlashcardSessionScreen(
                 AppleSessionTopBar(
                     strings = strings,
                     progressState = progressState,
-                    currentIndex = currentIndex,
-                    totalSessionCards = totalSessionCards,
+                    masteredCount = masteredCount,
+                    sessionTargetCount = sessionTargetCount,
+                    remainingCount = remainingCount,
                     sessionProgressFraction = sessionProgressFraction,
                     onCloseSession = {
                         speechControllerRef?.stopListening()
@@ -1575,8 +1590,9 @@ private fun RecentAttemptsPanelContent(
 private fun AppleSessionTopBar(
     strings: UiStrings,
     progressState: cz.slovickaspeak.app.data.ProgressStateHolder,
-    currentIndex: Int,
-    totalSessionCards: Int,
+    masteredCount: Int,
+    sessionTargetCount: Int,
+    remainingCount: Int,
     sessionProgressFraction: Float,
     onCloseSession: () -> Unit,
     modifier: Modifier = Modifier
@@ -1602,10 +1618,10 @@ private fun AppleSessionTopBar(
                 Spacer(modifier = Modifier.size(32.dp))
 
                 Text(
-                    text = strings.sessionCardProgress(
-                        (currentIndex + 1).coerceAtMost(totalSessionCards),
-                        totalSessionCards,
-                        progressState.todayCompletedWords
+                    text = strings.sessionMasteryProgress(
+                        masteredCount,
+                        sessionTargetCount,
+                        remainingCount
                     ),
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 13.sp,

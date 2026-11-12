@@ -15,6 +15,7 @@ data class UiStrings(
     val remainingWordsOfGoal: (Int, Int) -> String,
     val dailyGoalProgress: (Int, Int) -> String,
     val sessionCardProgress: (Int, Int, Int) -> String,
+    val sessionMasteryProgress: (Int, Int, Int) -> String,
     val wordsInDeck: (Int) -> String,
     val settingsAndLeaderboard: String,
     val tabGoalAndStats: String,
@@ -110,6 +111,10 @@ fun getUiStrings(isCs: Boolean): UiStrings {
             },
             sessionCardProgress = { current, total, todayDone ->
                 "Karta $current z $total • Dnes $todayDone slov"
+            },
+            sessionMasteryProgress = { mastered, total, remaining ->
+                if (remaining <= 0) "Zvládnuto: $mastered / $total slov • Dokončeno! 🎉"
+                else "Zvládnuto: $mastered / $total slov (zbývá $remaining)"
             },
             wordsInDeck = { count -> "$count slovíček v sadě" },
             settingsAndLeaderboard = "Nastavení a statistiky",
@@ -231,6 +236,10 @@ fun getUiStrings(isCs: Boolean): UiStrings {
             },
             sessionCardProgress = { current, total, todayDone ->
                 "Card $current of $total • Today $todayDone words"
+            },
+            sessionMasteryProgress = { mastered, total, remaining ->
+                if (remaining <= 0) "Mastered: $mastered / $total words • Completed! 🎉"
+                else "Mastered: $mastered / $total words ($remaining left)"
             },
             wordsInDeck = { count -> "$count words in deck" },
             settingsAndLeaderboard = "Settings & Stats",
