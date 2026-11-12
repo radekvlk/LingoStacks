@@ -14,6 +14,9 @@ Moderní Android aplikace v designu **Cupertino Glass** pro aktivní procvičov�
         <a href="https://github.com/radekvlk/LingoStacks/releases/latest/download/LingoStacks.apk">
           <img src="https://img.shields.io/badge/St%C3%A1hnout_LingoStacks-.apk-0A84FF?style=for-the-badge&logo=android&logoColor=white" alt="Stáhnout LingoStacks APK" />
         </a>
+        <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22cz.slovickaspeak.app%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fradekvlk%2FLingoStacks%22%2C%22author%22%3A%22radekvlk%22%2C%22name%22%3A%22LingoStacks%22%7D">
+          <img src="https://img.shields.io/badge/Instalovat_p%C5%99es-Obtainium-6C47FF?style=for-the-badge&logo=android&logoColor=white" alt="Instalovat přes Obtainium" />
+        </a>
       </p>
       <p>
         🌐 <strong>Prezentační stránka:</strong> <a href="https://radekvlk.github.io/LingoStacks/">radekvlk.github.io/LingoStacks</a><br/>
@@ -28,6 +31,10 @@ Moderní Android aplikace v designu **Cupertino Glass** pro aktivní procvičov�
 </table>
 
 ## 📸 Ukázky z aplikace
+
+<p align="center">
+  <img src="docs/demo.gif" alt="Animovaná ukázka LingoStacks" width="220" />
+</p>
 
 <p align="center">
   <img src="docs/screenshots/01_home.png" alt="Domovská obrazovka" width="180" />

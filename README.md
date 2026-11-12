@@ -14,6 +14,9 @@ A modern Android app in **Cupertino Glass** design for actively practicing **5 w
         <a href="https://github.com/radekvlk/LingoStacks/releases/latest/download/LingoStacks.apk">
           <img src="https://img.shields.io/badge/Download_LingoStacks-.apk-0A84FF?style=for-the-badge&logo=android&logoColor=white" alt="Download LingoStacks APK" />
         </a>
+        <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22cz.slovickaspeak.app%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fradekvlk%2FLingoStacks%22%2C%22author%22%3A%22radekvlk%22%2C%22name%22%3A%22LingoStacks%22%7D">
+          <img src="https://img.shields.io/badge/Get_it_on-Obtainium-6C47FF?style=for-the-badge&logo=android&logoColor=white" alt="Get it on Obtainium" />
+        </a>
       </p>
       <p>
         🌐 <strong>Project Website:</strong> <a href="https://radekvlk.github.io/LingoStacks/">radekvlk.github.io/LingoStacks</a><br/>
@@ -27,7 +30,11 @@ A modern Android app in **Cupertino Glass** design for actively practicing **5 w
   </tr>
 </table>
 
-## 📸 App Screenshots
+## 📸 App Preview & Screenshots
+
+<p align="center">
+  <img src="docs/demo.gif" alt="LingoStacks Animated Walkthrough" width="220" />
+</p>
 
 <p align="center">
   <img src="docs/screenshots/01_home.png" alt="Home Screen" width="180" />
