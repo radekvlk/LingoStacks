@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy — LingoStacks</title>
+  <meta name="description" content="Privacy Policy for LingoStacks Android application. Voice-first vocabulary and flashcards app." />
+  <link rel="canonical" href="https://radekvlk.github.io/LingoStacks/privacy.html" />
+
+  <style>
+    :root {
+      --bg: #f3f5f9;
+      --surface: rgba(255, 255, 255, 0.88);
+      --border: rgba(255, 255, 255, 0.9);
+      --shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+      --text: #111827;
+      --muted: #4b5563;
+      --blue: #0a84ff;
+      --indigo: #5856d6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% 10%, rgba(10, 132, 255, 0.14), transparent 38%),
+        radial-gradient(circle at 85% 20%, rgba(88, 86, 214, 0.14), transparent 36%),
+        var(--bg);
+      line-height: 1.65;
+    }
+    .wrap {
+      max-width: 840px;
+      margin: 0 auto;
+      padding: 24px 20px 80px;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .back-link {
+      color: var(--blue);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .back-link:hover { text-decoration: underline; }
+    .lang-switch {
+      display: inline-flex;
+      background: var(--surface);
+      border: 1px solid rgba(17, 24, 39, 0.08);
+      border-radius: 999px;
+      padding: 4px;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+    }
+    .lang-btn {
+      border: 0;
+      background: transparent;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      color: var(--muted);
+    }
+    .lang-btn.active {
+      background: #fff;
+      color: var(--text);
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+    }
+    .card {
+      background: var(--surface);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 36px 40px;
+      box-shadow: var(--shadow);
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      margin-top: 0;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, var(--blue), var(--indigo));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .last-updated {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+    h2 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-top: 32px;
+      margin-bottom: 12px;
+      color: var(--text);
+    }
+    p, li {
+      color: #374151;
+      font-size: 15px;
+    }
+    ul {
+      padding-left: 20px;
+      margin: 8px 0 16px;
+    }
+    li { margin-bottom: 6px; }
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <a href="./" class="back-link" data-cs="← Zpět na LingoStacks" data-en="← Back to LingoStacks">← Zpět na LingoStacks</a>
+      <div class="lang-switch">
+        <button id="btn-cs" class="lang-btn active" onclick="setLang('cs')">CZ</button>
+        <button id="btn-en" class="lang-btn" onclick="setLang('en')">EN</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h1 data-cs="Zásady ochrany osobních údajů" data-en="Privacy Policy">Zásady ochrany osobních údajů</h1>
+      <div class="last-updated" data-cs="Poslední aktualizace: 12. listopadu 2026" data-en="Last updated: November 12, 2026">Poslední aktualizace: 12. listopadu 2026</div>
+
+      <div id="content-cs">
+        <p>Aplikace <strong>LingoStacks</strong> (identifikátor balíčku: <code>cz.slovickaspeak.app</code>) byla vytvořena s důrazem na maximální soukromí uživatelů. Tento dokument popisuje, jakým způsobem nakládáme s údaji a oprávněními v aplikaci.</p>
+
+        <h2>1. Mikrofon a rozpoznávání hlasu</h2>
+        <p>Aplikace vyžaduje oprávnění k přístupu k mikrofonu (<code>android.permission.RECORD_AUDIO</code>), aby vám umožnila procvičovat výslovnost a odpovídat na slovíčka hlasem.</p>
+        <ul>
+          <li><strong>Lokální zpracování:</strong> Zvuk je v reálném čase zpracováván standardním systémovým rozpoznávačem hlasu Androidu (SpeechRecognizer).</li>
+          <li><strong>Žádné nahrávky:</strong> Aplikace LingoStacks <em>neukládá, nearchivuje ani neodesílá</em> žádné zvukové záznamy na vlastní servery ani třetím stranám.</li>
+          <li>Mikrofon je aktivní výhradně po dobu probíhajícího testování kartiček a okamžitě se vypíná při přechodu karty či pozastavení aplikace.</li>
+        </ul>
+
+        <h2>2. Uživatelské účty a synchronizace (Firebase)</h2>
+        <p>Aplikaci lze používat zcela anonymně bez nutnosti zakládat účet.</p>
+        <p>Pokud se dobrovolně rozhodnete přihlásit prostřednictvím svého Google účtu:</p>
+        <ul>
+          <li>Využíváme zabezpečenou službu <strong>Firebase Authentication</strong> od společnosti Google k ověření vaší identity (e-mail, zobrazované jméno).</li>
+          <li>Ve službě <strong>Cloud Firestore</strong> uchováváme váš studijní postup (zvládnutá slovíčka, vytvořené vlastní balíčky a celkové skóre), aby se vaše data neztratila při změně zařízení a mohla se zobrazit v žebříčku.</li>
+        </ul>
+
+        <h2>3. Reklamy a analytika</h2>
+        <p>Aplikace LingoStacks je zcela <strong>bez reklam</strong>. Neobsahuje žádné reklamní sítě, nesleduje vás napříč jinými aplikacemi ani neprodává vaše data žádným třetím stranám.</p>
+
+        <h2>4. Smazání účtu a dat (Account & Data Deletion)</h2>
+        <p>Máte plnou kontrolu nad svými údaji. Pokud se rozhodnete smazat svůj profil i veškerá uložená data:</p>
+        <ul>
+          <li>Můžete tak učinit přímo v aplikaci v nastavení profilu tlačítkem pro odhlášení / smazání dat.</li>
+          <li>Nebo můžete kdykoliv požádat o kompletní výmaz svých dat zasláním požadavku na e-mail: <code>radek.vlk.app@gmail.com</code>. Vaše data budou do 7 dnů trvale odstraněna z databáze.</li>
+        </ul>
+
+        <h2>5. Změny těchto zásad</h2>
+        <p>Tyto zásady ochrany soukromí můžeme v budoucnu aktualizovat. Jakékoliv změny budou vždy zveřejněny na této webové stránce.</p>
+
+        <h2>6. Kontakt</h2>
+        <p>V případě jakýchkoliv dotazů ohledně ochrany soukromí a nakládání s daty nás kontaktujte na: <strong>radek.vlk.app@gmail.com</strong>.</p>
+      </div>
+
+      <div id="content-en" style="display:none;">
+        <p>The <strong>LingoStacks</strong> mobile application (package ID: <code>cz.slovickaspeak.app</code>) is designed with privacy as a foundational principle. This policy explains how information and permissions are handled.</p>
+
+        <h2>1. Microphone & Voice Recognition</h2>
+        <p>The app requests microphone access (<code>android.permission.RECORD_AUDIO</code>) solely to evaluate your spoken answers during flashcard sessions.</p>
+        <ul>
+          <li><strong>Local Processing:</strong> Speech recognition is handled in real time using the device's native Android SpeechRecognizer.</li>
+          <li><strong>No Audio Storage:</strong> LingoStacks <em>does not record, store, transmit, or sell</em> any of your voice data.</li>
+          <li>The microphone is active only while flashcard listening is engaged and turns off automatically during transitions and when navigating away.</li>
+        </ul>
+
+        <h2>2. User Accounts & Cloud Sync (Firebase)</h2>
+        <p>You can use LingoStacks completely anonymously without creating an account.</p>
+        <p>If you choose to sign in with your Google account:</p>
+        <ul>
+          <li>We use Google <strong>Firebase Authentication</strong> to authenticate your account (email address and public display name).</li>
+          <li>We store your learning progress, custom flashcard decks, and study score in <strong>Cloud Firestore</strong> so that your data syncs across devices and enables the optional community leaderboard.</li>
+        </ul>
+
+        <h2>3. Advertisements & Tracking</h2>
+        <p>LingoStacks is <strong>100% ad-free</strong>. We do not use third-party advertising SDKs, do not track you across apps or websites, and never sell your personal information.</p>
+
+        <h2>4. Data & Account Deletion</h2>
+        <p>You retain full control over your data:</p>
+        <ul>
+          <li>You can clear your local progress or sign out directly within the app settings.</li>
+          <li>To request complete deletion of your cloud account and all associated Firestore records, email us at <code>radek.vlk.app@gmail.com</code>. Your data will be permanently wiped within 7 business days.</li>
+        </ul>
+
+        <h2>5. Changes to This Policy</h2>
+        <p>We may update this Privacy Policy from time to time. Any changes will be reflected on this page with an updated modification date.</p>
+
+        <h2>6. Contact Us</h2>
+        <p>If you have any questions or concerns regarding privacy, contact us at: <strong>radek.vlk.app@gmail.com</strong>.</p>
+      </div>
+    </div>
+
+    <footer>
+      © 2026 Radek Vlk • <a href="./">LingoStacks Home</a> • <a href="https://github.com/radekvlk/LingoStacks">GitHub</a>
+    </footer>
+  </div>
+
+  <script>
+    function setLang(lang) {
+      document.documentElement.lang = lang;
+      document.getElementById('btn-cs').classList.toggle('active', lang === 'cs');
+      document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+      document.getElementById('content-cs').style.display = lang === 'cs' ? 'block' : 'none';
+      document.getElementById('content-en').style.display = lang === 'en' ? 'block' : 'none';
+      document.querySelectorAll('[data-cs][data-en]').forEach(el => {
+        el.innerHTML = el.getAttribute('data-' + lang);
+      });
+    }
+    const navLang = (navigator.language || 'en').toLowerCase();
+    setLang(navLang.startsWith('cs') || navLang.startsWith('sk') ? 'cs' : 'en');
+  </script>
+</body>
+</html>
