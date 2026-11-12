@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -72,7 +73,7 @@ fun DeckSelectionScreen(
     progressState: cz.slovickaspeak.app.data.ProgressStateHolder,
     onSelectDeck: (VocabDeck) -> Unit
 ) {
-    val strings = rememberAppStrings()
+    val strings = rememberAppStrings(progressState.nativeLanguage)
     val selectedLanguage = progressState.selectedLanguage
     val selectedLevel = progressState.selectedCefrLevel
     val studyDirection = progressState.studyDirection
@@ -116,9 +117,18 @@ fun DeckSelectionScreen(
         )
     }
 
-    if (!progressState.hasSelectedInitialLanguage) {
+    if (!progressState.hasSelectedNativeLanguage) {
+        NativeLanguageOnboardingDialog(
+            strings = strings,
+            defaultNative = progressState.nativeLanguage,
+            onSelectNativeLanguage = { native ->
+                progressState.updateNativeLanguage(native)
+            }
+        )
+    } else if (!progressState.hasSelectedInitialLanguage) {
         InitialLanguageDialog(
             strings = strings,
+            nativeLanguage = progressState.nativeLanguage,
             onSelectLanguage = { lang ->
                 progressState.selectInitialLanguage(lang)
             }
@@ -134,8 +144,8 @@ fun DeckSelectionScreen(
     ) { innerPadding ->
         if (isLandscape) {
             // Fold / Tablet Landscape (na sirku): 2 sloupce vedle sebe (Plnohodnotny Dashboard vlevo, Balicky vpravo)
-            val allLanguageStats = remember(progressState.srsRevision, studyDirection) {
-                LearningLanguage.entries.map { progressState.getLanguageCompleteStats(it) }
+            val allLanguageStats = remember(progressState.srsRevision, studyDirection, progressState.nativeLanguage) {
+                LearningLanguage.entries.filter { it != progressState.nativeLanguage }.map { progressState.getLanguageCompleteStats(it) }
             }
             val activeLangStats = allLanguageStats.firstOrNull { it.language == selectedLanguage }
                 ?: allLanguageStats.first()
@@ -190,6 +200,7 @@ fun DeckSelectionScreen(
                     item {
                         DeckGoalIndicatorCard(
                             strings = strings,
+                            nativeLanguage = progressState.nativeLanguage,
                             selectedLanguage = selectedLanguage,
                             selectedLevel = selectedLevel,
                             studyDirection = studyDirection,
@@ -318,6 +329,7 @@ fun DeckSelectionScreen(
                 item {
                     DeckGoalIndicatorCard(
                         strings = strings,
+                        nativeLanguage = progressState.nativeLanguage,
                         selectedLanguage = selectedLanguage,
                         selectedLevel = selectedLevel,
                         studyDirection = studyDirection,
@@ -785,6 +797,30 @@ private fun WavingLanguageFlagBackdrop(
                         color = itRed.copy(alpha = 0.08f)
                     )
                 }
+
+                LearningLanguage.CZECH -> {
+                    val czBlue = Color(0xFF11457E)
+                    val czRed = Color(0xFFD7141A)
+                    drawRect(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = if (dark) 0.18f else 0.28f),
+                                czRed.copy(alpha = if (dark) 0.25f else 0.20f)
+                            ),
+                            start = Offset(0f, 0f),
+                            end = Offset(0f, h)
+                        )
+                    )
+                    drawPath(
+                        path = Path().apply {
+                            moveTo(0f, 0f)
+                            lineTo(w * 0.48f, h * 0.5f)
+                            lineTo(0f, h)
+                            close()
+                        },
+                        color = czBlue.copy(alpha = if (dark) 0.32f else 0.24f)
+                    )
+                }
             }
 
             // Moving diagonal silk-fold highlights (creates realistic 3D cloth wave shimmer)
@@ -978,6 +1014,7 @@ private fun FilterDropdownPill(
 @Composable
 private fun DeckGoalIndicatorCard(
     strings: UiStrings,
+    nativeLanguage: LearningLanguage = LearningLanguage.CZECH,
     selectedLanguage: LearningLanguage,
     selectedLevel: CefrLevel?,
     studyDirection: StudyDirection,
@@ -1023,7 +1060,7 @@ private fun DeckGoalIndicatorCard(
                         expanded = languageDropdownExpanded,
                         onDismissRequest = { languageDropdownExpanded = false }
                     ) {
-                        LearningLanguage.entries.forEach { lang ->
+                        LearningLanguage.entries.filter { it != nativeLanguage }.forEach { lang ->
                             DropdownMenuItem(
                                 text = {
                                     Text(
@@ -1485,8 +1522,151 @@ private fun DeckMemoryProgressRow(summary: DeckMemorySummary) {
 }
 
 @Composable
+fun NativeLanguageOnboardingDialog(
+    strings: UiStrings,
+    defaultNative: LearningLanguage,
+    onSelectNativeLanguage: (LearningLanguage) -> Unit
+) {
+    var selectedNative by remember { mutableStateOf(defaultNative) }
+
+    Dialog(
+        onDismissRequest = {},
+        properties = androidx.compose.ui.window.DialogProperties(
+            dismissOnBackPress = false,
+            dismissOnClickOutside = false
+        )
+    ) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = CardSurface,
+            border = BorderStroke(0.5.dp, CardBorderGray),
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(24.dp, RoundedCornerShape(28.dp), spotColor = Color.Black.copy(alpha = 0.2f))
+        ) {
+            Column(
+                modifier = Modifier.padding(26.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = AppleBlueTint,
+                    modifier = Modifier.size(68.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(text = "🗣️", fontSize = 34.sp)
+                    }
+                }
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = if (selectedNative == LearningLanguage.CZECH) "Vítejte v LingoStacks!" else "Welcome to LingoStacks!",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextDark,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Text(
+                        text = if (selectedNative == LearningLanguage.CZECH) {
+                            "Jaký je váš rodný jazyk? (Jakou řečí mluvíte?)"
+                        } else {
+                            "What is your native language? (Language you speak)"
+                        },
+                        fontSize = 14.sp,
+                        color = TextMuted,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 380.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(9.dp)
+                ) {
+                    LearningLanguage.entries.forEach { lang ->
+                        val isSelected = selectedNative == lang
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = if (isSelected) AppleBlueTint else SurfaceBg,
+                            border = BorderStroke(
+                                if (isSelected) 1.5.dp else 1.dp,
+                                if (isSelected) AppleBlue else CardBorderGray.copy(alpha = 0.8f)
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .clickable { selectedNative = lang }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                Text(text = lang.flagEmoji, fontSize = 28.sp)
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = lang.localizedTitle(selectedNative == LearningLanguage.CZECH),
+                                        fontSize = 16.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) AppleBlue else TextDark
+                                    )
+                                    val nativeName = when (lang) {
+                                        LearningLanguage.CZECH -> "Čeština"
+                                        LearningLanguage.ENGLISH -> "English"
+                                        LearningLanguage.SPANISH -> "Español"
+                                        LearningLanguage.GERMAN -> "Deutsch"
+                                        LearningLanguage.FRENCH -> "Français"
+                                        LearningLanguage.ITALIAN -> "Italiano"
+                                    }
+                                    Text(
+                                        text = nativeName,
+                                        fontSize = 12.sp,
+                                        color = TextMuted
+                                    )
+                                }
+                                if (isSelected) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = AppleBlue,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Button(
+                    onClick = { onSelectNativeLanguage(selectedNative) },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AppleBlue),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                ) {
+                    Text(
+                        text = if (selectedNative == LearningLanguage.CZECH) "Pokračovat →" else "Continue →",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun InitialLanguageDialog(
     strings: UiStrings,
+    nativeLanguage: LearningLanguage = LearningLanguage.CZECH,
     onSelectLanguage: (LearningLanguage) -> Unit
 ) {
     Dialog(
@@ -1545,7 +1725,7 @@ fun InitialLanguageDialog(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    LearningLanguage.entries.forEach { lang ->
+                    LearningLanguage.entries.filter { it != nativeLanguage }.forEach { lang ->
                         Surface(
                             shape = RoundedCornerShape(18.dp),
                             color = SurfaceBg,

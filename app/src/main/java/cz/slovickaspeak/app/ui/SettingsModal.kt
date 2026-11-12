@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SystemUpdate
@@ -81,7 +82,7 @@ fun AppleFullSettingsDialog(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val strings = rememberAppStrings()
+    val strings = rememberAppStrings(progressState.nativeLanguage)
     var selectedTab by remember { mutableIntStateOf(initialTab) } // 0 = Goal & Stats, 1 = Leaderboard
     var showCompleteStatsInModal by remember { mutableStateOf(false) }
     var showGoogleEmailPrompt by remember { mutableStateOf(false) }
@@ -266,6 +267,12 @@ fun AppleFullSettingsDialog(
                             strings = strings,
                             isDarkMode = progressState.isDarkMode,
                             onSelectDarkMode = { progressState.updateDarkMode(it) }
+                        )
+
+                        NativeLanguageSectionCard(
+                            strings = strings,
+                            nativeLanguage = progressState.nativeLanguage,
+                            onSelectNativeLanguage = { progressState.updateNativeLanguage(it) }
                         )
 
                         CardExitSpeedSectionCard(
@@ -1365,6 +1372,133 @@ private fun AppearanceSectionCard(
 }
 
 @Composable
+private fun NativeLanguageSectionCard(
+    strings: UiStrings,
+    nativeLanguage: LearningLanguage,
+    onSelectNativeLanguage: (LearningLanguage) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = CardSurface,
+        border = BorderStroke(0.5.dp, CardBorderGray),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(AppleBlueTint),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = nativeLanguage.flagEmoji, fontSize = 20.sp)
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (strings.isCzech) "Můj rodný jazyk" else "My Native Language",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextDark
+                    )
+                    Text(
+                        text = if (strings.isCzech) {
+                            "Mluvím: ${nativeLanguage.flagEmoji} ${nativeLanguage.localizedTitle(true)}"
+                        } else {
+                            "I speak: ${nativeLanguage.flagEmoji} ${nativeLanguage.localizedTitle(false)}"
+                        },
+                        fontSize = 12.sp,
+                        color = TextMuted
+                    )
+                }
+                Icon(
+                    imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = TextMuted,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            if (expanded) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    LearningLanguage.entries.forEach { lang ->
+                        val isSelected = lang == nativeLanguage
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (isSelected) AppleBlueTint else SurfaceBg,
+                            border = BorderStroke(
+                                if (isSelected) 1.dp else 0.5.dp,
+                                if (isSelected) AppleBlue else CardBorderGray.copy(alpha = 0.5f)
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable {
+                                    onSelectNativeLanguage(lang)
+                                    expanded = false
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Text(text = lang.flagEmoji, fontSize = 20.sp)
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = lang.localizedTitle(strings.isCzech),
+                                        fontSize = 14.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) AppleBlue else TextDark
+                                    )
+                                    val nativeName = when (lang) {
+                                        LearningLanguage.CZECH -> "Čeština"
+                                        LearningLanguage.ENGLISH -> "English"
+                                        LearningLanguage.SPANISH -> "Español"
+                                        LearningLanguage.GERMAN -> "Deutsch"
+                                        LearningLanguage.FRENCH -> "Français"
+                                        LearningLanguage.ITALIAN -> "Italiano"
+                                    }
+                                    Text(
+                                        text = nativeName,
+                                        fontSize = 11.sp,
+                                        color = TextMuted
+                                    )
+                                }
+                                if (isSelected) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = AppleBlue,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun AutoPronounceSectionCard(
     strings: UiStrings,
     autoPronounceEnabled: Boolean,
@@ -2159,7 +2293,7 @@ fun OtaUpdateModalDialog(
     progressState: ProgressStateHolder,
     onDismiss: () -> Unit
 ) {
-    val strings = rememberAppStrings()
+    val strings = rememberAppStrings(progressState.nativeLanguage)
     val release = progressState.availableOtaRelease ?: return
     val isDownloading = progressState.isDownloadingOta
     val progress = progressState.otaDownloadFraction
@@ -2405,12 +2539,13 @@ fun AppleCompleteStatsDialog(
     onOpenLeaderboard: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val strings = rememberAppStrings()
-    val allLanguageStats = remember(progressState.srsRevision, progressState.studyDirection) {
-        LearningLanguage.entries.map { progressState.getLanguageCompleteStats(it) }
+    val strings = rememberAppStrings(progressState.nativeLanguage)
+    val allLanguageStats = remember(progressState.srsRevision, progressState.studyDirection, progressState.nativeLanguage) {
+        LearningLanguage.entries.filter { it != progressState.nativeLanguage }.map { progressState.getLanguageCompleteStats(it) }
     }
     val activeStats = allLanguageStats.firstOrNull { it.language == progressState.selectedLanguage }
-        ?: allLanguageStats.first()
+        ?: allLanguageStats.firstOrNull()
+        ?: progressState.getLanguageCompleteStats(progressState.selectedLanguage)
 
     Dialog(
         onDismissRequest = onDismiss,

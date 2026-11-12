@@ -129,6 +129,7 @@ fun getUiStrings(isCs: Boolean): UiStrings {
                     LearningLanguage.FRENCH -> "🇫🇷 Úroveň francouzštiny (A1 – C2)"
                     LearningLanguage.ITALIAN -> "🇮🇹 Úroveň italštiny (A1 – C2)"
                     LearningLanguage.ENGLISH -> "🇬🇧 Úroveň angličtiny (A1 – C2)"
+                    LearningLanguage.CZECH -> "🇨🇿 Úroveň češtiny (A1 – C2)"
                 }
             },
             allLevelsButton = "Všechny úrovně (A1 – C2)",
@@ -172,6 +173,7 @@ fun getUiStrings(isCs: Boolean): UiStrings {
                     LearningLanguage.FRENCH -> "ŘEKNI FRANCOUZSKY"
                     LearningLanguage.ITALIAN -> "ŘEKNI ITALSKY"
                     LearningLanguage.ENGLISH -> "ŘEKNI ANGLICKY"
+                    LearningLanguage.CZECH -> "ŘEKNI ČESKY"
                 }
             },
             showHintButton = "Zobrazit nápovědu",
@@ -194,6 +196,7 @@ fun getUiStrings(isCs: Boolean): UiStrings {
                     LearningLanguage.FRENCH -> "Poslouchám – rovnou řekni slovo francouzsky"
                     LearningLanguage.ITALIAN -> "Poslouchám – rovnou řekni slovo italsky"
                     LearningLanguage.ENGLISH -> "Poslouchám – rovnou řekni slovo anglicky"
+                    LearningLanguage.CZECH -> "Poslouchám – rovnou řekni slovo česky"
                 }
             },
             bannerMicReady = "Mikrofon připraven – mluv nebo posuň kartu",
@@ -247,6 +250,7 @@ fun getUiStrings(isCs: Boolean): UiStrings {
                     LearningLanguage.FRENCH -> "🇫🇷 French Level (A1 – C2)"
                     LearningLanguage.ITALIAN -> "🇮🇹 Italian Level (A1 – C2)"
                     LearningLanguage.ENGLISH -> "🇬🇧 English Level (A1 – C2)"
+                    LearningLanguage.CZECH -> "🇨🇿 Czech Level (A1 – C2)"
                 }
             },
             allLevelsButton = "All Levels (A1 – C2)",
@@ -290,6 +294,7 @@ fun getUiStrings(isCs: Boolean): UiStrings {
                     LearningLanguage.FRENCH -> "SPEAK IN FRENCH"
                     LearningLanguage.ITALIAN -> "SPEAK IN ITALIAN"
                     LearningLanguage.ENGLISH -> "SPEAK IN ENGLISH"
+                    LearningLanguage.CZECH -> "SPEAK IN CZECH"
                 }
             },
             showHintButton = "Show hint",
@@ -312,6 +317,7 @@ fun getUiStrings(isCs: Boolean): UiStrings {
                     LearningLanguage.FRENCH -> "Listening – speak the word in French"
                     LearningLanguage.ITALIAN -> "Listening – speak the word in Italian"
                     LearningLanguage.ENGLISH -> "Listening – speak the word in English"
+                    LearningLanguage.CZECH -> "Listening – speak the word in Czech"
                 }
             },
             bannerMicReady = "Microphone ready – speak or swipe card",
@@ -336,13 +342,17 @@ fun getUiStrings(isCs: Boolean): UiStrings {
 }
 
 @Composable
-fun rememberAppStrings(): UiStrings {
+fun rememberAppStrings(nativeLanguage: LearningLanguage? = null): UiStrings {
     val config = LocalConfiguration.current
-    val lang = if (config.locales.isEmpty) {
-        Locale.getDefault().language
+    val isCs = if (nativeLanguage != null) {
+        nativeLanguage == LearningLanguage.CZECH
     } else {
-        config.locales[0].language
+        val lang = if (config.locales.isEmpty) {
+            Locale.getDefault().language
+        } else {
+            config.locales[0].language
+        }
+        lang.lowercase(Locale.US) in listOf("cs", "sk", "ces", "cze")
     }
-    val isCs = lang.lowercase(Locale.US) in listOf("cs", "sk", "ces", "cze")
     return getUiStrings(isCs)
 }

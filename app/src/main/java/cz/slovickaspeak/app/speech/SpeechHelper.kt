@@ -438,6 +438,7 @@ object WordMatcher {
     ): String {
         return when {
             expectCzech -> czechPhoneticCode(word)
+            language == LearningLanguage.CZECH -> czechPhoneticCode(word)
             language == LearningLanguage.SPANISH -> spanishPhoneticCode(word)
             language == LearningLanguage.GERMAN -> germanPhoneticCode(word)
             language == LearningLanguage.FRENCH -> frenchPhoneticCode(word)
@@ -1311,6 +1312,7 @@ class SpeechSessionController(
         LearningLanguage.FRENCH -> Locale.FRANCE
         LearningLanguage.ITALIAN -> Locale.ITALY
         LearningLanguage.ENGLISH -> Locale.US
+        LearningLanguage.CZECH -> Locale("cs", "CZ")
     }
 
     init {
