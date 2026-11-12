@@ -17,6 +17,9 @@ Moderní Android aplikace v designu **Cupertino Glass** pro aktivní procvičov�
         <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22cz.slovickaspeak.app%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Fradekvlk%2FLingoStacks%22%2C%22author%22%3A%22radekvlk%22%2C%22name%22%3A%22LingoStacks%22%7D">
           <img src="https://img.shields.io/badge/Instalovat_p%C5%99es-Obtainium-6C47FF?style=for-the-badge&logo=android&logoColor=white" alt="Instalovat přes Obtainium" />
         </a>
+        <a href="https://ko-fi.com/radekvlk">
+          <img src="https://img.shields.io/badge/Podpo%C5%99it_na-Ko--fi-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white" alt="Podpořit na Ko-fi" />
+        </a>
       </p>
       <p>
         🌐 <strong>Prezentační stránka:</strong> <a href="https://radekvlk.github.io/LingoStacks/">radekvlk.github.io/LingoStacks</a><br/>

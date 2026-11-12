@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
@@ -917,6 +918,60 @@ private fun AppVersionSectionCard(
                                 "Sdílet odkaz ke stažení (APK)"
                             } else {
                                 "Share direct APK link"
+                            },
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextDark,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = TextMuted,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 49.dp)
+                            .height(0.5.dp)
+                            .background(CardBorderGray.copy(alpha = 0.45f))
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                try {
+                                    uriHandler.openUri("https://ko-fi.com/radekvlk")
+                                } catch (_: Exception) {
+                                }
+                            }
+                            .padding(horizontal = 13.dp, vertical = 11.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(26.dp)
+                                .clip(RoundedCornerShape(7.dp))
+                                .background(Color(0xFFFF5E5B).copy(alpha = 0.14f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Favorite,
+                                contentDescription = null,
+                                tint = Color(0xFFFF5E5B),
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                        Text(
+                            text = if (strings.isCzech) {
+                                "Podpořit vývoj (Ko-fi)"
+                            } else {
+                                "Support development (Ko-fi)"
                             },
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
