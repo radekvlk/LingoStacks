@@ -1221,6 +1221,7 @@ class SpeechSessionController(
     private val transitionFallbackRunnable = Runnable {
         if (isPausedForTransition) {
             isPausedForTransition = false
+            accumulatedPartialsInCycle.clear()
             if (shouldStayListening && !isPausedForTts && !isTtsSpeaking) {
                 if (!isCurrentlyListening && !isStartingListen && !isProcessingSpeech) {
                     startSingleListenCycle()
@@ -1516,9 +1517,9 @@ class SpeechSessionController(
     }
 
     /**
-     * Called at the start of a card transition.
-     * We cancel the previous card's audio buffer immediately and ignore all incoming results
-     * until the new card is fully presented on screen.
+     * Called at the start of a card transition or immediately when a word is matched.
+     * We cancel the previous card's audio buffer immediately, mute mic callbacks,
+     * and ignore all incoming audio until the new card has completely arrived on screen.
      */
     fun pauseForCardTransition() {
         if (!shouldStayListening) return
@@ -1526,7 +1527,8 @@ class SpeechSessionController(
         silentCycleCount = 0
         mainHandler.removeCallbacks(restartListenRunnable)
         mainHandler.removeCallbacks(transitionFallbackRunnable)
-        mainHandler.post {
+
+        val cancelAction = {
             if (isCurrentlyListening || isStartingListen || isProcessingSpeech) {
                 muteSystemSounds()
                 try {
@@ -1541,28 +1543,44 @@ class SpeechSessionController(
             accumulatedPartialsInCycle.clear()
             lastReportedRms = 0f
             rmsCallback(0f)
-            mainHandler.postDelayed(transitionFallbackRunnable, 1200L)
+            listeningCallback(false)
         }
+
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            cancelAction()
+        } else {
+            mainHandler.post(cancelAction)
+        }
+
+        // Safety watchdog net ONLY (15s): in case the card transition sequence is somehow interrupted or deadlocks.
+        // Normal resume is exclusively triggered by startForNewCard() once the next card is settled on screen!
+        mainHandler.postDelayed(transitionFallbackRunnable, 15000L)
     }
 
     /**
-     * Called as soon as the new card becomes active so a fresh recognition cycle starts
-     * smoothly if the previous one finished.
+     * Called as soon as the new card is fully settled in the center so a fresh recognition cycle starts
+     * smoothly for the new word.
      */
     fun startForNewCard() {
         if (!shouldStayListening) return
         silentCycleCount = 0
         mainHandler.removeCallbacks(transitionFallbackRunnable)
         mainHandler.removeCallbacks(restartListenRunnable)
-        mainHandler.post {
+        val resumeAction = {
             isPausedForTransition = false
             accumulatedPartialsInCycle.clear()
             if (!isPausedForTts && !isTtsSpeaking) {
                 if (!isCurrentlyListening && !isStartingListen && !isProcessingSpeech) {
-                    startSingleListenCycle()
+                    // Slight buffer delay (180ms) so mic hardware opens in complete silence after card arrival
+                    scheduleListenRestart(180L)
                 }
                 scheduleWatchdog()
             }
+        }
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            resumeAction()
+        } else {
+            mainHandler.post(resumeAction)
         }
     }
 

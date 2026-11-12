@@ -216,8 +216,8 @@ fun FlashcardSessionScreen(
     fun triggerWrongSpokenFlash(heardSnippet: String) {
         keepScreenActive()
         val now = SystemClock.uptimeMillis()
-        // Ignore stale audio that finished decoding from the previous card transition (within 450ms)
-        if (now - cardActiveTimestamp < 450L) return
+        // Ignore stale audio that finished decoding from the previous card transition (within 550ms)
+        if (now - cardActiveTimestamp < 550L) return
 
         val currentState = feedbackStateUpdated
         if (currentState != CardFeedbackState.NEUTRAL && currentState != CardFeedbackState.SPOKEN_WRONG_FLASH) return
@@ -447,25 +447,31 @@ fun FlashcardSessionScreen(
                 wrongWordDebounceJob?.cancel()
                 wrongFlashResetJob?.cancel()
                 lastHeardText = matched
+                speechControllerRef?.pauseForCardTransition()
                 triggerCardResolution(
                     isCorrect = true,
                     method = AnswerMethod.SPOKEN_CORRECT,
                     spokenMatch = matched
                 )
             } else {
-                val snippet = WordMatcher.extractLatestSpokenSnippet(candidates)
-                if (!snippet.isNullOrBlank()) {
-                    lastHeardText = snippet
-                    wrongWordDebounceJob?.cancel()
+                val now = SystemClock.uptimeMillis()
+                // If the new card arrived in the center less than 500ms ago, ignore residual incoming speech
+                // (prevents stale echo from the previous word or pop-up readback from shaking the new card)
+                if (now - cardActiveTimestamp >= 500L) {
+                    val snippet = WordMatcher.extractLatestSpokenSnippet(candidates)
+                    if (!snippet.isNullOrBlank()) {
+                        lastHeardText = snippet
+                        wrongWordDebounceJob?.cancel()
 
-                    if (isFinal) {
-                        triggerWrongSpokenFlash(snippet)
-                    } else if (!WordMatcher.isPrefixOfTarget(candidates, word, expectCzech = expectCzech)) {
-                        // Wait well past Android's 750-900ms complete-silence window + ASR finalization latency
-                        // before flashing red on a non-final partial (prevents red-then-green flash before onResults).
-                        wrongWordDebounceJob = coroutineScope.launch {
-                            delay(1750L)
+                        if (isFinal) {
                             triggerWrongSpokenFlash(snippet)
+                        } else if (!WordMatcher.isPrefixOfTarget(candidates, word, expectCzech = expectCzech)) {
+                            // Wait well past Android's 750-900ms complete-silence window + ASR finalization latency
+                            // before flashing red on a non-final partial (prevents red-then-green flash before onResults).
+                            wrongWordDebounceJob = coroutineScope.launch {
+                                delay(1750L)
+                                triggerWrongSpokenFlash(snippet)
+                            }
                         }
                     }
                 }
