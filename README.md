@@ -2,6 +2,27 @@
 
 Moderní Android aplikace v designu **Cupertino Glass** pro aktivní procvičování **5 světových jazyků** (angličtina, španělština, němčina, francouzština a italština) hlasem, gesty a chytrou metodou opakování (*Spaced Repetition*).
 
+<table>
+  <tr>
+    <td>
+      <h3>⬇️ Stáhnout a vyzkoušet (Android 8.0+)</h3>
+      <p>
+        <a href="https://github.com/radekvlk/LingoStacks/releases/latest/download/LingoStacks.apk">
+          <img src="https://img.shields.io/badge/St%C3%A1hnout_LingoStacks-.apk-0A84FF?style=for-the-badge&logo=android&logoColor=white" alt="Stáhnout LingoStacks APK" />
+        </a>
+      </p>
+      <p>
+        🌐 <strong>Prezentační stránka:</strong> <a href="https://radekvlk.github.io/LingoStacks/">radekvlk.github.io/LingoStacks</a><br/>
+        📦 <strong>Všechny verze:</strong> <a href="https://github.com/radekvlk/LingoStacks/releases/latest">GitHub Releases</a>
+      </p>
+      <p><sub>Naskenujte QR kód telefonem pro okamžité stažení nejnovější verze.</sub></p>
+    </td>
+    <td align="center" width="160">
+      <img src="docs/qr_download.png" alt="QR kód ke stažení LingoStacks APK" width="136" />
+    </td>
+  </tr>
+</table>
+
 ## 📸 Ukázky z aplikace
 
 <p align="center">

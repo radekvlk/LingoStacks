@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LingoStacks — Hlasová výuka slovíček pro Android</title>
+  <meta name="description" content="Moderní Android aplikace pro aktivní procvičování 5 světových jazyků hlasem, gesty a chytrou metodou opakování." />
+  <style>
+    :root {
+      --bg: #f3f5f9;
+      --surface: rgba(255, 255, 255, 0.82);
+      --border: rgba(255, 255, 255, 0.9);
+      --shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+      --text: #111827;
+      --muted: #4b5563;
+      --blue: #0a84ff;
+      --indigo: #5856d6;
+      --green: #16a34a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% 10%, rgba(10, 132, 255, 0.14), transparent 38%),
+        radial-gradient(circle at 85% 20%, rgba(88, 86, 214, 0.14), transparent 36%),
+        var(--bg);
+      line-height: 1.55;
+    }
+    .wrap {
+      max-width: 1060px;
+      margin: 0 auto;
+      padding: 28px 20px 64px;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: 1.35fr 0.65fr;
+      gap: 28px;
+      align-items: center;
+      background: var(--surface);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      padding: 36px;
+      box-shadow: var(--shadow);
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .brand-title {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(28px, 4vw, 42px);
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+    }
+    .lead {
+      margin: 0 0 24px;
+      font-size: 17px;
+      color: var(--muted);
+    }
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 22px;
+      border-radius: 16px;
+      font-weight: 700;
+      font-size: 16px;
+      text-decoration: none;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary {
+      color: #fff;
+      background: linear-gradient(135deg, var(--blue), var(--indigo));
+      box-shadow: 0 10px 24px rgba(10, 132, 255, 0.28);
+    }
+    .btn-secondary {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(17, 24, 39, 0.1);
+    }
+    .qr-card {
+      text-align: center;
+      background: #fff;
+      border-radius: 22px;
+      padding: 20px;
+      box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
+      border: 1px solid rgba(17, 24, 39, 0.06);
+    }
+    .qr-card img {
+      width: 168px;
+      height: 168px;
+      display: block;
+      margin: 0 auto 10px;
+    }
+    .qr-card small {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+    .pill {
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(10, 132, 255, 0.09);
+      color: #0b57d0;
+    }
+    h2 {
+      margin: 44px 0 18px;
+      font-size: 24px;
+      letter-spacing: -0.02em;
+    }
+    .shots {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .shot {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 8px;
+      box-shadow: var(--shadow);
+    }
+    .shot img {
+      width: 100%;
+      border-radius: 14px;
+      display: block;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+    }
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 17px;
+    }
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14.5px;
+    }
+    .install-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 24px 28px;
+      box-shadow: var(--shadow);
+    }
+    .install-box ol {
+      margin: 10px 0 0;
+      padding-left: 20px;
+      color: var(--muted);
+    }
+    .install-box li { margin-bottom: 8px; }
+    footer {
+      margin-top: 48px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13.5px;
+    }
+    footer a { color: var(--blue); text-decoration: none; }
+    @media (max-width: 860px) {
+      .hero { grid-template-columns: 1fr; padding: 24px; }
+      .shots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div>
+        <div class="brand">
+          <svg width="42" height="42" viewBox="0 0 42 42" fill="none" aria-hidden="true">
+            <rect x="4" y="6" width="22" height="30" rx="6" transform="rotate(-12 15 21)" fill="url(#g1)" opacity="0.45"/>
+            <rect x="13" y="6" width="22" height="30" rx="6" fill="#FFFFFF" stroke="#5856D6" stroke-width="1.6"/>
+            <path d="M24 14L25.8 19.2L31 21L25.8 22.8L24 28L22.2 22.8L17 21L22.2 19.2L24 14Z" fill="#0A84FF"/>
+            <defs>
+              <linearGradient id="g1" x1="4" y1="6" x2="26" y2="36" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#0A84FF"/>
+                <stop offset="1" stop-color="#5856D6"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <span class="brand-title">LingoStacks</span>
+        </div>
+        <h1>Učte se slovíčka nahlas,<br/>ne jen očima.</h1>
+        <p class="lead">
+          Hlasové procvičování, plynulé swipe kartičky a chytré opakování (SRS) pro
+          <strong>angličtinu, španělštinu, němčinu, francouzštinu a italštinu</strong>.
+          Zdarma, bez reklam a s automatickou zálohou přes Google účet.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="https://github.com/radekvlk/LingoStacks/releases/latest/download/LingoStacks.apk">
+            ⬇️ Stáhnout LingoStacks (.apk)
+          </a>
+          <a class="btn btn-secondary" href="https://github.com/radekvlk/LingoStacks">
+            Zdrojový kód na GitHubu
+          </a>
+        </div>
+        <div class="badges">
+          <span class="pill">📱 Android 8.0+</span>
+          <span class="pill">🎙️ Rozpoznávání hlasu</span>
+          <span class="pill">📚 8 270+ slovíček &amp; frází</span>
+          <span class="pill">🔄 Obousměrně CZ ↔ EN/ES/DE/FR/IT</span>
+        </div>
+      </div>
+
+      <div class="qr-card">
+        <img src="qr_download.png" alt="QR kód ke stažení LingoStacks APK" />
+        <strong>Stáhnout do telefonu</strong>
+        <small>Naskenujte QR kód foťákem a nainstalujte nejnovější APK.</small>
+      </div>
+    </section>
+
+    <h2>Ukázky z aplikace</h2>
+    <section class="shots">
+      <div class="shot"><img src="screenshots/01_home.png" alt="Domovská obrazovka LingoStacks" /></div>
+      <div class="shot"><img src="screenshots/02_flashcard.png" alt="Hlasové procvičování kartiček" /></div>
+      <div class="shot"><img src="screenshots/03_flashcard_hint.png" alt="Nápověda a výslovnost" /></div>
+      <div class="shot"><img src="screenshots/04_settings.png" alt="Nastavení aplikace" /></div>
+      <div class="shot"><img src="screenshots/05_stats.png" alt="Statistiky a žebříček" /></div>
+    </section>
+
+    <h2>Proč LingoStacks</h2>
+    <section class="grid">
+      <div class="card">
+        <h3>🎙️ Mluvení v reálném čase</h3>
+        <p>Vyslovte překlad nahlas — aplikace ho okamžitě vyhodnotí s fonetickou tolerancí, přehraje rodilou výslovnost a posune vás na další kartu.</p>
+      </div>
+      <div class="card">
+        <h3>🧠 Chytré opakování (SRS)</h3>
+        <p>Těžší slovíčka se automaticky vrací v optimálních intervalech (zvlášť pro aktivní i pasivní směr učení), takže neztrácíte čas tím, co už umíte.</p>
+      </div>
+      <div class="card">
+        <h3>☁️ Záloha a žebříček</h3>
+        <p>Přihlaste se Google účtem pro automatickou zálohu pokroku mezi zařízeními a porovnání v denním i týdenním žebříčku.</p>
+      </div>
+    </section>
+
+    <h2>Jak aplikaci nainstalovat (30 sekund)</h2>
+    <section class="install-box">
+      <ol>
+        <li>Klepněte na <strong>Stáhnout LingoStacks (.apk)</strong> nebo naskenujte QR kód výše.</li>
+        <li>Otevřete stažený soubor a potvrďte instalaci aplikace.</li>
+        <li>Pokud Android zobrazí okno <em>Google Play Protect („Nebezpečná aplikace zablokována“)</em> — objevuje se automaticky u aplikací mimo Obchod Play — klepněte na <strong>Více informací → Přesto nainstalovat</strong>. Další aktualizace už probíhají automaticky přímo uvnitř aplikace.</li>
+      </ol>
+    </section>
+
+    <footer>
+      © 2026 Radek Vlk • <a href="https://github.com/radekvlk/LingoStacks">GitHub</a> • <a href="https://github.com/radekvlk/LingoStacks/releases/latest">Releases</a>
+    </footer>
+  </div>
+</body>
+</html>
