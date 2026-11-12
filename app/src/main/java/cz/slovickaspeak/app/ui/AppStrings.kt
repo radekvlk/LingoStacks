@@ -1,0 +1,348 @@
+package cz.slovickaspeak.app.ui
+
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalConfiguration
+import cz.slovickaspeak.app.model.LearningLanguage
+import java.util.Locale
+
+data class UiStrings(
+    val isCzech: Boolean,
+    val appHeaderSubtitle: String,
+    val appHeaderTitle: String,
+    val learningLanguageTitle: String,
+    val allLevelsLabel: String,
+    val remainingOfGoal: (Int, Int) -> String,
+    val remainingWordsOfGoal: (Int, Int) -> String,
+    val dailyGoalProgress: (Int, Int) -> String,
+    val sessionCardProgress: (Int, Int, Int) -> String,
+    val wordsInDeck: (Int) -> String,
+    val settingsAndLeaderboard: String,
+    val tabGoalAndStats: String,
+    val tabLeaderboardAndFriends: String,
+    val appearanceTitle: String,
+    val lightModeLabel: String,
+    val darkModeLabel: String,
+    val dailyGoalTitle: String,
+    val wordsCountBadge: (Int) -> String,
+    val dailyGoalSliderHint: String,
+    val englishLevelTitle: String,
+    val languageLevelTitle: (LearningLanguage) -> String,
+    val allLevelsButton: String,
+    val allStatsTitle: String,
+    val statStreakDays: (Int) -> String,
+    val statStreakLabel: String,
+    val statAccuracyLabel: String,
+    val statSpokenLabel: String,
+    val statTodayGoalLabel: String,
+    val statTotalLearnedLabel: String,
+    val statCompletedLessonsLabel: String,
+    val leaderboardTitle: String,
+    val leaderboardSubtitle: String,
+    val leaderboardEmptyHint: String,
+    val leaderboardRowSub: (Int, Int) -> String,
+    val leaderboardWordsToday: (Int) -> String,
+    val inviteFriendTitle: String,
+    val inviteFriendHint: (String) -> String,
+    val inviteInputPlaceholder: String,
+    val shareInviteButton: String,
+    val shareChooserTitle: String,
+    val shareMessage: (String) -> String,
+    val googleSectionTitle: String,
+    val googleSignOutHint: (String) -> String,
+    val googleSignInButton: String,
+    val googleManualPrompt: String,
+    val googleNameLabel: String,
+    val googleEmailLabel: String,
+    val googleConfirmButton: String,
+    val googleYourInviteCode: (String) -> String,
+    val googleSignOutButton: String,
+    val googleEditNameButton: String,
+    val googleSaveNameButton: String,
+    val googleCancelButton: String,
+    val cardPromptSpeakEnglish: String,
+    val cardPromptSpeakCzech: String,
+    val cardPromptSpeakLanguage: (LearningLanguage) -> String,
+    val showHintButton: String,
+    val badgeDontKnow: String,
+    val badgeTryAgain: String,
+    val badgeKnow: String,
+    val badgeSpoken: String,
+    val bannerSpokenCorrect: (String) -> String,
+    val bannerSpokenWrong: (String) -> String,
+    val bannerMarkedKnow: String,
+    val bannerMarkedDontKnow: String,
+    val bannerMicOff: String,
+    val bannerHeard: (String) -> String,
+    val bannerListening: String,
+    val bannerListeningCzech: String,
+    val bannerListeningForLanguage: (LearningLanguage) -> String,
+    val bannerMicReady: String,
+    val summaryCompleteTitle: String,
+    val summaryAccuracy: String,
+    val summarySpoken: String,
+    val summaryMissed: String,
+    val summaryWordsOverview: String,
+    val summaryRetryMissed: (Int) -> String,
+    val summaryRestartAll: String,
+    val summaryBackToDecks: String,
+    val methodSpoken: String,
+    val methodSwipedKnow: String,
+    val methodSwipedDontKnow: String,
+    val appVersionInfo: (String) -> String,
+    val initialLanguageWelcomeTitle: String,
+    val initialLanguageWelcomeSubtitle: String,
+    val initialLanguageChooseHint: String,
+    val initialLanguageConfirmButton: String
+)
+
+fun getUiStrings(isCs: Boolean): UiStrings {
+    return if (isCs) {
+        UiStrings(
+            isCzech = true,
+            appHeaderSubtitle = "LINGOSTACKS",
+            appHeaderTitle = "LingoStacks",
+            learningLanguageTitle = "🌍 Jazyk k učení",
+            allLevelsLabel = "Všechny úrovně (A1–C2)",
+            remainingOfGoal = { rem, total -> "Zbývá $rem z $total" },
+            remainingWordsOfGoal = { rem, total -> "Zbývá $rem z $total slovíček" },
+            dailyGoalProgress = { done, goal ->
+                if (done >= goal) "Dnes: $done / $goal slov (Cíl splněn! 🎉)" else "Dnes: $done / $goal slov (zbývá ${goal - done})"
+            },
+            sessionCardProgress = { current, total, todayDone ->
+                "Karta $current z $total • Dnes $todayDone slov"
+            },
+            wordsInDeck = { count -> "$count slovíček v sadě" },
+            settingsAndLeaderboard = "Nastavení a statistiky",
+            tabGoalAndStats = "⚙️ Nastavení",
+            tabLeaderboardAndFriends = "📊 Statistiky",
+            appearanceTitle = "🌗 Vzhled aplikace (Light / Dark)",
+            lightModeLabel = "☀️ Světlý (Light)",
+            darkModeLabel = "🌙 Tmavý (Dark)",
+            dailyGoalTitle = "Počet slovíček (denní cíl)",
+            wordsCountBadge = { n -> "$n slovíček" },
+            dailyGoalSliderHint = "Posuňte lištu (5 až 200 slovíček) pro nastavení denního cíle:",
+            englishLevelTitle = "🇬🇧 Úroveň angličtiny (A1 – C2)",
+            languageLevelTitle = { lang ->
+                when (lang) {
+                    LearningLanguage.SPANISH -> "🇪🇸 Úroveň španělštiny (A1 – C2)"
+                    LearningLanguage.GERMAN -> "🇩🇪 Úroveň němčiny (A1 – C2)"
+                    LearningLanguage.FRENCH -> "🇫🇷 Úroveň francouzštiny (A1 – C2)"
+                    LearningLanguage.ITALIAN -> "🇮🇹 Úroveň italštiny (A1 – C2)"
+                    LearningLanguage.ENGLISH -> "🇬🇧 Úroveň angličtiny (A1 – C2)"
+                }
+            },
+            allLevelsButton = "Všechny úrovně (A1 – C2)",
+            allStatsTitle = "Veškeré statistiky učení",
+            statStreakDays = { d -> "$d dní" },
+            statStreakLabel = "Denní řada",
+            statAccuracyLabel = "Úspěšnost",
+            statSpokenLabel = "Vysloveno hlasem",
+            statTodayGoalLabel = "Dnešní cíl",
+            statTotalLearnedLabel = "Celkem naučeno",
+            statCompletedLessonsLabel = "Dokončené lekce",
+            leaderboardTitle = "🏆 Denní žebříček",
+            leaderboardSubtitle = "Pouze reální uživatelé propojení s Google účtem",
+            leaderboardEmptyHint = "Zatím není připojen žádný účet. Přihlaste se níže svým Google účtem, abyste se zobrazili v denním žebříčku reálných uživatelů.",
+            leaderboardRowSub = { streak, spoken -> "🔥 $streak dní • 🎙️ $spoken vysloveno" },
+            leaderboardWordsToday = { n -> "$n slov dnes" },
+            inviteFriendTitle = "Pozvat přítele ke sdílení pokroku",
+            inviteFriendHint = { code -> "Váš kód je $code. Zadejte kód nebo Gmail přítele s propojeným účtem a uvidíte se v denním žebříčku:" },
+            inviteInputPlaceholder = "Kód SLOV-... nebo Gmail",
+            shareInviteButton = "Sdílet pozvánku příteli",
+            shareChooserTitle = "Pozvat přítele ke sdílení pokroku",
+            shareMessage = { code -> "Pojď se se mnou učit slovíčka v aplikaci LingoStacks a porovnat se v denním žebříčku! Zadej v Nastavení můj kód: $code" },
+            googleSectionTitle = "Google účet a profil v žebříčku",
+            googleSignOutHint = { _ -> "Pro zařazení do denního žebříčku se prosím propojte s Google účtem:" },
+            googleSignInButton = "Přihlásit se přes Google",
+            googleManualPrompt = "Zadejte svůj Google účet:",
+            googleNameLabel = "Jméno v žebříčku",
+            googleEmailLabel = "Gmail adresa",
+            googleConfirmButton = "Potvrdit a synchronizovat",
+            googleYourInviteCode = { code -> "Váš kód: $code" },
+            googleSignOutButton = "Odhlásit",
+            googleEditNameButton = "Změnit jméno",
+            googleSaveNameButton = "Uložit",
+            googleCancelButton = "Zrušit",
+            cardPromptSpeakEnglish = "ŘEKNI ANGLICKY",
+            cardPromptSpeakCzech = "ŘEKNI ČESKY",
+            cardPromptSpeakLanguage = { lang ->
+                when (lang) {
+                    LearningLanguage.SPANISH -> "ŘEKNI ŠPANĚLSKY"
+                    LearningLanguage.GERMAN -> "ŘEKNI NĚMECKY"
+                    LearningLanguage.FRENCH -> "ŘEKNI FRANCOUZSKY"
+                    LearningLanguage.ITALIAN -> "ŘEKNI ITALSKY"
+                    LearningLanguage.ENGLISH -> "ŘEKNI ANGLICKY"
+                }
+            },
+            showHintButton = "Zobrazit nápovědu",
+            badgeDontKnow = "Nevím ✗",
+            badgeTryAgain = "Zkus znovu ✗",
+            badgeKnow = "Vím ✓",
+            badgeSpoken = "Vysloveno ✓",
+            bannerSpokenCorrect = { heard -> "Správně vysloveno: „$heard“" },
+            bannerSpokenWrong = { heard -> "✗ Slyšeno: „$heard“ – zkus to znovu" },
+            bannerMarkedKnow = "Označeno jako Vím",
+            bannerMarkedDontKnow = "Označeno jako Nevím",
+            bannerMicOff = "Mikrofon vypnutý – použij tlačítka nebo posuň kartu",
+            bannerHeard = { heard -> "Slyšeno: „$heard“" },
+            bannerListening = "Poslouchám – rovnou řekni slovo anglicky",
+            bannerListeningCzech = "Poslouchám – řekni překlad česky",
+            bannerListeningForLanguage = { lang ->
+                when (lang) {
+                    LearningLanguage.SPANISH -> "Poslouchám – rovnou řekni slovo španělsky"
+                    LearningLanguage.GERMAN -> "Poslouchám – rovnou řekni slovo německy"
+                    LearningLanguage.FRENCH -> "Poslouchám – rovnou řekni slovo francouzsky"
+                    LearningLanguage.ITALIAN -> "Poslouchám – rovnou řekni slovo italsky"
+                    LearningLanguage.ENGLISH -> "Poslouchám – rovnou řekni slovo anglicky"
+                }
+            },
+            bannerMicReady = "Mikrofon připraven – mluv nebo posuň kartu",
+            summaryCompleteTitle = "Lekce dokončena!",
+            summaryAccuracy = "Úspěšnost",
+            summarySpoken = "Vysloveno 🎙️",
+            summaryMissed = "Chybělo",
+            summaryWordsOverview = "Přehled slovíček z lekce",
+            summaryRetryMissed = { n -> "Procvičit znovu chybná slovíčka ($n)" },
+            summaryRestartAll = "Celá sada",
+            summaryBackToDecks = "Přehled sad",
+            methodSpoken = "Vysloveno hlasem 🎙️",
+            methodSwipedKnow = "Označeno: Vím 👉",
+            methodSwipedDontKnow = "Označeno: Nevím 👈",
+            appVersionInfo = { v -> "LingoStacks v$v" },
+            initialLanguageWelcomeTitle = "Vítejte v LingoStacks!",
+            initialLanguageWelcomeSubtitle = "Který jazyk se chcete učit?",
+            initialLanguageChooseHint = "Volbu můžete kdykoliv změnit v Nastavení.",
+            initialLanguageConfirmButton = "Začít se učit"
+        )
+    } else {
+        UiStrings(
+            isCzech = false,
+            appHeaderSubtitle = "LINGOSTACKS",
+            appHeaderTitle = "LingoStacks",
+            learningLanguageTitle = "🌍 Language to Learn",
+            allLevelsLabel = "All Levels (A1–C2)",
+            remainingOfGoal = { rem, total -> "$rem of $total left" },
+            remainingWordsOfGoal = { rem, total -> "$rem of $total words left" },
+            dailyGoalProgress = { done, goal ->
+                if (done >= goal) "Today: $done / $goal words (Goal reached! 🎉)" else "Today: $done / $goal words (${goal - done} left)"
+            },
+            sessionCardProgress = { current, total, todayDone ->
+                "Card $current of $total • Today $todayDone words"
+            },
+            wordsInDeck = { count -> "$count words in deck" },
+            settingsAndLeaderboard = "Settings & Stats",
+            tabGoalAndStats = "⚙️ Settings",
+            tabLeaderboardAndFriends = "📊 Stats",
+            appearanceTitle = "🌗 Appearance (Light / Dark)",
+            lightModeLabel = "☀️ Light",
+            darkModeLabel = "🌙 Dark",
+            dailyGoalTitle = "Daily Word Goal",
+            wordsCountBadge = { n -> "$n words" },
+            dailyGoalSliderHint = "Slide the bar (5 to 200 words) to set your daily goal:",
+            englishLevelTitle = "🇬🇧 English Level (A1 – C2)",
+            languageLevelTitle = { lang ->
+                when (lang) {
+                    LearningLanguage.SPANISH -> "🇪🇸 Spanish Level (A1 – C2)"
+                    LearningLanguage.GERMAN -> "🇩🇪 German Level (A1 – C2)"
+                    LearningLanguage.FRENCH -> "🇫🇷 French Level (A1 – C2)"
+                    LearningLanguage.ITALIAN -> "🇮🇹 Italian Level (A1 – C2)"
+                    LearningLanguage.ENGLISH -> "🇬🇧 English Level (A1 – C2)"
+                }
+            },
+            allLevelsButton = "All Levels (A1 – C2)",
+            allStatsTitle = "All Learning Statistics",
+            statStreakDays = { d -> "$d days" },
+            statStreakLabel = "Daily Streak",
+            statAccuracyLabel = "Accuracy",
+            statSpokenLabel = "Spoken Out Loud",
+            statTodayGoalLabel = "Today's Goal",
+            statTotalLearnedLabel = "Total Learned",
+            statCompletedLessonsLabel = "Completed Lessons",
+            leaderboardTitle = "🏆 Daily Leaderboard",
+            leaderboardSubtitle = "Only real users connected with a Google account",
+            leaderboardEmptyHint = "No connected accounts yet. Sign in with your Google account below to appear on the daily leaderboard of real users.",
+            leaderboardRowSub = { streak, spoken -> "🔥 $streak days • 🎙️ $spoken spoken" },
+            leaderboardWordsToday = { n -> "$n today" },
+            inviteFriendTitle = "Invite a Friend to Share Progress",
+            inviteFriendHint = { code -> "Your code is $code. Enter a friend's code or Gmail to compete on the daily leaderboard:" },
+            inviteInputPlaceholder = "Code SLOV-... or Gmail",
+            shareInviteButton = "Share Invite Link",
+            shareChooserTitle = "Invite a friend to share progress",
+            shareMessage = { code -> "Join me in LingoStacks and compete on the daily leaderboard! Enter my invite code in Settings: $code" },
+            googleSectionTitle = "Google Account & Leaderboard Profile",
+            googleSignOutHint = { _ -> "Connect your Google account to join the daily leaderboard:" },
+            googleSignInButton = "Sign in with Google",
+            googleManualPrompt = "Enter your Google account:",
+            googleNameLabel = "Display Name",
+            googleEmailLabel = "Gmail Address",
+            googleConfirmButton = "Confirm & Sync",
+            googleYourInviteCode = { code -> "Your code: $code" },
+            googleSignOutButton = "Sign out",
+            googleEditNameButton = "Change name",
+            googleSaveNameButton = "Save",
+            googleCancelButton = "Cancel",
+            cardPromptSpeakEnglish = "SPEAK IN ENGLISH",
+            cardPromptSpeakCzech = "SPEAK IN CZECH",
+            cardPromptSpeakLanguage = { lang ->
+                when (lang) {
+                    LearningLanguage.SPANISH -> "SPEAK IN SPANISH"
+                    LearningLanguage.GERMAN -> "SPEAK IN GERMAN"
+                    LearningLanguage.FRENCH -> "SPEAK IN FRENCH"
+                    LearningLanguage.ITALIAN -> "SPEAK IN ITALIAN"
+                    LearningLanguage.ENGLISH -> "SPEAK IN ENGLISH"
+                }
+            },
+            showHintButton = "Show hint",
+            badgeDontKnow = "Don't know ✗",
+            badgeTryAgain = "Try again ✗",
+            badgeKnow = "I know ✓",
+            badgeSpoken = "Spoken ✓",
+            bannerSpokenCorrect = { heard -> "Spoken correctly: \"$heard\"" },
+            bannerSpokenWrong = { heard -> "✗ Heard: \"$heard\" – try again" },
+            bannerMarkedKnow = "Marked as Known",
+            bannerMarkedDontKnow = "Marked as Unknown",
+            bannerMicOff = "Microphone off – use buttons or swipe card",
+            bannerHeard = { heard -> "Heard: \"$heard\"" },
+            bannerListening = "Listening – speak the word in English",
+            bannerListeningCzech = "Listening – say translation in Czech",
+            bannerListeningForLanguage = { lang ->
+                when (lang) {
+                    LearningLanguage.SPANISH -> "Listening – speak the word in Spanish"
+                    LearningLanguage.GERMAN -> "Listening – speak the word in German"
+                    LearningLanguage.FRENCH -> "Listening – speak the word in French"
+                    LearningLanguage.ITALIAN -> "Listening – speak the word in Italian"
+                    LearningLanguage.ENGLISH -> "Listening – speak the word in English"
+                }
+            },
+            bannerMicReady = "Microphone ready – speak or swipe card",
+            summaryCompleteTitle = "Lesson Complete!",
+            summaryAccuracy = "Accuracy",
+            summarySpoken = "Spoken 🎙️",
+            summaryMissed = "Missed",
+            summaryWordsOverview = "Lesson Vocabulary Summary",
+            summaryRetryMissed = { n -> "Retry missed words ($n)" },
+            summaryRestartAll = "Restart Deck",
+            summaryBackToDecks = "All Decks",
+            methodSpoken = "Spoken by voice 🎙️",
+            methodSwipedKnow = "Marked: Known 👉",
+            methodSwipedDontKnow = "Marked: Unknown 👈",
+            appVersionInfo = { v -> "LingoStacks v$v" },
+            initialLanguageWelcomeTitle = "Welcome to LingoStacks!",
+            initialLanguageWelcomeSubtitle = "Which language do you want to learn?",
+            initialLanguageChooseHint = "You can change this anytime in Settings.",
+            initialLanguageConfirmButton = "Start Learning"
+        )
+    }
+}
+
+@Composable
+fun rememberAppStrings(): UiStrings {
+    val config = LocalConfiguration.current
+    val lang = if (config.locales.isEmpty) {
+        Locale.getDefault().language
+    } else {
+        config.locales[0].language
+    }
+    val isCs = lang.lowercase(Locale.US) in listOf("cs", "sk", "ces", "cze")
+    return getUiStrings(isCs)
+}

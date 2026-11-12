@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Proposal 1: Minimal Apple Two Flashcards & Spark -->
+
+    <!-- 1. Back Frosted Glass Flashcard (rotated -13 deg) -->
+    <group
+        android:pivotX="50"
+        android:pivotY="53"
+        android:rotation="-13">
+        <path
+            android:fillColor="#73FFFFFF"
+            android:pathData="M40,28 L60,28 A9,9 0 0,1 69,37 L69,69 A9,9 0 0,1 60,78 L40,78 A9,9 0 0,1 31,69 L31,37 A9,9 0 0,1 40,28 Z" />
+    </group>
+
+    <!-- 2. Front Pure White Flashcard + Minimal Spark (rotated +4 deg) -->
+    <group
+        android:pivotX="57"
+        android:pivotY="55"
+        android:rotation="4">
+        <!-- Soft subtle shadow behind front card -->
+        <path
+            android:fillColor="#22002B66"
+            android:pathData="M47,32 L67,32 A9,9 0 0,1 76,41 L76,73 A9,9 0 0,1 67,82 L47,82 A9,9 0 0,1 38,73 L38,41 A9,9 0 0,1 47,32 Z" />
+
+        <!-- Pure white rounded flashcard -->
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M47,30 L67,30 A9,9 0 0,1 76,39 L76,71 A9,9 0 0,1 67,80 L47,80 A9,9 0 0,1 38,71 L38,39 A9,9 0 0,1 47,30 Z" />
+
+        <!-- Single Minimalist 4-Point Memory Spark in Center (57, 55) -->
+        <path
+            android:pathData="M57,42 L60.2,51.8 L70,55 L60.2,58.2 L57,68 L53.8,58.2 L44,55 L53.8,51.8 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:startX="44"
+                    android:startY="42"
+                    android:endX="70"
+                    android:endY="68"
+                    android:type="linear">
+                    <item android:offset="0.0" android:color="#FF007AFF" />
+                    <item android:offset="1.0" android:color="#FF5856D6" />
+                </gradient>
+            </aapt:attr>
+        </path>
+    </group>
+</vector>
