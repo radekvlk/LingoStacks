@@ -569,7 +569,9 @@ private fun WavingLanguageFlagBackdrop(
     Crossfade(
         targetState = selectedLanguage,
         animationSpec = tween(durationMillis = 420),
-        modifier = modifier,
+        modifier = modifier.graphicsLayer {
+            compositingStrategy = CompositingStrategy.Offscreen
+        },
         label = "headerFlagCrossfade"
     ) { language ->
         Canvas(
@@ -944,23 +946,25 @@ private fun DeckHeaderRow(
             .heightIn(min = 56.dp),
         contentAlignment = Alignment.Center
     ) {
-        WavingLanguageFlagBackdrop(
-            selectedLanguage = selectedLanguage,
-            animateWave = animateWave,
-            modifier = Modifier
-                .matchParentSize()
-                .layout { measurable, constraints ->
-                    val extraW = 24.dp.roundToPx()
-                    val extraTop = 44.dp.roundToPx()
-                    val extraBottom = 46.dp.roundToPx()
-                    val expandedW = (constraints.maxWidth + extraW * 2).coerceAtLeast(1)
-                    val expandedH = (constraints.maxHeight + extraTop + extraBottom).coerceAtLeast(1)
-                    val placeable = measurable.measure(Constraints.fixed(expandedW, expandedH))
-                    layout(constraints.maxWidth, constraints.maxHeight) {
-                        placeable.place(-extraW, -extraTop)
+        if (isDarkThemeActive) {
+            WavingLanguageFlagBackdrop(
+                selectedLanguage = selectedLanguage,
+                animateWave = animateWave,
+                modifier = Modifier
+                    .matchParentSize()
+                    .layout { measurable, constraints ->
+                        val extraW = 24.dp.roundToPx()
+                        val extraTop = 44.dp.roundToPx()
+                        val extraBottom = 46.dp.roundToPx()
+                        val expandedW = (constraints.maxWidth + extraW * 2).coerceAtLeast(1)
+                        val expandedH = (constraints.maxHeight + extraTop + extraBottom).coerceAtLeast(1)
+                        val placeable = measurable.measure(Constraints.fixed(expandedW, expandedH))
+                        layout(constraints.maxWidth, constraints.maxHeight) {
+                            placeable.place(-extraW, -extraTop)
+                        }
                     }
-                }
-        )
+            )
+        }
 
         Row(
             modifier = Modifier
