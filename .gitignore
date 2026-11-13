@@ -11,3 +11,7 @@ local.properties
 app/build/
 .kotlin/
 .gemini/
+
+# Google Play service account keys
+play-publisher-key*.json
+*-service-account*.json
