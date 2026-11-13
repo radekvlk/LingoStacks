@@ -24,7 +24,7 @@ import kotlin.math.min
 
 object WordMatcher {
 
-    private val leadingArticles = Regex("^(a|an|the|to|el|la|los|las|un|una|unos|unas|der|die|das|den|dem|des|ein|eine|einen|einem|einer|zu|le|les|du|l|il|lo|gli|uno)\\s+")
+    private val leadingArticles = Regex("^(a|an|the|to|el|la|los|las|un|una|unos|unas|der|die|das|den|dem|des|ein|eine|einen|einem|einer|zu|le|les|du|l|il|lo|gli|uno|o|os|as|uma|uns|umas|ao|do|da|dos|das|no|na|nos|nas|dum|duma|pelo|pela|pelos|pelas)\\s+")
     private val elidedArticlePrefix = Regex("^(l|un)'([a-zàâäéèêëïîôöùûüçæœ])")
     private val combiningMarksRegex = Regex("\\p{InCombiningDiacriticalMarks}+")
     private val britishToAmerican = mapOf(
@@ -429,21 +429,64 @@ object WordMatcher {
     }
 
     /**
-     * Language-aware phonetic skeleton for English, Spanish, German, French, Italian, or Czech spoken input.
+     * Language-aware phonetic skeleton for English, Spanish, German, French, Italian, Portuguese, or Czech spoken input.
      */
     fun phoneticCode(
         word: String,
         language: LearningLanguage = LearningLanguage.ENGLISH,
         expectCzech: Boolean = false
     ): String {
-        return when {
-            expectCzech -> czechPhoneticCode(word)
-            language == LearningLanguage.SPANISH -> spanishPhoneticCode(word)
-            language == LearningLanguage.GERMAN -> germanPhoneticCode(word)
-            language == LearningLanguage.FRENCH -> frenchPhoneticCode(word)
-            language == LearningLanguage.ITALIAN -> italianPhoneticCode(word)
-            else -> englishPhoneticCode(word)
+        return when (language) {
+            LearningLanguage.CZECH -> czechPhoneticCode(word)
+            LearningLanguage.SPANISH -> spanishPhoneticCode(word)
+            LearningLanguage.GERMAN -> germanPhoneticCode(word)
+            LearningLanguage.FRENCH -> frenchPhoneticCode(word)
+            LearningLanguage.ITALIAN -> italianPhoneticCode(word)
+            LearningLanguage.PORTUGUESE -> portuguesePhoneticCode(word)
+            LearningLanguage.ENGLISH -> englishPhoneticCode(word)
         }
+    }
+
+    /**
+     * Portuguese-specific phonetic skeleton handling lh, nh, ch, ss, rr, ç, qu/gu, nasal ão/ãe, silent h, and z.
+     */
+    private fun portuguesePhoneticCode(word: String): String {
+        if (word.isEmpty()) return ""
+        val pre = word.lowercase(Locale("pt", "PT"))
+            .replace("ão", "an")
+            .replace("ãe", "ai")
+            .replace("ões", "ons")
+            .replace("ães", "ais")
+            .replace("ç", "s")
+        var s = stripAccents(pre).lowercase(Locale.US).trim()
+        s = digitToWord[s] ?: s
+
+        s = s.replace("lh", "li")
+            .replace("nh", "ni")
+            .replace("ch", "x")
+            .replace("rr", "r")
+            .replace("ss", "s")
+            .replace("qu", "k")
+            .replace("gu", "g")
+            .replace("z", "s")
+            .replace("w", "v")
+            .replace("y", "i")
+
+        val sb = StringBuilder()
+        var prev = ' '
+        for (ch in s) {
+            if (ch == 'h') continue
+            val mapped = when (ch) {
+                'c', 'q' -> 'k'
+                'v', 'b' -> 'p'
+                else -> ch
+            }
+            if (mapped != prev) {
+                sb.append(mapped)
+                prev = mapped
+            }
+        }
+        return sb.toString()
     }
 
     /**
@@ -794,18 +837,28 @@ object WordMatcher {
             ?: targetWord.czech
     }
 
+    private val targetCache = java.util.concurrent.ConcurrentHashMap<String, List<String>>()
+    private val biasingCache = java.util.concurrent.ConcurrentHashMap<String, List<String>>()
+
     /**
-     * Builds all normalized acceptable target phrases (for either foreign or Czech expected answers).
+     * Builds all normalized acceptable target phrases (for either foreign or native expected answers).
      */
-    private fun extractNormalizedTargets(targetWord: VocabWord, expectCzech: Boolean = false): List<String> {
-        return if (expectCzech) {
+    fun extractNormalizedTargets(
+        targetWord: VocabWord,
+        expectCzech: Boolean = false,
+        language: LearningLanguage = LearningLanguage.ENGLISH
+    ): List<String> {
+        val cacheKey = "${targetWord.id}_${expectCzech}_${language.code}"
+        targetCache[cacheKey]?.let { return it }
+        val stripArticles = (language != LearningLanguage.CZECH)
+        val result = if (expectCzech) {
             val withoutParens = targetWord.czech.replace(Regex("\\s*\\(.*?\\)"), " ").trim()
             val parts = withoutParens
                 .split("/", ";", ",", "–", " - ")
                 .map { it.trim() }
                 .filter { it.isNotEmpty() }
             (listOf(withoutParens) + parts)
-                .map { normalize(it, stripLeadingForeignArticles = false) }
+                .map { normalize(it, stripLeadingForeignArticles = stripArticles) }
                 .filter { it.isNotEmpty() }
                 .distinct()
         } else {
@@ -815,17 +868,26 @@ object WordMatcher {
                 it.replace(Regex("\\s*\\(.*?\\)"), " ").split("/", ";", ",").map { p -> p.trim() }
             }
             (listOf(cleanPrimary) + primaryParts + variantParts)
-                .map { normalize(it, stripLeadingForeignArticles = true) }
+                .map { normalize(it, stripLeadingForeignArticles = stripArticles) }
                 .filter { it.isNotEmpty() }
                 .distinct()
         }
+        if (targetCache.size > 250) targetCache.clear()
+        targetCache[cacheKey] = result
+        return result
     }
 
     /**
      * Builds unstripped surface biasing phrases for Android 13+ EXTRA_BIASING_STRINGS
      * so on-device/cloud ASR prioritizes the active vocabulary card over random homophones.
      */
-    fun extractBiasingStrings(targetWord: VocabWord, expectCzech: Boolean): List<String> {
+    fun extractBiasingStrings(
+        targetWord: VocabWord,
+        expectCzech: Boolean,
+        language: LearningLanguage = LearningLanguage.ENGLISH
+    ): List<String> {
+        val cacheKey = "${targetWord.id}_${expectCzech}_${language.code}"
+        biasingCache[cacheKey]?.let { return it }
         val raw = if (expectCzech) {
             val cleaned = targetWord.czech.replace(Regex("\\s*\\(.*?\\)"), " ").trim()
             cleaned.split("/", ";", ",", "–", " - ")
@@ -841,21 +903,30 @@ object WordMatcher {
             }
             primary + variants
         }
-        return raw.map { it.trim() }
+        val result = raw.map { it.trim() }
             .filter { it.length >= 2 }
             .distinct()
             .take(15)
+        if (biasingCache.size > 250) biasingCache.clear()
+        biasingCache[cacheKey] = result
+        return result
     }
 
     /**
      * Returns true if any candidate is currently a valid prefix or first word of the target word,
      * meaning the user is still mid-pronunciation (e.g. "straw" for "strawberry" or "washing" for "washing machine").
      */
-    fun isPrefixOfTarget(spokenCandidates: List<String>, targetWord: VocabWord, expectCzech: Boolean = false): Boolean {
-        val rawTargets = extractNormalizedTargets(targetWord, expectCzech)
+    fun isPrefixOfTarget(
+        spokenCandidates: List<String>,
+        targetWord: VocabWord,
+        expectCzech: Boolean = false,
+        language: LearningLanguage = LearningLanguage.ENGLISH
+    ): Boolean {
+        val rawTargets = extractNormalizedTargets(targetWord, expectCzech, language)
+        val stripArticles = (language != LearningLanguage.CZECH)
 
         for (candidate in spokenCandidates) {
-            val norm = normalize(candidate, stripLeadingForeignArticles = !expectCzech)
+            val norm = normalize(candidate, stripLeadingForeignArticles = stripArticles)
             if (norm.isEmpty()) continue
             val normNoSpace = norm.replace(" ", "")
             val lastToken = norm.split(" ").lastOrNull() ?: norm
@@ -910,11 +981,12 @@ object WordMatcher {
         expectCzech: Boolean = false,
         language: LearningLanguage = LearningLanguage.ENGLISH
     ): String? {
-        val rawTargets = extractNormalizedTargets(targetWord, expectCzech)
+        val isCzech = (language == LearningLanguage.CZECH)
+        val rawTargets = extractNormalizedTargets(targetWord, expectCzech, language)
         val matchedDisplay = if (expectCzech) primaryCzechDisplay(targetWord) else targetWord.english
 
         val parsedCandidates = spokenCandidates.mapNotNull { cand ->
-            val norm = normalize(cand, stripLeadingForeignArticles = !expectCzech)
+            val norm = normalize(cand, stripLeadingForeignArticles = !isCzech)
             if (norm.isEmpty()) return@mapNotNull null
             val words = norm.split(" ").filter { it.isNotEmpty() }
             val phrases = LinkedHashSet<String>().apply {
@@ -981,9 +1053,9 @@ object WordMatcher {
             }
         }
 
-        // TIER 3: Grammatical inflections (EN/ES suffixes OR Czech stem declensions)
+        // TIER 3: Grammatical inflections (Foreign suffixes OR Czech stem declensions)
         for (target in rawTargets) {
-            if (expectCzech) {
+            if (isCzech) {
                 val targetWords = target.split(" ").filter { it.isNotEmpty() }
                 if (targetWords.size == 1 && target.length >= 4) {
                     val stemLen = (target.length - 2).coerceAtLeast(3)
@@ -1031,19 +1103,19 @@ object WordMatcher {
             }
         }
 
-        // TIER 4: Language-Aware Phonetic Skeleton Match (English, Spanish, or Czech sound key)
-        val minPhoneticLen = if (expectCzech) 3 else 2
+        // TIER 4: Language-Aware Phonetic Skeleton Match
+        val minPhoneticLen = if (isCzech) 3 else 2
         for (target in rawTargets) {
             val targetNoSpace = target.replace(" ", "")
-            val targetPhonetic = phoneticCode(targetNoSpace, language, expectCzech)
+            val targetPhonetic = phoneticCode(targetNoSpace, language)
             if (targetPhonetic.length >= minPhoneticLen) {
                 for (cand in parsedCandidates) {
                     for (noSpace in cand.noSpacePhrases) {
-                        if (phoneticCode(noSpace, language, expectCzech) == targetPhonetic) {
+                        if (phoneticCode(noSpace, language) == targetPhonetic) {
                             return matchedDisplay
                         }
                     }
-                    if (cand.words.any { phoneticCode(it, language, expectCzech) == targetPhonetic }) {
+                    if (cand.words.any { phoneticCode(it, language) == targetPhonetic }) {
                         return matchedDisplay
                     }
                 }
@@ -1058,7 +1130,7 @@ object WordMatcher {
         if (isFinal || !anyIsPrefix) {
             for (target in rawTargets) {
                 val targetNoSpace = target.replace(" ", "")
-                val targetPhonetic = phoneticCode(targetNoSpace, language, expectCzech)
+                val targetPhonetic = phoneticCode(targetNoSpace, language)
                 val targetWords = target.split(" ").filter { it.isNotEmpty() }
                 val minNearPhoneticLen = if (isFinal) 4 else 5
 
@@ -1067,7 +1139,7 @@ object WordMatcher {
                         val phrase = cand.phrases[idx]
                         val phraseNoSpace = phrase.replace(" ", "")
                         if (targetPhonetic.length >= minNearPhoneticLen) {
-                            val candPhonetic = phoneticCode(phraseNoSpace, language, expectCzech)
+                            val candPhonetic = phoneticCode(phraseNoSpace, language)
                             if (candPhonetic.length >= 3 &&
                                 abs(candPhonetic.length - targetPhonetic.length) <= 1 &&
                                 levenshtein(candPhonetic, targetPhonetic) <= 1
@@ -1076,7 +1148,7 @@ object WordMatcher {
                             }
                         }
 
-                        if (!expectCzech && isFinal && !target.contains(" ")) {
+                        if (!isCzech && isFinal && !target.contains(" ")) {
                             val targetCons = consonantSkeleton(target)
                             if (targetCons.length >= 2) {
                                 val candCons = consonantSkeleton(phraseNoSpace)
@@ -1118,16 +1190,16 @@ object WordMatcher {
 
                     if (targetWords.size >= 2 && cand.words.size >= targetWords.size) {
                         val matchedCount = targetWords.count { tw ->
-                            val twPhon = phoneticCode(tw, language, expectCzech)
-                            val twCons = if (!expectCzech) consonantSkeleton(tw) else ""
+                            val twPhon = phoneticCode(tw, language)
+                            val twCons = if (!isCzech) consonantSkeleton(tw) else ""
                             cand.words.any { cw ->
                                 cw == tw ||
                                     areHomophones(cw, tw) ||
-                                    (twPhon.length >= 2 && phoneticCode(cw, language, expectCzech) == twPhon) ||
+                                    (twPhon.length >= 2 && phoneticCode(cw, language) == twPhon) ||
                                     (tw.length >= 5 && levenshtein(cw, tw) <= 1) ||
                                     (isFinal && (
                                         (tw.length >= 4 && levenshtein(cw, tw) <= 1) ||
-                                            (twPhon.length >= 3 && levenshtein(phoneticCode(cw, language, expectCzech), twPhon) <= 1) ||
+                                            (twPhon.length >= 3 && levenshtein(phoneticCode(cw, language), twPhon) <= 1) ||
                                             (twCons.length >= 2 && abs(cw.length - tw.length) <= 1 && consonantSkeleton(cw) == twCons)
                                         ))
                             }
@@ -1169,6 +1241,7 @@ object WordMatcher {
 class SpeechSessionController(
     private val context: Context,
     private val language: LearningLanguage = LearningLanguage.ENGLISH,
+    private val nativeLanguage: LearningLanguage = LearningLanguage.CZECH,
     private val listeningCallback: (Boolean) -> Unit,
     private val rmsCallback: (Float) -> Unit,
     private val partialHeardCallback: (List<String>) -> Unit,
@@ -1186,7 +1259,11 @@ class SpeechSessionController(
         private set
 
     @Volatile
-    var listenInCzech: Boolean = false
+    var listenInNative: Boolean = false
+
+    var listenInCzech: Boolean
+        get() = listenInNative
+        set(value) { listenInNative = value }
 
     @Volatile
     var currentTargetBiasStrings: List<String> = emptyList()
@@ -1305,27 +1382,44 @@ class SpeechSessionController(
         mainHandler.postDelayed(restartListenRunnable, delayMs)
     }
 
-    private fun activeTargetLocale(): Locale = when (language) {
+    private var currentTtsLocale: Locale? = null
+
+    private fun localeFor(lang: LearningLanguage): Locale = when (lang) {
         LearningLanguage.SPANISH -> Locale("es", "ES")
         LearningLanguage.GERMAN -> Locale.GERMANY
         LearningLanguage.FRENCH -> Locale.FRANCE
         LearningLanguage.ITALIAN -> Locale.ITALY
+        LearningLanguage.PORTUGUESE -> Locale("pt", "PT")
         LearningLanguage.ENGLISH -> Locale.US
+        LearningLanguage.CZECH -> Locale("cs", "CZ")
     }
+
+    private fun activeTargetLocale(): Locale = localeFor(language)
 
     init {
         tts = TextToSpeech(context.applicationContext) { status ->
             if (status == TextToSpeech.SUCCESS) {
-                tts?.language = activeTargetLocale()
+                val loc = activeTargetLocale()
+                try {
+                    tts?.language = loc
+                    currentTtsLocale = loc
+                } catch (_: Throwable) {
+                }
                 tts?.setSpeechRate(0.95f)
                 tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                     override fun onStart(utteranceId: String?) {
+                        if (utteranceId != null && utteranceId.startsWith("tts_warmup")) {
+                            return
+                        }
                         if (utteranceId != null && utteranceId == activeUtteranceId) {
                             isTtsSpeaking = true
                         }
                     }
 
                     override fun onDone(utteranceId: String?) {
+                        if (utteranceId != null && utteranceId.startsWith("tts_warmup")) {
+                            return
+                        }
                         if (activeUtteranceId != null && utteranceId != activeUtteranceId) return
                         activeUtteranceId = null
                         isTtsSpeaking = false
@@ -1344,6 +1438,9 @@ class SpeechSessionController(
 
                     @Deprecated("Deprecated in Java")
                     override fun onError(utteranceId: String?) {
+                        if (utteranceId != null && utteranceId.startsWith("tts_warmup")) {
+                            return
+                        }
                         if (activeUtteranceId != null && utteranceId != activeUtteranceId) return
                         activeUtteranceId = null
                         isTtsSpeaking = false
@@ -1358,9 +1455,34 @@ class SpeechSessionController(
                             }
                         }
                     }
+
+                    override fun onError(utteranceId: String?, errorCode: Int) {
+                        onError(utteranceId)
+                    }
                 })
                 isTtsReady = true
+                warmUpTts()
             }
+        }
+    }
+
+    /**
+     * Pre-warms the TTS engine by pre-loading the voice model and AudioTrack pipeline
+     * with an inaudible zero-volume space, preventing cold-start synthesis latency on card flip.
+     */
+    fun warmUpTts(targetLanguage: LearningLanguage? = null) {
+        if (!isTtsReady || isTtsSpeaking) return
+        try {
+            val targetLocale = targetLanguage?.let { localeFor(it) } ?: activeTargetLocale()
+            if (currentTtsLocale != targetLocale) {
+                tts?.language = targetLocale
+                currentTtsLocale = targetLocale
+            }
+            val params = Bundle().apply {
+                putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 0.0f)
+            }
+            tts?.speak(" ", TextToSpeech.QUEUE_ADD, params, "tts_warmup_${System.nanoTime()}")
+        } catch (_: Throwable) {
         }
     }
 
@@ -1432,9 +1554,13 @@ class SpeechSessionController(
             onDone?.invoke()
             return
         }
-        try {
-            tts?.language = activeTargetLocale()
-        } catch (_: Throwable) {
+        val targetLocale = activeTargetLocale()
+        if (currentTtsLocale != targetLocale) {
+            try {
+                tts?.language = targetLocale
+                currentTtsLocale = targetLocale
+            } catch (_: Throwable) {
+            }
         }
         pendingTtsOnDoneCallback = onDone
         isTtsSpeaking = true
@@ -1880,10 +2006,11 @@ class SpeechSessionController(
         lastStartAttemptUptime = SystemClock.uptimeMillis()
         accumulatedPartialsInCycle.clear()
 
-        val localeTag = if (listenInCzech) "cs-CZ" else language.speechLocaleTag // e.g. "cs-CZ", "de-DE", "es-ES" or "en-US"
+        val activeLang = if (listenInNative) nativeLanguage else language
+        val localeTag = activeLang.speechLocaleTag // e.g. "cs-CZ", "de-DE", "es-ES", "pt-PT" or "en-US"
         val altLocaleTag = localeTag.replace('-', '_') // e.g. "cs_CZ", "de_DE", "es_ES" or "en_US"
-        val langCode = if (listenInCzech) "cs" else language.code // e.g. "cs", "de", "es" or "en"
-        val targetLocale = if (listenInCzech) Locale("cs", "CZ") else activeTargetLocale()
+        val langCode = activeLang.code // e.g. "cs", "de", "es", "pt" or "en"
+        val targetLocale = localeFor(activeLang)
 
         try {
             Locale.setDefault(targetLocale)
@@ -1891,7 +2018,7 @@ class SpeechSessionController(
         }
 
         val biasList = currentTargetBiasStrings
-        val isShortTarget = !listenInCzech && (biasList.firstOrNull()?.split(Regex("\\s+"))?.size ?: 1) <= 2
+        val isShortTarget = !listenInNative && (biasList.firstOrNull()?.split(Regex("\\s+"))?.size ?: 1) <= 2
         val languageModel = if (isShortTarget) {
             RecognizerIntent.LANGUAGE_MODEL_WEB_SEARCH
         } else {

@@ -79,6 +79,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cz.slovickaspeak.app.model.AnswerMethod
 import cz.slovickaspeak.app.model.CardAttemptResult
+import cz.slovickaspeak.app.model.LearningLanguage
 import cz.slovickaspeak.app.model.StudyDirection
 import cz.slovickaspeak.app.model.VocabDeck
 import cz.slovickaspeak.app.model.VocabWord
@@ -120,15 +121,24 @@ fun FlashcardSessionScreen(
     // - Prioritizes words previously not known, then new words, then mastered words.
     // - Whenever a word is answered "Nevím" (isCorrect == false), it is re-inserted a few cards ahead
     //   so it keeps re-appearing until the user masters all target words!
-    val sessionQueue = remember(wordsToPractice, dailyGoalWords) {
+    val initialTargetWords = remember(wordsToPractice) {
+        progressState.prioritizeWordsForSession(wordsToPractice, wordsToPractice.size)
+    }
+    val sessionQueue = remember(wordsToPractice) {
         mutableStateListOf<VocabWord>().apply {
-            addAll(progressState.prioritizeWordsForSession(wordsToPractice, dailyGoalWords))
+            addAll(initialTargetWords)
         }
     }
+    val sessionTargetCount = remember(wordsToPractice) {
+        wordsToPractice.distinctBy { it.id }.size.coerceAtLeast(1)
+    }
+    val masteredWordIdsInSession = remember(wordsToPractice) {
+        mutableStateListOf<String>()
+    }
 
-    var currentIndex by remember(dailyGoalWords) { mutableIntStateOf(0) }
-    var masteredInSessionCount by remember(dailyGoalWords) { mutableIntStateOf(0) }
-    val results = remember(dailyGoalWords) { mutableStateListOf<CardAttemptResult>() }
+    var currentIndex by remember(wordsToPractice) { mutableIntStateOf(0) }
+    var masteredInSessionCount by remember(wordsToPractice) { mutableIntStateOf(0) }
+    val results = remember(wordsToPractice) { mutableStateListOf<CardAttemptResult>() }
     var showRecentWordsPanel by remember { mutableStateOf(false) }
     var toggleFeedbackPopup by remember { mutableStateOf<String?>(null) }
     var toggleFeedbackSeq by remember { mutableIntStateOf(0) }
@@ -158,7 +168,7 @@ fun FlashcardSessionScreen(
     var readbackIsReversed by remember { mutableStateOf(false) }
     var showHintTranslation by remember { mutableStateOf(false) }
     var usedHintOnCurrentCard by remember { mutableStateOf(false) }
-    val wordsNeedingSecondConfirmation = remember(dailyGoalWords) { mutableStateListOf<String>() }
+    val wordsNeedingSecondConfirmation = remember(wordsToPractice) { mutableStateListOf<String>() }
     var lastHeardText by remember { mutableStateOf<String?>(null) }
     var speechError by remember { mutableStateOf<String?>(null) }
 
@@ -182,7 +192,7 @@ fun FlashcardSessionScreen(
     var wrongWordDebounceJob by remember { mutableStateOf<Job?>(null) }
     var wrongFlashResetJob by remember { mutableStateOf<Job?>(null) }
     var lastFlashedWrongWord by remember { mutableStateOf<String?>(null) }
-    var cardActiveTimestamp by remember(dailyGoalWords) { mutableLongStateOf(SystemClock.uptimeMillis()) }
+    var cardActiveTimestamp by remember(wordsToPractice) { mutableLongStateOf(SystemClock.uptimeMillis()) }
 
     val currentView = LocalView.current
     var screenAwakeTimeoutJob by remember { mutableStateOf<Job?>(null) }
@@ -194,7 +204,7 @@ fun FlashcardSessionScreen(
         }
         screenAwakeTimeoutJob?.cancel()
         screenAwakeTimeoutJob = coroutineScope.launch {
-            delay(50_000L) // 50 seconds without any card movement or speech -> allow display to sleep
+            delay(60_000L) // Hands-free learning: screen kept awake during active session
             try {
                 currentView.keepScreenOn = false
             } catch (_: Throwable) {
@@ -374,10 +384,13 @@ fun FlashcardSessionScreen(
                 else -> {
                     // Unassisted mastery confirmed!
                     masteredInSessionCount += 1
+                    if (word.id !in masteredWordIdsInSession) {
+                        masteredWordIdsInSession.add(word.id)
+                    }
                 }
             }
 
-            if (masteredInSessionCount >= dailyGoalWords || currentIndex + 1 >= sessionQueue.size) {
+            if (masteredWordIdsInSession.size >= sessionTargetCount || currentIndex + 1 >= sessionQueue.size) {
                 // Only on the very last card: let final pronunciation finish before disposing SpeechController
                 val startWait = SystemClock.uptimeMillis()
                 while (!speechFinished && SystemClock.uptimeMillis() - startWait < 1000L) {
@@ -432,16 +445,17 @@ fun FlashcardSessionScreen(
         keepScreenActive()
         val word = currentWordState
         val state = feedbackStateUpdated
-        val expectCzech = isReversedCardState
+        val isReversed = isReversedCardState
         val canAcceptSpeech = !isTransitioningUpdated &&
                 (state == CardFeedbackState.NEUTRAL || state == CardFeedbackState.SPOKEN_WRONG_FLASH)
         if (word != null && canAcceptSpeech && candidates.isNotEmpty()) {
+            val matchLanguage = if (isReversed) progressState.nativeLanguage else deck.language
             val matched = WordMatcher.matches(
                 spokenCandidates = candidates,
                 targetWord = word,
                 isFinal = isFinal,
-                expectCzech = expectCzech,
-                language = deck.language
+                expectCzech = isReversed,
+                language = matchLanguage
             )
             if (matched != null) {
                 wrongWordDebounceJob?.cancel()
@@ -465,7 +479,7 @@ fun FlashcardSessionScreen(
 
                         if (isFinal) {
                             triggerWrongSpokenFlash(snippet)
-                        } else if (!WordMatcher.isPrefixOfTarget(candidates, word, expectCzech = expectCzech)) {
+                        } else if (!WordMatcher.isPrefixOfTarget(candidates, word, expectCzech = isReversed, language = matchLanguage)) {
                             // Wait well past Android's 750-900ms complete-silence window + ASR finalization latency
                             // before flashing red on a non-final partial (prevents red-then-green flash before onResults).
                             wrongWordDebounceJob = coroutineScope.launch {
@@ -483,10 +497,11 @@ fun FlashcardSessionScreen(
     val showOtaDialogUpdated by rememberUpdatedState(progressState.showOtaDialog)
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    DisposableEffect(lifecycleOwner, deck.language) {
+    DisposableEffect(lifecycleOwner, deck.language, progressState.nativeLanguage) {
         val controller = SpeechSessionController(
             context = context,
             language = deck.language,
+            nativeLanguage = progressState.nativeLanguage,
             listeningCallback = { listening -> isListening = listening },
             rmsCallback = { rms -> rmsLevel = rms },
             partialHeardCallback = { partials -> currentHandleSpeech(partials, false) },
@@ -540,13 +555,26 @@ fun FlashcardSessionScreen(
         }
     }
 
-    LaunchedEffect(currentWord?.id, isReversedCard, speechControllerRef) {
+    LaunchedEffect(currentWord?.id, isReversedCard, speechControllerRef, progressState.nativeLanguage) {
         val controller = speechControllerRef ?: return@LaunchedEffect
-        controller.listenInCzech = isReversedCard
+        controller.listenInNative = isReversedCard
+        val activeLanguage = if (isReversedCard) progressState.nativeLanguage else deck.language
         controller.currentTargetBiasStrings = if (currentWord != null) {
-            WordMatcher.extractBiasingStrings(currentWord, expectCzech = isReversedCard)
+            WordMatcher.extractBiasingStrings(currentWord, expectCzech = isReversedCard, language = activeLanguage)
         } else {
             emptyList()
+        }
+        // Predictive pre-warming of TTS engine so speech audio starts immediately with zero delay
+        controller.warmUpTts()
+        // Pre-cache next card's biasing & normalized strings ahead of time
+        if (nextWord != null) {
+            val nextReversed = when (studyDirection) {
+                cz.slovickaspeak.app.model.StudyDirection.NATIVE_TO_FOREIGN -> false
+                cz.slovickaspeak.app.model.StudyDirection.FOREIGN_TO_NATIVE -> true
+                cz.slovickaspeak.app.model.StudyDirection.MIXED -> (currentIndex + 1) % 2 == 1
+            }
+            val nextLang = if (nextReversed) progressState.nativeLanguage else deck.language
+            WordMatcher.extractBiasingStrings(nextWord, expectCzech = nextReversed, language = nextLang)
         }
         if (isReversedCard && progressState.autoPronounceEnabled && currentWord != null) {
             delay(180L)
@@ -560,9 +588,10 @@ fun FlashcardSessionScreen(
 
     if (currentWord == null) return
 
-    val totalSessionCards = sessionQueue.size.coerceAtLeast(1)
+    val masteredCount = masteredWordIdsInSession.size.coerceAtMost(sessionTargetCount)
+    val remainingCount = (sessionTargetCount - masteredCount).coerceAtLeast(0)
     val sessionProgressFraction by animateFloatAsState(
-        targetValue = ((currentIndex + 1).toFloat() / totalSessionCards.toFloat()).coerceIn(0f, 1f),
+        targetValue = (masteredCount.toFloat() / sessionTargetCount.toFloat()).coerceIn(0f, 1f),
         animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
         label = "sessionProgressBar"
     )
@@ -743,10 +772,12 @@ fun FlashcardSessionScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     AppleSessionTopBar(
+                        deck = deck,
                         strings = strings,
                         progressState = progressState,
-                        currentIndex = currentIndex,
-                        totalSessionCards = totalSessionCards,
+                        masteredCount = masteredCount,
+                        sessionTargetCount = sessionTargetCount,
+                        remainingCount = remainingCount,
                         sessionProgressFraction = sessionProgressFraction,
                         onCloseSession = {
                             speechControllerRef?.stopListening()
@@ -800,7 +831,8 @@ fun FlashcardSessionScreen(
                         speechError = speechError,
                         rmsLevelProvider = { rmsLevel },
                         animateMicWaves = isMicVisualActive,
-                        expectCzech = isReversedCard
+                        expectCzech = isReversedCard,
+                        nativeLanguage = progressState.nativeLanguage
                     )
                 }
 
@@ -880,10 +912,12 @@ fun FlashcardSessionScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 AppleSessionTopBar(
+                    deck = deck,
                     strings = strings,
                     progressState = progressState,
-                    currentIndex = currentIndex,
-                    totalSessionCards = totalSessionCards,
+                    masteredCount = masteredCount,
+                    sessionTargetCount = sessionTargetCount,
+                    remainingCount = remainingCount,
                     sessionProgressFraction = sessionProgressFraction,
                     onCloseSession = {
                         speechControllerRef?.stopListening()
@@ -903,7 +937,8 @@ fun FlashcardSessionScreen(
                     speechError = speechError,
                     rmsLevelProvider = { rmsLevel },
                     animateMicWaves = isMicVisualActive,
-                    expectCzech = isReversedCard
+                    expectCzech = isReversedCard,
+                    nativeLanguage = progressState.nativeLanguage
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -1573,10 +1608,12 @@ private fun RecentAttemptsPanelContent(
 
 @Composable
 private fun AppleSessionTopBar(
+    deck: VocabDeck,
     strings: UiStrings,
     progressState: cz.slovickaspeak.app.data.ProgressStateHolder,
-    currentIndex: Int,
-    totalSessionCards: Int,
+    masteredCount: Int,
+    sessionTargetCount: Int,
+    remainingCount: Int,
     sessionProgressFraction: Float,
     onCloseSession: () -> Unit,
     modifier: Modifier = Modifier
@@ -1590,8 +1627,8 @@ private fun AppleSessionTopBar(
             .shadow(4.dp, RoundedCornerShape(20.dp), spotColor = Color.Black.copy(alpha = 0.04f))
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1601,16 +1638,30 @@ private fun AppleSessionTopBar(
                 // Spacer matching the top-right close button width so progress stays centered
                 Spacer(modifier = Modifier.size(32.dp))
 
-                Text(
-                    text = strings.sessionCardProgress(
-                        (currentIndex + 1).coerceAtMost(totalSessionCards),
-                        totalSessionCards,
-                        progressState.todayCompletedWords
-                    ),
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 13.sp,
-                    color = TextDark
-                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = "${deck.emoji} ${if (strings.isCzech) deck.title else deck.titleEn}",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.5.sp,
+                        color = TextDark,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = strings.sessionMasteryProgress(
+                            masteredCount,
+                            sessionTargetCount,
+                            remainingCount
+                        ),
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 12.sp,
+                        color = if (remainingCount <= 0) AppleGreen else TextMuted
+                    )
+                }
 
                 // Close button moved to top-right
                 Box(
@@ -1634,7 +1685,7 @@ private fun AppleSessionTopBar(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(10.dp)
+                    .height(8.dp)
                     .clip(RoundedCornerShape(50))
                     .background(SurfaceBg)
             ) {
@@ -1645,7 +1696,8 @@ private fun AppleSessionTopBar(
                         .clip(RoundedCornerShape(50))
                         .background(
                             Brush.horizontalGradient(
-                                colors = listOf(AppleBlue, AppleIndigo)
+                                colors = if (remainingCount <= 0) listOf(AppleGreen, AppleGreenDark)
+                                else listOf(AppleBlue, AppleIndigo)
                             )
                         )
                 )
@@ -2004,7 +2056,8 @@ private fun LiveSpeechBanner(
     rmsLevel: Float = 0f,
     rmsLevelProvider: () -> Float = { rmsLevel },
     animateMicWaves: Boolean = micAutoEnabled,
-    expectCzech: Boolean = false
+    expectCzech: Boolean = false,
+    nativeLanguage: LearningLanguage = LearningLanguage.CZECH
 ) {
     val bgColor by animateColorAsState(
         targetValue = when (feedbackState) {
@@ -2066,7 +2119,12 @@ private fun LiveSpeechBanner(
                 !lastHeardText.isNullOrBlank() ->
                     strings.bannerHeard(lastHeardText)
                 isListening ->
-                    if (expectCzech) strings.bannerListeningCzech else strings.bannerListeningForLanguage(language)
+                    if (expectCzech) {
+                        if (nativeLanguage == LearningLanguage.CZECH) strings.bannerListeningCzech
+                        else strings.bannerListeningForLanguage(nativeLanguage)
+                    } else {
+                        strings.bannerListeningForLanguage(language)
+                    }
                 else ->
                     strings.bannerMicReady
             }

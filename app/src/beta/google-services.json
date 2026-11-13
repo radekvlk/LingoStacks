@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "452987963824",
+    "project_id": "lingowords-88ed4",
+    "storage_bucket": "lingowords-88ed4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:452987963824:android:660053c81db55dab7f6e75",
+        "android_client_info": {
+          "package_name": "cz.slovickaspeak.app.beta"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "452987963824-2cgaktf3ki94qsjbulre02uahf3lctqt.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "cz.slovickaspeak.app.beta",
+            "certificate_hash": "2dd589df3bdbae4d8a91dd676bac6d9d12ca70c8"
+          }
+        },
+        {
+          "client_id": "452987963824-q6b8grdjeo14i4k5j3kd7qkuk8b4q4eg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "cz.slovickaspeak.app.beta",
+            "certificate_hash": "186faa5c935b44517b0728ed456658aa3d1b5cf9"
+          }
+        },
+        {
+          "client_id": "452987963824-cchf3f2h13adpgd4m1s9s7jsrjoc0hig.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCl4DULotNsz8JeT_wYgtpGBo6gHuZydMA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "452987963824-cchf3f2h13adpgd4m1s9s7jsrjoc0hig.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -38,6 +38,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        cz.slovickaspeak.app.model.CrossLanguageBridge.init(applicationContext)
 
         setContent {
             val progressState = remember {
@@ -48,8 +49,10 @@ class MainActivity : ComponentActivity() {
                 val observer = LifecycleEventObserver { _, event ->
                     if (event == Lifecycle.Event.ON_RESUME) {
                         progressState.checkNewDayRollover(alsoRefreshCloud = true)
-                        progressState.retryPendingOtaInstallIfPermitted()
-                        progressState.checkForOtaUpdate(manual = false)
+                        if (BuildConfig.ENABLE_OTA_UPDATES) {
+                            progressState.retryPendingOtaInstallIfPermitted()
+                            progressState.checkForOtaUpdate(manual = false)
+                        }
                     }
                 }
                 this@MainActivity.lifecycle.addObserver(observer)
@@ -80,7 +83,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                if (progressState.showOtaDialog) {
+                if (BuildConfig.ENABLE_OTA_UPDATES && progressState.showOtaDialog) {
                     cz.slovickaspeak.app.ui.OtaUpdateModalDialog(
                         progressState = progressState,
                         onDismiss = { progressState.closeOtaModal() }
@@ -91,8 +94,15 @@ class MainActivity : ComponentActivity() {
 
                 when (val screen = currentScreen) {
                     is AppScreen.DeckList -> {
+                        val activeDecks = remember(progressState.nativeLanguage, progressState.selectedLanguage) {
+                            cz.slovickaspeak.app.model.CrossLanguageBridge.decksFor(
+                                nativeLang = progressState.nativeLanguage,
+                                targetLang = progressState.selectedLanguage,
+                                context = this@MainActivity
+                            )
+                        }
                         DeckSelectionScreen(
-                            decks = BuiltInVocabulary.decks,
+                            decks = activeDecks,
                             progressState = progressState,
                             onSelectDeck = { selectedDeck ->
                                 if (!hasMicPermission) {

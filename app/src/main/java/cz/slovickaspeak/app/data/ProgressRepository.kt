@@ -188,6 +188,49 @@ class ProgressStateHolder(context: Context) {
     var studyReminderMinute by mutableIntStateOf(prefs.getInt("study_reminder_minute", 0).coerceIn(0, 59))
         private set
 
+    var nativeLanguage by mutableStateOf(loadInitialNativeLanguage())
+        private set
+
+    var hasSelectedNativeLanguage by mutableStateOf(
+        prefs.getBoolean("has_selected_native_language", false)
+    )
+        private set
+
+    private fun loadInitialNativeLanguage(): cz.slovickaspeak.app.model.LearningLanguage {
+        val saved = prefs.getString("user_native_language", null)
+        if (saved != null) {
+            cz.slovickaspeak.app.model.LearningLanguage.entries.find { it.name == saved }?.let { return it }
+        }
+        val sysLang = java.util.Locale.getDefault().language.lowercase()
+        return when {
+            sysLang.startsWith("cs") || sysLang.startsWith("sk") -> cz.slovickaspeak.app.model.LearningLanguage.CZECH
+            sysLang.startsWith("es") -> cz.slovickaspeak.app.model.LearningLanguage.SPANISH
+            sysLang.startsWith("de") -> cz.slovickaspeak.app.model.LearningLanguage.GERMAN
+            sysLang.startsWith("fr") -> cz.slovickaspeak.app.model.LearningLanguage.FRENCH
+            sysLang.startsWith("it") -> cz.slovickaspeak.app.model.LearningLanguage.ITALIAN
+            else -> cz.slovickaspeak.app.model.LearningLanguage.ENGLISH
+        }
+    }
+
+    fun updateNativeLanguage(lang: cz.slovickaspeak.app.model.LearningLanguage) {
+        nativeLanguage = lang
+        hasSelectedNativeLanguage = true
+        prefs.edit()
+            .putString("user_native_language", lang.name)
+            .putBoolean("has_selected_native_language", true)
+            .apply()
+
+        if (selectedLanguage == lang) {
+            val fallback = if (lang == cz.slovickaspeak.app.model.LearningLanguage.ENGLISH) {
+                cz.slovickaspeak.app.model.LearningLanguage.CZECH
+            } else {
+                cz.slovickaspeak.app.model.LearningLanguage.ENGLISH
+            }
+            updateSelectedLanguage(fallback)
+        }
+        pushMyProgressToCloud()
+    }
+
     var selectedLanguage by mutableStateOf(
         prefs.getString("selected_learning_language", null)?.let { saved ->
             cz.slovickaspeak.app.model.LearningLanguage.entries.find { it.name == saved }
@@ -230,8 +273,24 @@ class ProgressStateHolder(context: Context) {
     var todayBaseXp by mutableIntStateOf(loadTodayBaseXp())
         private set
 
+    fun getDailyGoalBonusXp(goal: Int): Int = when {
+        goal <= 25 -> 5
+        goal <= 60 -> 15
+        goal <= 120 -> 35
+        else -> 80
+    }
+
+    val todayGoalBonusXp: Int
+        get() = if (todayCompletedWords >= dailyGoalWords) getDailyGoalBonusXp(dailyGoalWords) else 0
+
+    val todayOverachieverXp: Int
+        get() = if (todayCompletedWords > dailyGoalWords) ((todayCompletedWords - dailyGoalWords) / 10) * 2 else 0
+
+    val todayTotalBonusXp: Int
+        get() = todayGoalBonusXp + todayOverachieverXp
+
     val todayXp: Int
-        get() = todayBaseXp + if (todayCompletedWords >= dailyGoalWords) 5 else 0
+        get() = todayBaseXp + todayTotalBonusXp
 
     // Maps "yyyy-MM-dd" -> Pair(wordsCompleted, dailyTotalXp) for the active Mon-Sun week
     private val weeklyDailyStats = loadWeeklyDailyStats().apply {
@@ -1477,15 +1536,21 @@ class ProgressStateHolder(context: Context) {
         saveStats()
     }
 
+    private var lastCloudRefreshUptime = 0L
+
     /**
      * Fetches the latest progress from Cloud Firestore (`leaderboard`) and merges entries cleanly.
+     * Battery & network saver: Throttled to max 1 query per 45s unless forced.
      */
-    fun refreshFromCloud() {
+    fun refreshFromCloud(force: Boolean = false) {
         checkNewDayRollover(alsoRefreshCloud = false)
         // Battery saver: skip cloud network calls when not signed in
         val user = googleUser
         if (user == null || !user.email.contains("@")) return
         if (isSyncingCloud) return
+        val now = android.os.SystemClock.uptimeMillis()
+        if (!force && now - lastCloudRefreshUptime < 45_000L) return
+        lastCloudRefreshUptime = now
         isSyncingCloud = true
 
         withFirebaseUid { uid, authErr ->
@@ -1579,7 +1644,7 @@ class ProgressStateHolder(context: Context) {
                             updatedLocal = true
                         }
                         if (myRemote.todayXp > todayXp) {
-                            val goalBonus = if (todayCompletedWords >= dailyGoalWords) 5 else 0
+                            val goalBonus = todayTotalBonusXp
                             todayBaseXp = (myRemote.todayXp - goalBonus).coerceAtLeast(todayCompletedWords)
                             updatedLocal = true
                         }

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -46,7 +48,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -72,7 +76,7 @@ fun DeckSelectionScreen(
     progressState: cz.slovickaspeak.app.data.ProgressStateHolder,
     onSelectDeck: (VocabDeck) -> Unit
 ) {
-    val strings = rememberAppStrings()
+    val strings = rememberAppStrings(progressState.nativeLanguage)
     val selectedLanguage = progressState.selectedLanguage
     val selectedLevel = progressState.selectedCefrLevel
     val studyDirection = progressState.studyDirection
@@ -116,9 +120,18 @@ fun DeckSelectionScreen(
         )
     }
 
-    if (!progressState.hasSelectedInitialLanguage) {
+    if (!progressState.hasSelectedNativeLanguage) {
+        NativeLanguageOnboardingDialog(
+            strings = strings,
+            defaultNative = progressState.nativeLanguage,
+            onSelectNativeLanguage = { native ->
+                progressState.updateNativeLanguage(native)
+            }
+        )
+    } else if (!progressState.hasSelectedInitialLanguage) {
         InitialLanguageDialog(
             strings = strings,
+            nativeLanguage = progressState.nativeLanguage,
             onSelectLanguage = { lang ->
                 progressState.selectInitialLanguage(lang)
             }
@@ -134,8 +147,8 @@ fun DeckSelectionScreen(
     ) { innerPadding ->
         if (isLandscape) {
             // Fold / Tablet Landscape (na sirku): 2 sloupce vedle sebe (Plnohodnotny Dashboard vlevo, Balicky vpravo)
-            val allLanguageStats = remember(progressState.srsRevision, studyDirection) {
-                LearningLanguage.entries.map { progressState.getLanguageCompleteStats(it) }
+            val allLanguageStats = remember(progressState.srsRevision, studyDirection, progressState.nativeLanguage) {
+                LearningLanguage.entries.filter { it != progressState.nativeLanguage }.map { progressState.getLanguageCompleteStats(it) }
             }
             val activeLangStats = allLanguageStats.firstOrNull { it.language == selectedLanguage }
                 ?: allLanguageStats.first()
@@ -154,7 +167,12 @@ fun DeckSelectionScreen(
                 horizontalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 // Levy sloupec: Hlavicka, denni cil, rychly start, statistiky a prehled jazyku
+                val landscapeListState = rememberLazyListState()
+                val isLandscapeHeaderVisible by remember {
+                    derivedStateOf { landscapeListState.firstVisibleItemIndex == 0 }
+                }
                 LazyColumn(
+                    state = landscapeListState,
                     modifier = Modifier
                         .weight(0.92f)
                         .fillMaxHeight(),
@@ -164,6 +182,7 @@ fun DeckSelectionScreen(
                         DeckHeaderRow(
                             selectedLanguage = selectedLanguage,
                             strings = strings,
+                            animateWave = isLandscapeHeaderVisible,
                             onOpenLeaderboard = {
                                 settingsInitialTab = 1
                                 showSettingsDialog = true
@@ -190,6 +209,7 @@ fun DeckSelectionScreen(
                     item {
                         DeckGoalIndicatorCard(
                             strings = strings,
+                            nativeLanguage = progressState.nativeLanguage,
                             selectedLanguage = selectedLanguage,
                             selectedLevel = selectedLevel,
                             studyDirection = studyDirection,
@@ -197,6 +217,8 @@ fun DeckSelectionScreen(
                             dailyGoalWords = dailyGoalWords,
                             isGoalReached = isGoalReached,
                             goalProgressFraction = goalProgressFraction,
+                            goalBonusXp = progressState.todayGoalBonusXp,
+                            totalBonusXp = progressState.todayTotalBonusXp,
                             onSelectLanguage = { lang ->
                                 progressState.updateSelectedLanguage(lang)
                             },
@@ -278,7 +300,12 @@ fun DeckSelectionScreen(
             }
         } else {
             // Portrait (na vysku): Nechano plne roztazene pres celou sirku podle zadani
+            val portraitListState = rememberLazyListState()
+            val isPortraitHeaderVisible by remember {
+                derivedStateOf { portraitListState.firstVisibleItemIndex == 0 }
+            }
             LazyColumn(
+                state = portraitListState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
                     start = 20.dp,
@@ -292,6 +319,7 @@ fun DeckSelectionScreen(
                     DeckHeaderRow(
                         selectedLanguage = selectedLanguage,
                         strings = strings,
+                        animateWave = isPortraitHeaderVisible,
                         onOpenLeaderboard = {
                             settingsInitialTab = 1
                             showSettingsDialog = true
@@ -318,6 +346,7 @@ fun DeckSelectionScreen(
                 item {
                     DeckGoalIndicatorCard(
                         strings = strings,
+                        nativeLanguage = progressState.nativeLanguage,
                         selectedLanguage = selectedLanguage,
                         selectedLevel = selectedLevel,
                         studyDirection = studyDirection,
@@ -325,6 +354,8 @@ fun DeckSelectionScreen(
                         dailyGoalWords = dailyGoalWords,
                         isGoalReached = isGoalReached,
                         goalProgressFraction = goalProgressFraction,
+                        goalBonusXp = progressState.todayGoalBonusXp,
+                        totalBonusXp = progressState.todayTotalBonusXp,
                         onSelectLanguage = { lang ->
                             progressState.updateSelectedLanguage(lang)
                         },
@@ -513,18 +544,27 @@ private fun LingoWordsHeaderMark(
 @Composable
 private fun WavingLanguageFlagBackdrop(
     selectedLanguage: LearningLanguage,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    animateWave: Boolean = true
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "headerFlagWave")
-    val wavePhase by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = (2.0 * PI).toFloat(),
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 5600, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "headerFlagWavePhase"
-    )
+    // Battery optimization: animate wave smoothly when visible, pause when scrolled off-screen
+    val wavePhase: Float = if (animateWave) {
+        val infiniteTransition = rememberInfiniteTransition(label = "headerFlagWave")
+        val phase by infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = (2.0 * PI).toFloat(),
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 5600, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "headerFlagWavePhase"
+        )
+        phase
+    } else {
+        0.85f
+    }
+
+    val reusableRibbonPath = remember { Path() }
 
     Crossfade(
         targetState = selectedLanguage,
@@ -533,9 +573,7 @@ private fun WavingLanguageFlagBackdrop(
         label = "headerFlagCrossfade"
     ) { language ->
         Canvas(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+            modifier = Modifier.fillMaxSize()
         ) {
             val w = size.width
             val h = size.height
@@ -546,7 +584,7 @@ private fun WavingLanguageFlagBackdrop(
             val whiteCenterAlpha = if (dark) 0.15f else 0.54f
             val ribbonGain = if (dark) 0.14f else 0.10f
             val amp = (h * 0.068f).coerceAtLeast(3.dp.toPx())
-            val steps = 28
+            val steps = 24
 
             fun waveY(xFrac: Float, baseY: Float, phaseShift: Float = 0f): Float {
                 return baseY + sin(xFrac * 2f * PI.toFloat() * 1.45f - wavePhase + phaseShift) * amp
@@ -556,20 +594,22 @@ private fun WavingLanguageFlagBackdrop(
                 topFrac: Float,
                 bottomFrac: Float,
                 phaseShift: Float = 0f
-            ): Path = Path().apply {
+            ): Path {
+                reusableRibbonPath.reset()
                 for (i in 0..steps) {
                     val f = i / steps.toFloat()
                     val x = w * f
                     val y = waveY(f, h * topFrac, phaseShift)
-                    if (i == 0) moveTo(x, y) else lineTo(x, y)
+                    if (i == 0) reusableRibbonPath.moveTo(x, y) else reusableRibbonPath.lineTo(x, y)
                 }
                 for (i in steps downTo 0) {
                     val f = i / steps.toFloat()
                     val x = w * f
                     val y = waveY(f, h * bottomFrac, phaseShift + 0.35f)
-                    lineTo(x, y)
+                    reusableRibbonPath.lineTo(x, y)
                 }
-                close()
+                reusableRibbonPath.close()
+                return reusableRibbonPath
             }
 
             fun verticalWaveRibbon(
@@ -577,22 +617,24 @@ private fun WavingLanguageFlagBackdrop(
                 rightFrac: Float,
                 tiltFrac: Float = 0.055f,
                 phaseShift: Float = 0f
-            ): Path = Path().apply {
+            ): Path {
+                reusableRibbonPath.reset()
                 for (i in 0..steps) {
                     val yf = i / steps.toFloat()
                     val ripple = sin(yf * PI.toFloat() * 1.4f - wavePhase + phaseShift) * (w * 0.022f)
                     val x = w * (leftFrac + (yf - 0.5f) * tiltFrac) + ripple
                     val y = h * yf
-                    if (i == 0) moveTo(x, y) else lineTo(x, y)
+                    if (i == 0) reusableRibbonPath.moveTo(x, y) else reusableRibbonPath.lineTo(x, y)
                 }
                 for (i in steps downTo 0) {
                     val yf = i / steps.toFloat()
                     val ripple = sin(yf * PI.toFloat() * 1.4f - wavePhase + phaseShift + 0.5f) * (w * 0.022f)
                     val x = w * (rightFrac + (yf - 0.5f) * tiltFrac) + ripple
                     val y = h * yf
-                    lineTo(x, y)
+                    reusableRibbonPath.lineTo(x, y)
                 }
-                close()
+                reusableRibbonPath.close()
+                return reusableRibbonPath
             }
 
             when (language) {
@@ -785,6 +827,63 @@ private fun WavingLanguageFlagBackdrop(
                         color = itRed.copy(alpha = 0.08f)
                     )
                 }
+
+                LearningLanguage.PORTUGUESE -> {
+                    val ptGreen = Color(0xFF046A38)
+                    val ptRed = Color(0xFFDA291C)
+                    val ptYellow = Color(0xFFFFD100)
+                    val shift = sin(wavePhase) * 0.03f
+
+                    drawRect(
+                        brush = Brush.linearGradient(
+                            colorStops = arrayOf(
+                                0.0f to ptGreen.copy(alpha = if (dark) 0.32f else 0.25f),
+                                (0.38f + shift) to ptGreen.copy(alpha = if (dark) 0.28f else 0.20f),
+                                (0.42f + shift) to ptRed.copy(alpha = if (dark) 0.28f else 0.20f),
+                                1.0f to ptRed.copy(alpha = if (dark) 0.34f else 0.26f)
+                            ),
+                            start = Offset(0f, waveY(0f, h * 0.30f)),
+                            end = Offset(w, waveY(1f, h * 0.70f))
+                        )
+                    )
+                    drawPath(
+                        path = verticalWaveRibbon(-0.04f, 0.42f, tiltFrac = 0.06f, phaseShift = 0f),
+                        color = ptGreen.copy(alpha = 0.08f)
+                    )
+                    drawPath(
+                        path = verticalWaveRibbon(0.38f, 1.04f, tiltFrac = 0.06f, phaseShift = 0.5f),
+                        color = ptRed.copy(alpha = 0.08f)
+                    )
+                    drawCircle(
+                        color = ptYellow.copy(alpha = if (dark) 0.22f else 0.18f),
+                        radius = h * 0.24f,
+                        center = Offset(w * (0.40f + shift * 0.5f), waveY(0.40f, h * 0.50f))
+                    )
+                }
+
+                LearningLanguage.CZECH -> {
+                    val czBlue = Color(0xFF11457E)
+                    val czRed = Color(0xFFD7141A)
+                    drawRect(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = if (dark) 0.18f else 0.28f),
+                                czRed.copy(alpha = if (dark) 0.25f else 0.20f)
+                            ),
+                            start = Offset(0f, 0f),
+                            end = Offset(0f, h)
+                        )
+                    )
+                    drawPath(
+                        path = Path().apply {
+                            moveTo(0f, 0f)
+                            lineTo(w * 0.48f, h * 0.5f)
+                            lineTo(0f, h)
+                            close()
+                        },
+                        color = czBlue.copy(alpha = if (dark) 0.32f else 0.24f)
+                    )
+                }
             }
 
             // Moving diagonal silk-fold highlights (creates realistic 3D cloth wave shimmer)
@@ -836,6 +935,7 @@ private fun WavingLanguageFlagBackdrop(
 private fun DeckHeaderRow(
     selectedLanguage: LearningLanguage,
     strings: UiStrings,
+    animateWave: Boolean = true,
     onOpenLeaderboard: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
@@ -847,6 +947,7 @@ private fun DeckHeaderRow(
     ) {
         WavingLanguageFlagBackdrop(
             selectedLanguage = selectedLanguage,
+            animateWave = animateWave,
             modifier = Modifier
                 .matchParentSize()
                 .layout { measurable, constraints ->
@@ -978,6 +1079,7 @@ private fun FilterDropdownPill(
 @Composable
 private fun DeckGoalIndicatorCard(
     strings: UiStrings,
+    nativeLanguage: LearningLanguage = LearningLanguage.CZECH,
     selectedLanguage: LearningLanguage,
     selectedLevel: CefrLevel?,
     studyDirection: StudyDirection,
@@ -985,6 +1087,8 @@ private fun DeckGoalIndicatorCard(
     dailyGoalWords: Int,
     isGoalReached: Boolean,
     goalProgressFraction: Float,
+    goalBonusXp: Int = 0,
+    totalBonusXp: Int = 0,
     onSelectLanguage: (LearningLanguage) -> Unit,
     onSelectLevel: (CefrLevel?) -> Unit,
     onSelectDirection: (StudyDirection) -> Unit,
@@ -1023,7 +1127,7 @@ private fun DeckGoalIndicatorCard(
                         expanded = languageDropdownExpanded,
                         onDismissRequest = { languageDropdownExpanded = false }
                     ) {
-                        LearningLanguage.entries.forEach { lang ->
+                        LearningLanguage.entries.filter { it != nativeLanguage }.forEach { lang ->
                             DropdownMenuItem(
                                 text = {
                                     Text(
@@ -1113,6 +1217,37 @@ private fun DeckGoalIndicatorCard(
                 }
             }
 
+            val isOverachiever = completedTodayWords > dailyGoalWords
+            val haptic = LocalHapticFeedback.current
+            var prevGoalReached by remember { mutableStateOf(isGoalReached) }
+            LaunchedEffect(isGoalReached) {
+                if (isGoalReached && !prevGoalReached) {
+                    try {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    } catch (_: Throwable) {}
+                }
+                prevGoalReached = isGoalReached
+            }
+
+            val shimmerSweep: Float = if (isGoalReached) {
+                val infiniteTransition = rememberInfiniteTransition(label = "goalShimmerTransition")
+                val sweep by infiniteTransition.animateFloat(
+                    initialValue = -0.6f,
+                    targetValue = 1.6f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(durationMillis = 2200, easing = LinearEasing),
+                        repeatMode = RepeatMode.Restart
+                    ),
+                    label = "goalShimmerSweep"
+                )
+                sweep
+            } else {
+                -1f
+            }
+
+            val remaining = (dailyGoalWords - completedTodayWords).coerceAtLeast(0)
+            val progressPercent = if (dailyGoalWords > 0) ((completedTodayWords.toFloat() / dailyGoalWords) * 100f).toInt() else 0
+
             // Clickable progress strip + bar opening Complete Statistics without altering visual design
             Column(
                 modifier = Modifier
@@ -1122,7 +1257,7 @@ private fun DeckGoalIndicatorCard(
                         indication = null,
                         onClick = onOpenStats
                     ),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 // Clean single-line row for Today Words progress & remaining count
                 Row(
@@ -1131,27 +1266,48 @@ private fun DeckGoalIndicatorCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = if (strings.isCzech) {
-                            "Dnes: $completedTodayWords / $dailyGoalWords slov"
+                        text = if (isOverachiever) {
+                            if (strings.isCzech) "🌟 Dnes: $completedTodayWords / $dailyGoalWords slov ($progressPercent %)"
+                            else "🌟 Today: $completedTodayWords / $dailyGoalWords words ($progressPercent %)"
                         } else {
-                            "Today: $completedTodayWords / $dailyGoalWords words"
+                            if (strings.isCzech) "Dnes: $completedTodayWords / $dailyGoalWords slov"
+                            else "Today: $completedTodayWords / $dailyGoalWords words"
                         },
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (isGoalReached) AppleGreen else TextDark,
+                        color = when {
+                            isOverachiever -> AppleOrange
+                            isGoalReached -> AppleGreen
+                            else -> TextDark
+                        },
                         maxLines = 1
                     )
 
-                    val remaining = (dailyGoalWords - completedTodayWords).coerceAtLeast(0)
                     Text(
                         text = when {
-                            isGoalReached -> if (strings.isCzech) "Cíl splněn! 🎉" else "Goal reached! 🎉"
+                            isOverachiever -> {
+                                if (strings.isCzech) "Nad plán! 🏆 (+$totalBonusXp XP)"
+                                else "Overachiever! 🏆 (+$totalBonusXp XP)"
+                            }
+                            isGoalReached -> {
+                                if (strings.isCzech) "Cíl splněn! 🎉 (+$goalBonusXp XP)"
+                                else "Goal reached! 🎉 (+$goalBonusXp XP)"
+                            }
+                            remaining in 1..9 -> {
+                                if (strings.isCzech) "Už jen $remaining do cíle! 🚀"
+                                else "Just $remaining left! 🚀"
+                            }
                             strings.isCzech -> "zbývá $remaining"
                             else -> "$remaining left"
                         },
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isGoalReached) AppleGreen else AppleBlue,
+                        fontWeight = FontWeight.Bold,
+                        color = when {
+                            isOverachiever -> AppleOrange
+                            isGoalReached -> AppleGreen
+                            remaining in 1..9 -> AppleIndigo
+                            else -> AppleBlue
+                        },
                         maxLines = 1
                     )
                 }
@@ -1159,7 +1315,7 @@ private fun DeckGoalIndicatorCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(12.dp)
+                        .height(13.dp)
                         .clip(RoundedCornerShape(50))
                         .background(SurfaceBg)
                 ) {
@@ -1169,13 +1325,37 @@ private fun DeckGoalIndicatorCard(
                             .fillMaxWidth(goalProgressFraction.coerceIn(0f, 1f))
                             .clip(RoundedCornerShape(50))
                             .background(
-                                Brush.horizontalGradient(
-                                    colors = if (isGoalReached) {
-                                        listOf(AppleGreen, Color(0xFF34C759))
-                                    } else {
-                                        listOf(AppleBlue, AppleIndigo)
+                                when {
+                                    isOverachiever -> {
+                                        Brush.horizontalGradient(
+                                            colors = listOf(
+                                                Color(0xFFFFB300),
+                                                Color(0xFFFFE082),
+                                                AppleGreen,
+                                                AppleGreenDark
+                                            ),
+                                            startX = shimmerSweep * 500f,
+                                            endX = shimmerSweep * 500f + 350f
+                                        )
                                     }
-                                )
+                                    isGoalReached -> {
+                                        Brush.horizontalGradient(
+                                            colors = listOf(
+                                                AppleGreenDark,
+                                                AppleGreen,
+                                                Color(0xFFA5D6A7),
+                                                AppleGreen
+                                            ),
+                                            startX = shimmerSweep * 500f,
+                                            endX = shimmerSweep * 500f + 350f
+                                        )
+                                    }
+                                    else -> {
+                                        Brush.horizontalGradient(
+                                            colors = listOf(AppleBlue, AppleIndigo)
+                                        )
+                                    }
+                                }
                             )
                     )
                 }
@@ -1485,8 +1665,152 @@ private fun DeckMemoryProgressRow(summary: DeckMemorySummary) {
 }
 
 @Composable
+fun NativeLanguageOnboardingDialog(
+    strings: UiStrings,
+    defaultNative: LearningLanguage,
+    onSelectNativeLanguage: (LearningLanguage) -> Unit
+) {
+    var selectedNative by remember { mutableStateOf(defaultNative) }
+
+    Dialog(
+        onDismissRequest = {},
+        properties = androidx.compose.ui.window.DialogProperties(
+            dismissOnBackPress = false,
+            dismissOnClickOutside = false
+        )
+    ) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = CardSurface,
+            border = BorderStroke(0.5.dp, CardBorderGray),
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(24.dp, RoundedCornerShape(28.dp), spotColor = Color.Black.copy(alpha = 0.2f))
+        ) {
+            Column(
+                modifier = Modifier.padding(26.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = AppleBlueTint,
+                    modifier = Modifier.size(68.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(text = "🗣️", fontSize = 34.sp)
+                    }
+                }
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = if (selectedNative == LearningLanguage.CZECH) "Vítejte v LingoStacks!" else "Welcome to LingoStacks!",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextDark,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Text(
+                        text = if (selectedNative == LearningLanguage.CZECH) {
+                            "Jaký je váš rodný jazyk? (Jakou řečí mluvíte?)"
+                        } else {
+                            "What is your native language? (Language you speak)"
+                        },
+                        fontSize = 14.sp,
+                        color = TextMuted,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 380.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(9.dp)
+                ) {
+                    LearningLanguage.entries.forEach { lang ->
+                        val isSelected = selectedNative == lang
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = if (isSelected) AppleBlueTint else SurfaceBg,
+                            border = BorderStroke(
+                                if (isSelected) 1.5.dp else 1.dp,
+                                if (isSelected) AppleBlue else CardBorderGray.copy(alpha = 0.8f)
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .clickable { selectedNative = lang }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                Text(text = lang.flagEmoji, fontSize = 28.sp)
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = lang.localizedTitle(selectedNative == LearningLanguage.CZECH),
+                                        fontSize = 16.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) AppleBlue else TextDark
+                                    )
+                                    val nativeName = when (lang) {
+                                        LearningLanguage.CZECH -> "Čeština"
+                                        LearningLanguage.ENGLISH -> "English"
+                                        LearningLanguage.SPANISH -> "Español"
+                                        LearningLanguage.GERMAN -> "Deutsch"
+                                        LearningLanguage.FRENCH -> "Français"
+                                        LearningLanguage.ITALIAN -> "Italiano"
+                                        LearningLanguage.PORTUGUESE -> "Português"
+                                    }
+                                    Text(
+                                        text = nativeName,
+                                        fontSize = 12.sp,
+                                        color = TextMuted
+                                    )
+                                }
+                                if (isSelected) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = AppleBlue,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Button(
+                    onClick = { onSelectNativeLanguage(selectedNative) },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AppleBlue),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                ) {
+                    Text(
+                        text = if (selectedNative == LearningLanguage.CZECH) "Pokračovat →" else "Continue →",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun InitialLanguageDialog(
     strings: UiStrings,
+    nativeLanguage: LearningLanguage = LearningLanguage.CZECH,
     onSelectLanguage: (LearningLanguage) -> Unit
 ) {
     Dialog(
@@ -1545,7 +1869,7 @@ fun InitialLanguageDialog(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    LearningLanguage.entries.forEach { lang ->
+                    LearningLanguage.entries.filter { it != nativeLanguage }.forEach { lang ->
                         Surface(
                             shape = RoundedCornerShape(18.dp),
                             color = SurfaceBg,

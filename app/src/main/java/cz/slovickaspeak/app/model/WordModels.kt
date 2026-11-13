@@ -11,7 +11,9 @@ enum class LearningLanguage(
     SPANISH("es", "es-ES", "🇪🇸", "Španělština", "Spanish"),
     GERMAN("de", "de-DE", "🇩🇪", "Němčina", "German"),
     FRENCH("fr", "fr-FR", "🇫🇷", "Francouzština", "French"),
-    ITALIAN("it", "it-IT", "🇮🇹", "Italština", "Italian");
+    ITALIAN("it", "it-IT", "🇮🇹", "Italština", "Italian"),
+    PORTUGUESE("pt", "pt-PT", "🇵🇹", "Portugalština", "Portuguese"),
+    CZECH("cs", "cs-CZ", "🇨🇿", "Čeština", "Czech");
 
     fun localizedTitle(isCzech: Boolean): String = if (isCzech) titleCs else titleEn
 }
@@ -116,8 +118,36 @@ object BuiltInVocabulary {
         ItalianVocabularyPart1.decks + ItalianVocabularyPart2.decks + ItalianVocabularyPart3.decks + ItalianVocabularyPart4.decks
     }
 
+    val portugueseDecks: List<VocabDeck> by lazy {
+        PortugueseVocabularyPart1.decks + PortugueseVocabularyPart2.decks + PortugueseVocabularyPart3.decks + PortugueseVocabularyPart4.decks
+    }
+
+    val czechDecks: List<VocabDeck> by lazy {
+        englishDecks.map { engDeck ->
+            engDeck.copy(
+                id = "cz_" + engDeck.id,
+                title = engDeck.titleEn.ifBlank { engDeck.title },
+                subtitle = if (engDeck.subtitleEn.isNotBlank()) engDeck.subtitleEn else "Learn Czech",
+                titleEn = engDeck.titleEn.ifBlank { engDeck.title },
+                subtitleEn = if (engDeck.subtitleEn.isNotBlank()) engDeck.subtitleEn else "Practice speaking Czech out loud",
+                language = LearningLanguage.CZECH,
+                words = engDeck.words.map { w ->
+                    VocabWord(
+                        id = "cz_" + w.id,
+                        czech = w.english,
+                        english = w.czech,
+                        acceptedVariants = emptyList(),
+                        phonetic = "",
+                        emoji = w.emoji,
+                        exampleSentence = w.exampleSentence
+                    )
+                }
+            )
+        }
+    }
+
     val decks: List<VocabDeck> by lazy {
-        englishDecks + spanishDecks + germanDecks + frenchDecks + italianDecks
+        englishDecks + spanishDecks + germanDecks + frenchDecks + italianDecks + portugueseDecks + czechDecks
     }
 
     fun decksForLanguage(language: LearningLanguage): List<VocabDeck> = when (language) {
@@ -126,5 +156,7 @@ object BuiltInVocabulary {
         LearningLanguage.GERMAN -> germanDecks
         LearningLanguage.FRENCH -> frenchDecks
         LearningLanguage.ITALIAN -> italianDecks
+        LearningLanguage.PORTUGUESE -> portugueseDecks
+        LearningLanguage.CZECH -> czechDecks
     }
 }

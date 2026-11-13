@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Beta Icon Foreground: White Flashcards with Crimson Spark and Beta Badge -->
+
+    <!-- 1. Back Frosted Glass Flashcard (rotated -13 deg) -->
+    <group
+        android:pivotX="50"
+        android:pivotY="53"
+        android:rotation="-13">
+        <path
+            android:fillColor="#73FFFFFF"
+            android:pathData="M40,28 L60,28 A9,9 0 0,1 69,37 L69,69 A9,9 0 0,1 60,78 L40,78 A9,9 0 0,1 31,69 L31,37 A9,9 0 0,1 40,28 Z" />
+    </group>
+
+    <!-- 2. Front Pure White Flashcard (rotated +4 deg) -->
+    <group
+        android:pivotX="57"
+        android:pivotY="55"
+        android:rotation="4">
+        <!-- Soft subtle shadow behind front card -->
+        <path
+            android:fillColor="#28330000"
+            android:pathData="M47,32 L67,32 A9,9 0 0,1 76,41 L76,73 A9,9 0 0,1 67,82 L47,82 A9,9 0 0,1 38,73 L38,41 A9,9 0 0,1 47,32 Z" />
+
+        <!-- Pure white rounded flashcard -->
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M47,30 L67,30 A9,9 0 0,1 76,39 L76,71 A9,9 0 0,1 67,80 L47,80 A9,9 0 0,1 38,71 L38,39 A9,9 0 0,1 47,30 Z" />
+
+        <!-- 4-Point Spark in Center with Flame Orange-Red Gradient -->
+        <path
+            android:pathData="M57,42 L60.2,51.8 L70,55 L60.2,58.2 L57,68 L53.8,58.2 L44,55 L53.8,51.8 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:startX="44"
+                    android:startY="42"
+                    android:endX="70"
+                    android:endY="68"
+                    android:type="linear">
+                    <item android:offset="0.0" android:color="#FFFF3B30" />
+                    <item android:offset="1.0" android:color="#FFFF9500" />
+                </gradient>
+            </aapt:attr>
+        </path>
+    </group>
+
+    <!-- 3. Minimalist "BETA" Pill in Bottom Right -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M65,72 L87,72 A5,5 0 0,1 92,77 L92,83 A5,5 0 0,1 87,88 L65,88 A5,5 0 0,1 60,83 L60,77 A5,5 0 0,1 65,72 Z" />
+    <!-- B letter -->
+    <path
+        android:fillColor="#FFD70015"
+        android:pathData="M66,76 h3 a2,2 0 0,1 0,3 h-3 z M66,80 h3.5 a2,2 0 0,1 0,4 h-3.5 z" />
+    <!-- E letter -->
+    <path
+        android:fillColor="#FFD70015"
+        android:pathData="M73,76 h4 v1.5 h-2.5 v2 h2 v1.5 h-2 v2 h2.5 v1.5 h-4 z" />
+    <!-- T letter -->
+    <path
+        android:fillColor="#FFD70015"
+        android:pathData="M78.5,76 h5 v1.5 h-1.7 v7 h-1.6 v-7 h-1.7 z" />
+    <!-- A letter -->
+    <path
+        android:fillColor="#FFD70015"
+        android:pathData="M85,84.5 l1.8,-8.5 h1.6 l1.8,8.5 h-1.5 l-0.3,-1.7 h-1.6 l-0.3,1.7 z M87.1,81.5 h1.0 l-0.5,-3.2 z" />
+</vector>
