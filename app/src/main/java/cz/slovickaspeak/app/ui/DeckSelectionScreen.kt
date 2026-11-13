@@ -575,7 +575,11 @@ private fun WavingLanguageFlagBackdrop(
         label = "headerFlagCrossfade"
     ) { language ->
         Canvas(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    compositingStrategy = CompositingStrategy.Offscreen
+                }
         ) {
             val w = size.width
             val h = size.height
@@ -908,9 +912,10 @@ private fun WavingLanguageFlagBackdrop(
                 brush = Brush.verticalGradient(
                     colorStops = arrayOf(
                         0.0f to Color.Transparent,
-                        0.25f to Color.White.copy(alpha = if (dark) 0.85f else 0.35f),
-                        0.50f to Color.White.copy(alpha = if (dark) 1.0f else 0.50f),
-                        0.75f to Color.White.copy(alpha = if (dark) 0.85f else 0.35f),
+                        0.20f to Color.White.copy(alpha = 0.85f),
+                        0.40f to Color.White,
+                        0.60f to Color.White,
+                        0.80f to Color.White.copy(alpha = 0.85f),
                         1.0f to Color.Transparent
                     )
                 ),
@@ -920,9 +925,10 @@ private fun WavingLanguageFlagBackdrop(
                 brush = Brush.horizontalGradient(
                     colorStops = arrayOf(
                         0.0f to Color.Transparent,
-                        0.08f to Color.White.copy(alpha = if (dark) 0.72f else 0.40f),
-                        0.25f to Color.White.copy(alpha = if (dark) 1.0f else 0.60f),
-                        0.75f to Color.White.copy(alpha = if (dark) 0.88f else 0.60f),
+                        0.10f to Color.White.copy(alpha = 0.85f),
+                        0.25f to Color.White,
+                        0.75f to Color.White,
+                        0.90f to Color.White.copy(alpha = 0.85f),
                         1.0f to Color.Transparent
                     )
                 ),
@@ -946,25 +952,23 @@ private fun DeckHeaderRow(
             .heightIn(min = 56.dp),
         contentAlignment = Alignment.Center
     ) {
-        if (isDarkThemeActive) {
-            WavingLanguageFlagBackdrop(
-                selectedLanguage = selectedLanguage,
-                animateWave = animateWave,
-                modifier = Modifier
-                    .matchParentSize()
-                    .layout { measurable, constraints ->
-                        val extraW = 24.dp.roundToPx()
-                        val extraTop = 44.dp.roundToPx()
-                        val extraBottom = 46.dp.roundToPx()
-                        val expandedW = (constraints.maxWidth + extraW * 2).coerceAtLeast(1)
-                        val expandedH = (constraints.maxHeight + extraTop + extraBottom).coerceAtLeast(1)
-                        val placeable = measurable.measure(Constraints.fixed(expandedW, expandedH))
-                        layout(constraints.maxWidth, constraints.maxHeight) {
-                            placeable.place(-extraW, -extraTop)
-                        }
+        WavingLanguageFlagBackdrop(
+            selectedLanguage = selectedLanguage,
+            animateWave = animateWave,
+            modifier = Modifier
+                .matchParentSize()
+                .layout { measurable, constraints ->
+                    val extraW = 24.dp.roundToPx()
+                    val extraTop = 44.dp.roundToPx()
+                    val extraBottom = 46.dp.roundToPx()
+                    val expandedW = (constraints.maxWidth + extraW * 2).coerceAtLeast(1)
+                    val expandedH = (constraints.maxHeight + extraTop + extraBottom).coerceAtLeast(1)
+                    val placeable = measurable.measure(Constraints.fixed(expandedW, expandedH))
+                    layout(constraints.maxWidth, constraints.maxHeight) {
+                        placeable.place(-extraW, -extraTop)
                     }
-            )
-        }
+                }
+        )
 
         Row(
             modifier = Modifier
