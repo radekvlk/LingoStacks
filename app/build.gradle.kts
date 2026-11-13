@@ -13,8 +13,8 @@ android {
         applicationId = "cz.slovickaspeak.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 71
-        versionName = "1.6.47"
+        versionCode = 100
+        versionName = "1.0.0"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -35,7 +35,7 @@ android {
         create("beta") {
             dimension = "distribution"
             applicationIdSuffix = ".beta"
-            versionNameSuffix = "-beta5"
+            versionNameSuffix = "-beta"
             buildConfigField("Boolean", "IS_PLAY_STORE", "false")
             buildConfigField("Boolean", "IS_BETA", "true")
             buildConfigField("Boolean", "ENABLE_OTA_UPDATES", "true")
