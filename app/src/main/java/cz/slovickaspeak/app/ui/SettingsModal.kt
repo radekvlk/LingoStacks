@@ -2373,8 +2373,8 @@ fun OtaUpdateModalDialog(
                     }
                 }
 
-                val localizedChangelog = remember(release.changelog, strings.isCzech) {
-                    cz.slovickaspeak.app.data.OtaUpdater.extractLocalizedChangelog(release.changelog, strings.isCzech)
+                val localizedChangelog = remember(release.changelog, progressState.nativeLanguage) {
+                    cz.slovickaspeak.app.data.OtaUpdater.extractLocalizedChangelog(release.changelog, progressState.nativeLanguage)
                 }
                 if (localizedChangelog.isNotBlank()) {
                     Surface(

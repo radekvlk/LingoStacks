@@ -56,36 +56,57 @@ object OtaUpdater {
     }
 
     /**
-     * Extracts localized section from bilingual release notes marked with [CS] and [EN].
+     * Extracts localized section from multilingual release notes marked with [CS], [EN], [ES], [DE], [FR], [IT], [PT].
      */
-    fun extractLocalizedChangelog(rawBody: String, isCzech: Boolean): String {
+    fun extractLocalizedChangelog(
+        rawBody: String,
+        nativeLanguage: cz.slovickaspeak.app.model.LearningLanguage
+    ): String {
         val trimmed = rawBody.trim()
         if (trimmed.isEmpty()) return ""
 
-        val csPattern = Regex("(?s)\\[CS](.*?)(?=\\[EN]|\\z)")
-        val enPattern = Regex("(?s)\\[EN](.*?)(?=\\[CS]|\\z)")
-        val csMatch = csPattern.find(trimmed)?.groupValues?.getOrNull(1)?.trim()
-        val enMatch = enPattern.find(trimmed)?.groupValues?.getOrNull(1)?.trim()
-
-        val rawSelected = if (!csMatch.isNullOrBlank() || !enMatch.isNullOrBlank()) {
-            if (isCzech) {
-                csMatch.orEmpty().ifBlank { enMatch.orEmpty() }
-            } else {
-                enMatch.orEmpty().ifBlank { csMatch.orEmpty() }
-            }
-        } else {
-            trimmed
+        val tag = when (nativeLanguage) {
+            cz.slovickaspeak.app.model.LearningLanguage.CZECH -> "CS"
+            cz.slovickaspeak.app.model.LearningLanguage.ENGLISH -> "EN"
+            cz.slovickaspeak.app.model.LearningLanguage.SPANISH -> "ES"
+            cz.slovickaspeak.app.model.LearningLanguage.GERMAN -> "DE"
+            cz.slovickaspeak.app.model.LearningLanguage.FRENCH -> "FR"
+            cz.slovickaspeak.app.model.LearningLanguage.ITALIAN -> "IT"
+            cz.slovickaspeak.app.model.LearningLanguage.PORTUGUESE -> "PT"
         }
+
+        val allTags = listOf("CS", "EN", "ES", "DE", "FR", "IT", "PT")
+        fun extractSection(code: String): String? {
+            val otherTags = allTags.filter { it != code }.joinToString("|")
+            val pattern = Regex("(?s)\\[$code](.*?)(?=\\[(?:$otherTags)]|\\z)")
+            return pattern.find(trimmed)?.groupValues?.getOrNull(1)?.trim()
+        }
+
+        val requestedMatch = extractSection(tag)
+        val enMatch = if (tag != "EN") extractSection("EN") else null
+        val csMatch = if (tag != "CS") extractSection("CS") else null
+
+        val rawSelected = requestedMatch?.ifBlank { null }
+            ?: enMatch?.ifBlank { null }
+            ?: csMatch?.ifBlank { null }
+            ?: trimmed
 
         // Strip Markdown headings/bold markers so release notes read cleanly inside native Text
         return rawSelected.lines()
-            .filterNot { it.trim().startsWith("### ") }
+            .filterNot { it.trim().startsWith("### ") || it.trim().startsWith("# ") }
             .joinToString("\n") { line ->
                 line.replace("**", "")
                     .replace("`", "")
                     .replace(Regex("^\\s*-\\s+"), "• ")
             }
             .trim()
+    }
+
+    fun extractLocalizedChangelog(rawBody: String, isCzech: Boolean): String {
+        return extractLocalizedChangelog(
+            rawBody,
+            if (isCzech) cz.slovickaspeak.app.model.LearningLanguage.CZECH else cz.slovickaspeak.app.model.LearningLanguage.ENGLISH
+        )
     }
 
     /**
