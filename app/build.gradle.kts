@@ -7,12 +7,12 @@ plugins {
 
 android {
     namespace = "cz.slovickaspeak.app"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "cz.slovickaspeak.app"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 100
         versionName = "1.0.0"
 
