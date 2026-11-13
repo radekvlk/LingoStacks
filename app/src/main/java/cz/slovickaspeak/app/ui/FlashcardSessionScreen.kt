@@ -1635,38 +1635,37 @@ private fun AppleSessionTopBar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Spacer matching the top-right close button width so progress stays centered
-                Spacer(modifier = Modifier.size(32.dp))
-
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(
                         text = "${deck.emoji} ${if (strings.isCzech) deck.title else deck.titleEn}",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 13.5.sp,
+                        fontSize = 14.sp,
                         color = TextDark,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Text(
-                        text = strings.sessionMasteryProgress(
-                            masteredCount,
-                            sessionTargetCount,
-                            remainingCount
-                        ),
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 12.sp,
-                        color = if (remainingCount <= 0) AppleGreen else TextMuted
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = AppleBlue.copy(alpha = 0.12f)
+                    ) {
+                        Text(
+                            text = deck.level.label,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AppleBlue,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
                 }
 
                 // Close button moved to top-right
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
+                        .size(30.dp)
                         .clip(CircleShape)
                         .background(SurfaceBg)
                         .clickable { onCloseSession() },
@@ -1676,9 +1675,40 @@ private fun AppleSessionTopBar(
                         imageVector = Icons.Default.Close,
                         contentDescription = null,
                         tint = TextMuted,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                 }
+            }
+
+            // Dual Progress Metrics: Lesson progress on left, Daily limit progress on right
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (strings.isCzech) {
+                        if (remainingCount <= 0) "Lekce: $masteredCount / $sessionTargetCount • Dokončeno! 🎉"
+                        else "Lekce: $masteredCount / $sessionTargetCount (zbývá $remainingCount)"
+                    } else {
+                        if (remainingCount <= 0) "Lesson: $masteredCount / $sessionTargetCount • Done! 🎉"
+                        else "Lesson: $masteredCount / $sessionTargetCount ($remainingCount left)"
+                    },
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 11.5.sp,
+                    color = if (remainingCount <= 0) AppleGreen else TextDark
+                )
+
+                Text(
+                    text = if (strings.isCzech) {
+                        "🎯 Dnes: ${progressState.todayCompletedWords} / ${progressState.dailyGoalWords}"
+                    } else {
+                        "🎯 Today: ${progressState.todayCompletedWords} / ${progressState.dailyGoalWords}"
+                    },
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.5.sp,
+                    color = if (progressState.todayCompletedWords >= progressState.dailyGoalWords) AppleGreen else AppleBlue
+                )
             }
 
             // Session Progress Bar
@@ -2118,7 +2148,7 @@ private fun LiveSpeechBanner(
                     strings.bannerMicOff
                 !lastHeardText.isNullOrBlank() ->
                     strings.bannerHeard(lastHeardText)
-                isListening ->
+                micAutoEnabled ->
                     if (expectCzech) {
                         if (nativeLanguage == LearningLanguage.CZECH) strings.bannerListeningCzech
                         else strings.bannerListeningForLanguage(nativeLanguage)
@@ -2126,7 +2156,7 @@ private fun LiveSpeechBanner(
                         strings.bannerListeningForLanguage(language)
                     }
                 else ->
-                    strings.bannerMicReady
+                    strings.bannerMicOff
             }
 
             Text(
