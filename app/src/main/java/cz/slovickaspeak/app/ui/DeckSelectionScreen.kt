@@ -569,28 +569,24 @@ private fun WavingLanguageFlagBackdrop(
     Crossfade(
         targetState = selectedLanguage,
         animationSpec = tween(durationMillis = 420),
-        modifier = modifier.graphicsLayer {
-            compositingStrategy = CompositingStrategy.Offscreen
-        },
+        modifier = modifier,
         label = "headerFlagCrossfade"
     ) { language ->
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer {
-                    compositingStrategy = CompositingStrategy.Offscreen
-                }
+                .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
         ) {
             val w = size.width
             val h = size.height
             if (w <= 0f || h <= 0f) return@Canvas
 
             val dark = isDarkThemeActive
-            val whiteBeamAlpha = if (dark) 0.16f else 0.08f
-            val whiteCenterAlpha = if (dark) 0.15f else 0.10f
-            val ribbonGain = if (dark) 0.14f else 0.02f
+            val whiteBeamAlpha = if (dark) 0.16f else 0.44f
+            val whiteCenterAlpha = if (dark) 0.15f else 0.54f
+            val ribbonGain = if (dark) 0.14f else 0.10f
             val amp = (h * 0.068f).coerceAtLeast(3.dp.toPx())
-            val steps = 24
+            val steps = 28
 
             fun waveY(xFrac: Float, baseY: Float, phaseShift: Float = 0f): Float {
                 return baseY + sin(xFrac * 2f * PI.toFloat() * 1.45f - wavePhase + phaseShift) * amp
@@ -652,9 +648,9 @@ private fun WavingLanguageFlagBackdrop(
                     drawRect(
                         brush = Brush.linearGradient(
                             colors = listOf(
-                                ukBlue.copy(alpha = if (dark) 0.16f else 0.04f),
-                                ukBlue.copy(alpha = if (dark) 0.22f else 0.05f),
-                                ukBlue.copy(alpha = if (dark) 0.14f else 0.04f)
+                                ukBlue.copy(alpha = 0.16f),
+                                ukBlue.copy(alpha = 0.22f),
+                                ukBlue.copy(alpha = 0.14f)
                             ),
                             start = Offset(0f, waveY(0f, h * 0.15f)),
                             end = Offset(w, waveY(1f, h * 0.85f))
@@ -675,13 +671,13 @@ private fun WavingLanguageFlagBackdrop(
                         strokeWidth = h * 0.30f
                     )
                     drawLine(
-                        color = ukRed.copy(alpha = if (dark) 0.24f else 0.05f),
+                        color = ukRed.copy(alpha = if (dark) 0.24f else 0.17f),
                         start = Offset(0f, -h * 0.08f + diagShift),
                         end = Offset(w, h * 1.08f - diagShift),
                         strokeWidth = h * 0.12f
                     )
                     drawLine(
-                        color = ukRed.copy(alpha = if (dark) 0.24f else 0.05f),
+                        color = ukRed.copy(alpha = if (dark) 0.24f else 0.17f),
                         start = Offset(0f, h * 1.08f - diagShift),
                         end = Offset(w, -h * 0.08f + diagShift),
                         strokeWidth = h * 0.12f
@@ -697,11 +693,11 @@ private fun WavingLanguageFlagBackdrop(
                     )
                     drawPath(
                         path = horizontalWaveRibbon(0.41f, 0.59f, phaseShift = 0.25f),
-                        color = ukRed.copy(alpha = if (dark) 0.30f else 0.05f)
+                        color = ukRed.copy(alpha = if (dark) 0.30f else 0.22f)
                     )
                     drawPath(
                         path = verticalWaveRibbon(0.405f, 0.455f, tiltFrac = 0.03f, phaseShift = 0.45f),
-                        color = ukRed.copy(alpha = if (dark) 0.28f else 0.04f)
+                        color = ukRed.copy(alpha = if (dark) 0.28f else 0.20f)
                     )
                 }
 
@@ -713,26 +709,26 @@ private fun WavingLanguageFlagBackdrop(
                     drawRect(
                         brush = Brush.verticalGradient(
                             colorStops = arrayOf(
-                                0.0f to esRed.copy(alpha = if (dark) 0.28f else 0.05f),
-                                (0.26f + shift) to esRed.copy(alpha = if (dark) 0.24f else 0.04f),
-                                (0.36f + shift) to esGold.copy(alpha = if (dark) 0.26f else 0.06f),
-                                (0.64f - shift) to esGold.copy(alpha = if (dark) 0.28f else 0.06f),
-                                (0.74f - shift) to esRed.copy(alpha = if (dark) 0.24f else 0.04f),
-                                1.0f to esRed.copy(alpha = if (dark) 0.28f else 0.05f)
+                                0.0f to esRed.copy(alpha = if (dark) 0.28f else 0.22f),
+                                (0.26f + shift) to esRed.copy(alpha = if (dark) 0.24f else 0.18f),
+                                (0.36f + shift) to esGold.copy(alpha = if (dark) 0.26f else 0.30f),
+                                (0.64f - shift) to esGold.copy(alpha = if (dark) 0.28f else 0.32f),
+                                (0.74f - shift) to esRed.copy(alpha = if (dark) 0.24f else 0.18f),
+                                1.0f to esRed.copy(alpha = if (dark) 0.28f else 0.22f)
                             )
                         )
                     )
                     drawPath(
                         path = horizontalWaveRibbon(-0.08f, 0.29f, phaseShift = 0f),
-                        color = esRed.copy(alpha = ribbonGain + 0.02f)
+                        color = esRed.copy(alpha = ribbonGain + 0.04f)
                     )
                     drawPath(
                         path = horizontalWaveRibbon(0.28f, 0.72f, phaseShift = 0.3f),
-                        color = esGold.copy(alpha = ribbonGain + 0.03f)
+                        color = esGold.copy(alpha = ribbonGain + 0.08f)
                     )
                     drawPath(
                         path = horizontalWaveRibbon(0.71f, 1.08f, phaseShift = 0.6f),
-                        color = esRed.copy(alpha = ribbonGain + 0.02f)
+                        color = esRed.copy(alpha = ribbonGain + 0.04f)
                     )
                 }
 
@@ -745,26 +741,26 @@ private fun WavingLanguageFlagBackdrop(
                     drawRect(
                         brush = Brush.verticalGradient(
                             colorStops = arrayOf(
-                                0.0f to deBlack.copy(alpha = if (dark) 0.24f else 0.02f),
-                                (0.31f + shift) to deBlack.copy(alpha = if (dark) 0.20f else 0.02f),
-                                (0.40f + shift) to deRed.copy(alpha = if (dark) 0.28f else 0.05f),
-                                (0.63f - shift) to deRed.copy(alpha = if (dark) 0.28f else 0.05f),
-                                (0.72f - shift) to deGold.copy(alpha = if (dark) 0.26f else 0.06f),
-                                1.0f to deGold.copy(alpha = if (dark) 0.24f else 0.05f)
+                                0.0f to deBlack.copy(alpha = if (dark) 0.24f else 0.13f),
+                                (0.31f + shift) to deBlack.copy(alpha = if (dark) 0.20f else 0.12f),
+                                (0.40f + shift) to deRed.copy(alpha = if (dark) 0.28f else 0.22f),
+                                (0.63f - shift) to deRed.copy(alpha = if (dark) 0.28f else 0.22f),
+                                (0.72f - shift) to deGold.copy(alpha = if (dark) 0.26f else 0.32f),
+                                1.0f to deGold.copy(alpha = if (dark) 0.24f else 0.28f)
                             )
                         )
                     )
                     drawPath(
                         path = horizontalWaveRibbon(-0.08f, 0.34f, phaseShift = 0f),
-                        color = deBlack.copy(alpha = if (dark) 0.14f else 0.02f)
+                        color = deBlack.copy(alpha = if (dark) 0.14f else 0.08f)
                     )
                     drawPath(
                         path = horizontalWaveRibbon(0.33f, 0.67f, phaseShift = 0.35f),
-                        color = deRed.copy(alpha = ribbonGain + 0.02f)
+                        color = deRed.copy(alpha = ribbonGain + 0.08f)
                     )
                     drawPath(
                         path = horizontalWaveRibbon(0.66f, 1.08f, phaseShift = 0.7f),
-                        color = deGold.copy(alpha = ribbonGain + 0.03f)
+                        color = deGold.copy(alpha = ribbonGain + 0.10f)
                     )
                 }
 
@@ -776,12 +772,12 @@ private fun WavingLanguageFlagBackdrop(
                     drawRect(
                         brush = Brush.linearGradient(
                             colorStops = arrayOf(
-                                0.0f to frBlue.copy(alpha = if (dark) 0.32f else 0.05f),
-                                (0.31f + shift) to frBlue.copy(alpha = if (dark) 0.26f else 0.04f),
+                                0.0f to frBlue.copy(alpha = if (dark) 0.32f else 0.24f),
+                                (0.31f + shift) to frBlue.copy(alpha = if (dark) 0.26f else 0.19f),
                                 (0.43f + shift) to Color.White.copy(alpha = whiteCenterAlpha),
                                 (0.57f - shift) to Color.White.copy(alpha = whiteCenterAlpha),
-                                (0.69f - shift) to frRed.copy(alpha = if (dark) 0.26f else 0.04f),
-                                1.0f to frRed.copy(alpha = if (dark) 0.32f else 0.05f)
+                                (0.69f - shift) to frRed.copy(alpha = if (dark) 0.26f else 0.19f),
+                                1.0f to frRed.copy(alpha = if (dark) 0.32f else 0.24f)
                             ),
                             start = Offset(0f, waveY(0f, h * 0.30f)),
                             end = Offset(w, waveY(1f, h * 0.70f))
@@ -789,15 +785,15 @@ private fun WavingLanguageFlagBackdrop(
                     )
                     drawPath(
                         path = verticalWaveRibbon(-0.04f, 0.35f, tiltFrac = 0.06f, phaseShift = 0f),
-                        color = frBlue.copy(alpha = if (dark) 0.08f else 0.02f)
+                        color = frBlue.copy(alpha = 0.08f)
                     )
                     drawPath(
                         path = verticalWaveRibbon(0.33f, 0.67f, tiltFrac = 0.06f, phaseShift = 0.4f),
-                        color = Color.White.copy(alpha = if (dark) 0.08f else 0.04f)
+                        color = Color.White.copy(alpha = if (dark) 0.08f else 0.16f)
                     )
                     drawPath(
                         path = verticalWaveRibbon(0.65f, 1.04f, tiltFrac = 0.06f, phaseShift = 0.8f),
-                        color = frRed.copy(alpha = if (dark) 0.08f else 0.02f)
+                        color = frRed.copy(alpha = 0.08f)
                     )
                 }
 
@@ -809,12 +805,12 @@ private fun WavingLanguageFlagBackdrop(
                     drawRect(
                         brush = Brush.linearGradient(
                             colorStops = arrayOf(
-                                0.0f to itGreen.copy(alpha = if (dark) 0.30f else 0.05f),
-                                (0.31f + shift) to itGreen.copy(alpha = if (dark) 0.24f else 0.04f),
+                                0.0f to itGreen.copy(alpha = if (dark) 0.30f else 0.23f),
+                                (0.31f + shift) to itGreen.copy(alpha = if (dark) 0.24f else 0.18f),
                                 (0.43f + shift) to Color.White.copy(alpha = whiteCenterAlpha),
                                 (0.57f - shift) to Color.White.copy(alpha = whiteCenterAlpha),
-                                (0.69f - shift) to itRed.copy(alpha = if (dark) 0.26f else 0.04f),
-                                1.0f to itRed.copy(alpha = if (dark) 0.32f else 0.05f)
+                                (0.69f - shift) to itRed.copy(alpha = if (dark) 0.26f else 0.19f),
+                                1.0f to itRed.copy(alpha = if (dark) 0.32f else 0.24f)
                             ),
                             start = Offset(0f, waveY(0f, h * 0.30f)),
                             end = Offset(w, waveY(1f, h * 0.70f))
@@ -822,15 +818,15 @@ private fun WavingLanguageFlagBackdrop(
                     )
                     drawPath(
                         path = verticalWaveRibbon(-0.04f, 0.35f, tiltFrac = 0.06f, phaseShift = 0f),
-                        color = itGreen.copy(alpha = if (dark) 0.08f else 0.02f)
+                        color = itGreen.copy(alpha = 0.08f)
                     )
                     drawPath(
                         path = verticalWaveRibbon(0.33f, 0.67f, tiltFrac = 0.06f, phaseShift = 0.4f),
-                        color = Color.White.copy(alpha = if (dark) 0.08f else 0.04f)
+                        color = Color.White.copy(alpha = if (dark) 0.08f else 0.16f)
                     )
                     drawPath(
                         path = verticalWaveRibbon(0.65f, 1.04f, tiltFrac = 0.06f, phaseShift = 0.8f),
-                        color = itRed.copy(alpha = if (dark) 0.08f else 0.02f)
+                        color = itRed.copy(alpha = 0.08f)
                     )
                 }
 
@@ -843,10 +839,10 @@ private fun WavingLanguageFlagBackdrop(
                     drawRect(
                         brush = Brush.linearGradient(
                             colorStops = arrayOf(
-                                0.0f to ptGreen.copy(alpha = if (dark) 0.32f else 0.05f),
-                                (0.38f + shift) to ptGreen.copy(alpha = if (dark) 0.28f else 0.04f),
-                                (0.42f + shift) to ptRed.copy(alpha = if (dark) 0.28f else 0.04f),
-                                1.0f to ptRed.copy(alpha = if (dark) 0.34f else 0.05f)
+                                0.0f to ptGreen.copy(alpha = if (dark) 0.32f else 0.25f),
+                                (0.38f + shift) to ptGreen.copy(alpha = if (dark) 0.28f else 0.20f),
+                                (0.42f + shift) to ptRed.copy(alpha = if (dark) 0.28f else 0.20f),
+                                1.0f to ptRed.copy(alpha = if (dark) 0.34f else 0.26f)
                             ),
                             start = Offset(0f, waveY(0f, h * 0.30f)),
                             end = Offset(w, waveY(1f, h * 0.70f))
@@ -854,14 +850,14 @@ private fun WavingLanguageFlagBackdrop(
                     )
                     drawPath(
                         path = verticalWaveRibbon(-0.04f, 0.42f, tiltFrac = 0.06f, phaseShift = 0f),
-                        color = ptGreen.copy(alpha = if (dark) 0.08f else 0.02f)
+                        color = ptGreen.copy(alpha = 0.08f)
                     )
                     drawPath(
                         path = verticalWaveRibbon(0.38f, 1.04f, tiltFrac = 0.06f, phaseShift = 0.5f),
-                        color = ptRed.copy(alpha = if (dark) 0.08f else 0.02f)
+                        color = ptRed.copy(alpha = 0.08f)
                     )
                     drawCircle(
-                        color = ptYellow.copy(alpha = if (dark) 0.22f else 0.05f),
+                        color = ptYellow.copy(alpha = if (dark) 0.22f else 0.18f),
                         radius = h * 0.24f,
                         center = Offset(w * (0.40f + shift * 0.5f), waveY(0.40f, h * 0.50f))
                     )
@@ -873,8 +869,8 @@ private fun WavingLanguageFlagBackdrop(
                     drawRect(
                         brush = Brush.linearGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = if (dark) 0.18f else 0.06f),
-                                czRed.copy(alpha = if (dark) 0.25f else 0.05f)
+                                Color.White.copy(alpha = if (dark) 0.18f else 0.28f),
+                                czRed.copy(alpha = if (dark) 0.25f else 0.20f)
                             ),
                             start = Offset(0f, 0f),
                             end = Offset(0f, h)
@@ -887,13 +883,13 @@ private fun WavingLanguageFlagBackdrop(
                             lineTo(0f, h)
                             close()
                         },
-                        color = czBlue.copy(alpha = if (dark) 0.32f else 0.05f)
+                        color = czBlue.copy(alpha = if (dark) 0.32f else 0.24f)
                     )
                 }
             }
 
             // Moving diagonal silk-fold highlights (creates realistic 3D cloth wave shimmer)
-            val sheenMax = if (dark) 0.10f else 0.03f
+            val sheenMax = if (dark) 0.10f else 0.24f
             val sheenStops = Array(8) { idx ->
                 val f = idx / 7f
                 val crest = ((sin(f * 2f * PI.toFloat() * 1.45f - wavePhase) + 1f) * 0.5f)
@@ -912,10 +908,10 @@ private fun WavingLanguageFlagBackdrop(
                 brush = Brush.verticalGradient(
                     colorStops = arrayOf(
                         0.0f to Color.Transparent,
-                        0.20f to Color.White.copy(alpha = 0.85f),
+                        0.22f to Color.White.copy(alpha = 0.85f),
                         0.40f to Color.White,
-                        0.60f to Color.White,
-                        0.80f to Color.White.copy(alpha = 0.85f),
+                        0.58f to Color.White,
+                        0.80f to Color.White.copy(alpha = 0.45f),
                         1.0f to Color.Transparent
                     )
                 ),
@@ -925,10 +921,9 @@ private fun WavingLanguageFlagBackdrop(
                 brush = Brush.horizontalGradient(
                     colorStops = arrayOf(
                         0.0f to Color.Transparent,
-                        0.10f to Color.White.copy(alpha = 0.85f),
-                        0.25f to Color.White,
-                        0.75f to Color.White,
-                        0.90f to Color.White.copy(alpha = 0.85f),
+                        0.04f to Color.White.copy(alpha = 0.72f),
+                        0.18f to Color.White,
+                        0.86f to Color.White.copy(alpha = 0.88f),
                         1.0f to Color.Transparent
                     )
                 ),
