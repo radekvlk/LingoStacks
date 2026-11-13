@@ -23,13 +23,13 @@ Tento dokument obsahuje veškeré texty, grafické podklady a odpovědi na povin
   ```text
   Učte se cizí jazyky mluvením, ne pouhým klikáním! 
 
-  LingoStacks je moderní hlasová aplikace pro procvičování slovní zásoby a frází v angličtině, španělštině, němčině, francouzštině a italštině. Místo pasivního koukání na obrazovku vyslovujete překlady nahlas — aplikace váš hlas v reálném čase rozpozná, zkontroluje výslovnost a posune vás dál.
+  LingoStacks je moderní hlasová aplikace pro procvičování slovní zásoby a frází v angličtině, španělštině, němčině, francouzštině, italštině a portugalštině. Místo pasivního koukání na obrazovku vyslovujete překlady nahlas — aplikace váš hlas v reálném čase rozpozná, zkontroluje výslovnost a posune vás dál.
 
   HLAVNÍ VLASTNOSTI:
   🎙️ Mluvení v reálném čase — pokročilé rozpoznávání hlasu s tolerancí pro začátečníky.
   🧠 Chytré intervalové opakování (SRS) — těžší slova se vracejí častěji, snadná méně.
   🔊 Rodilá výslovnost — po každé odpovědi uslyšíte autentický přízvuk.
-  📚 8 200+ připravených slovíček a frází (od úrovně A1 až po C2) v 5 jazycích.
+  📚 9 900+ připravených slovíček a frází (od úrovně A1 až po C2) v 6 jazycích.
   ✍️ Vlastní balíčky — snadno si přidejte vlastní slovíčka ze školy či z práce.
   ☁️ Cloudová záloha — synchronizujte svůj pokrok přes Google účet.
   🏆 Žebříček — motivujte se v denním a týdenním srovnání s ostatními.
@@ -41,6 +41,7 @@ Tento dokument obsahuje veškeré texty, grafické podklady a odpovědi na povin
   • Němčina (A1 – B2)
   • Francouzština (A1 – B2)
   • Italština (A1 – B2)
+  • Portugalština (A1 – B2)
 
   Rozmluvte se ještě dnes s LingoStacks!
   ```
@@ -63,13 +64,13 @@ Tento dokument obsahuje veškeré texty, grafické podklady a odpovědi na povin
   ```text
   Learn languages by speaking, not just tapping!
 
-  LingoStacks is a voice-first flashcard app designed to build active speaking fluency in English, Spanish, German, French, and Italian. Instead of passive multiple-choice quizzes, you pronounce translations out loud — the app listens in real time, evaluates your pronunciation, and advances automatically.
+  LingoStacks is a voice-first flashcard app designed to build active speaking fluency in English, Spanish, German, French, Italian, and Portuguese. Instead of passive multiple-choice quizzes, you pronounce translations out loud — the app listens in real time, evaluates your pronunciation, and advances automatically.
 
   KEY FEATURES:
   🎙️ Real-Time Speech Recognition — practice speaking with instant voice feedback.
   🧠 Smart Spaced Repetition (SRS) — optimizes review intervals for permanent retention.
   🔊 Native Pronunciation — hear authentic speech playback for every single word.
-  📚 8,200+ curated words and phrases spanning CEFR levels A1 through C2.
+  📚 9,900+ curated words and phrases spanning CEFR levels A1 through C2 across 6 languages.
   ✍️ Custom Decks — create and practice your own vocabulary lists anytime.
   ☁️ Cloud Backup — seamlessly sync your study streak and progress with Google.
   🏆 Leaderboard — stay motivated with daily and weekly community milestones.
@@ -81,6 +82,7 @@ Tento dokument obsahuje veškeré texty, grafické podklady a odpovědi na povin
   • German (A1 – B2)
   • French (A1 – B2)
   • Italian (A1 – B2)
+  • Portuguese (A1 – B2)
 
   Start speaking with confidence today with LingoStacks!
   ```
