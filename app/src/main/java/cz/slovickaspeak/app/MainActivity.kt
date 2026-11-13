@@ -143,6 +143,7 @@ class MainActivity : ComponentActivity() {
                         SessionSummaryScreen(
                             deck = screen.deck,
                             results = screen.results,
+                            nativeLanguage = progressState.nativeLanguage,
                             onRetryMissed = { missedWords ->
                                 progressState.updateDailyGoal(missedWords.size)
                                 currentScreen = AppScreen.ActiveSession(

@@ -263,16 +263,16 @@ fun AppleFullSettingsDialog(
                             onSelectGoal = { progressState.updateDailyGoal(it) }
                         )
 
-                        AppearanceSectionCard(
-                            strings = strings,
-                            isDarkMode = progressState.isDarkMode,
-                            onSelectDarkMode = { progressState.updateDarkMode(it) }
-                        )
-
                         NativeLanguageSectionCard(
                             strings = strings,
                             nativeLanguage = progressState.nativeLanguage,
                             onSelectNativeLanguage = { progressState.updateNativeLanguage(it) }
+                        )
+
+                        AppearanceSectionCard(
+                            strings = strings,
+                            isDarkMode = progressState.isDarkMode,
+                            onSelectDarkMode = { progressState.updateDarkMode(it) }
                         )
 
                         CardExitSpeedSectionCard(

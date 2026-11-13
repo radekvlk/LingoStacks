@@ -208,6 +208,7 @@ class ProgressStateHolder(context: Context) {
             sysLang.startsWith("de") -> cz.slovickaspeak.app.model.LearningLanguage.GERMAN
             sysLang.startsWith("fr") -> cz.slovickaspeak.app.model.LearningLanguage.FRENCH
             sysLang.startsWith("it") -> cz.slovickaspeak.app.model.LearningLanguage.ITALIAN
+            sysLang.startsWith("pt") -> cz.slovickaspeak.app.model.LearningLanguage.PORTUGUESE
             else -> cz.slovickaspeak.app.model.LearningLanguage.ENGLISH
         }
     }

@@ -339,12 +339,15 @@ object OtaUpdater {
     ): Boolean {
         val codeMatch = Regex("versionCode\\s*[:=]\\s*(\\d+)", RegexOption.IGNORE_CASE).find(changelog)
         val remoteCode = codeMatch?.groupValues?.getOrNull(1)?.toIntOrNull()
-        if (remoteCode != null && currentVersionCode > 0 && remoteCode > currentVersionCode) {
-            return true
+        if (remoteCode != null && currentVersionCode > 0) {
+            return remoteCode > currentVersionCode
         }
 
-        val rParts = remoteVersion.split(".").map { it.filter(Char::isDigit).toIntOrNull() ?: 0 }
-        val cParts = currentVersion.split(".").map { it.filter(Char::isDigit).toIntOrNull() ?: 0 }
+        val rBase = remoteVersion.substringBefore("-").trim()
+        val cBase = currentVersion.substringBefore("-").trim()
+
+        val rParts = rBase.split(".").map { it.filter(Char::isDigit).toIntOrNull() ?: 0 }
+        val cParts = cBase.split(".").map { it.filter(Char::isDigit).toIntOrNull() ?: 0 }
         val maxLen = maxOf(rParts.size, cParts.size)
         for (i in 0 until maxLen) {
             val r = rParts.getOrElse(i) { 0 }
@@ -352,7 +355,10 @@ object OtaUpdater {
             if (r > c) return true
             if (r < c) return false
         }
-        return false
+
+        val rBeta = Regex("beta(\\d+)", RegexOption.IGNORE_CASE).find(remoteVersion)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
+        val cBeta = Regex("beta(\\d+)", RegexOption.IGNORE_CASE).find(currentVersion)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
+        return rBeta > cBeta
     }
 
     /**

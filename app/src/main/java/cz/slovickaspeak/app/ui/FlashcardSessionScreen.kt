@@ -113,7 +113,7 @@ fun FlashcardSessionScreen(
     onCloseSession: () -> Unit
 ) {
     val context = LocalContext.current
-    val strings = rememberAppStrings()
+    val strings = rememberAppStrings(progressState.nativeLanguage)
     val coroutineScope = rememberCoroutineScope()
     val dailyGoalWords = progressState.dailyGoalWords
 
@@ -565,7 +565,7 @@ fun FlashcardSessionScreen(
             emptyList()
         }
         // Predictive pre-warming of TTS engine so speech audio starts immediately with zero delay
-        controller.warmUpTts()
+        controller.warmUpTts(if (isReversedCard) progressState.nativeLanguage else deck.language)
         // Pre-cache next card's biasing & normalized strings ahead of time
         if (nextWord != null) {
             val nextReversed = when (studyDirection) {

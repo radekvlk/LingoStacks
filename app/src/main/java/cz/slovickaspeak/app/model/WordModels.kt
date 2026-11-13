@@ -64,20 +64,22 @@ enum class StudyDirection {
     FOREIGN_TO_NATIVE, // EN / ES -> CZ
     MIXED;             // Střídání obou směrů
 
-    fun shortLabel(language: LearningLanguage): String {
+    fun shortLabel(language: LearningLanguage, nativeLang: LearningLanguage = LearningLanguage.CZECH): String {
+        val natCode = nativeLang.code.uppercase()
         val foreignCode = language.code.uppercase()
         return when (this) {
-            NATIVE_TO_FOREIGN -> "CZ → $foreignCode"
-            FOREIGN_TO_NATIVE -> "$foreignCode → CZ"
-            MIXED -> "CZ ⇄ $foreignCode"
+            NATIVE_TO_FOREIGN -> "$natCode → $foreignCode"
+            FOREIGN_TO_NATIVE -> "$foreignCode → $natCode"
+            MIXED -> "$natCode ⇄ $foreignCode"
         }
     }
 
-    fun localizedDescription(isCzech: Boolean, language: LearningLanguage): String {
+    fun localizedDescription(isCzech: Boolean, language: LearningLanguage, nativeLang: LearningLanguage = LearningLanguage.CZECH): String {
+        val natCode = nativeLang.code.uppercase()
         val foreignCode = language.code.uppercase()
         return when (this) {
-            NATIVE_TO_FOREIGN -> "CZ → $foreignCode"
-            FOREIGN_TO_NATIVE -> "$foreignCode → CZ"
+            NATIVE_TO_FOREIGN -> "$natCode → $foreignCode"
+            FOREIGN_TO_NATIVE -> "$foreignCode → $natCode"
             MIXED -> if (isCzech) "Střídavě oba směry" else "Mixed both ways"
         }
     }

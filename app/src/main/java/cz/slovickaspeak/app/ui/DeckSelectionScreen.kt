@@ -1147,7 +1147,7 @@ private fun DeckGoalIndicatorCard(
                 // Study Direction Dropdown (CZ -> EN / EN -> CZ / Mix)
                 Box(modifier = Modifier.weight(1f)) {
                     FilterDropdownPill(
-                        label = studyDirection.shortLabel(selectedLanguage),
+                        label = studyDirection.shortLabel(selectedLanguage, nativeLanguage),
                         modifier = Modifier.fillMaxWidth(),
                         onClick = { directionDropdownExpanded = true }
                     )
@@ -1160,7 +1160,7 @@ private fun DeckGoalIndicatorCard(
                             DropdownMenuItem(
                                 text = {
                                     Text(
-                                        text = dir.localizedDescription(strings.isCzech, selectedLanguage),
+                                        text = dir.localizedDescription(strings.isCzech, selectedLanguage, nativeLanguage),
                                         fontWeight = if (studyDirection == dir) FontWeight.Bold else FontWeight.Medium,
                                         textAlign = TextAlign.Center,
                                         modifier = Modifier.fillMaxWidth()
@@ -2205,7 +2205,7 @@ private fun LandscapeLanguagesCard(
                     color = TextDark
                 )
                 Text(
-                    text = if (strings.isCzech) "5 jazyků • 8 270+ slov" else "5 languages • 8,270+ words",
+                    text = if (strings.isCzech) "6 jazyků • 10 000+ slov" else "6 languages • 10,000+ words",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
                     color = TextMuted

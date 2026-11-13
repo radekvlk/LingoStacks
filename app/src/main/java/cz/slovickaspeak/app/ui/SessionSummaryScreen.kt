@@ -33,11 +33,12 @@ import kotlin.math.roundToInt
 fun SessionSummaryScreen(
     deck: VocabDeck,
     results: List<CardAttemptResult>,
+    nativeLanguage: cz.slovickaspeak.app.model.LearningLanguage = cz.slovickaspeak.app.model.LearningLanguage.CZECH,
     onRetryMissed: (List<VocabWord>) -> Unit,
     onRestartAll: () -> Unit,
     onBackToDecks: () -> Unit
 ) {
-    val strings = rememberAppStrings()
+    val strings = rememberAppStrings(nativeLanguage)
     val total = results.size.coerceAtLeast(1)
     val correctCount = results.count { it.isCorrect }
     val spokenCount = results.count { it.method == AnswerMethod.SPOKEN_CORRECT }
