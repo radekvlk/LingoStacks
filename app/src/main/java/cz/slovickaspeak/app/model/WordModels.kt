@@ -161,4 +161,17 @@ object BuiltInVocabulary {
         LearningLanguage.PORTUGUESE -> portugueseDecks
         LearningLanguage.CZECH -> czechDecks
     }
+
+    /**
+     * Fast metadata lookup (wordsCount to decksCount) without forcing lazy instantiation of vocabulary decks in RAM.
+     */
+    fun catalogMetadata(language: LearningLanguage): Pair<Int, Int> = when (language) {
+        LearningLanguage.ENGLISH -> 1732 to 19
+        LearningLanguage.SPANISH -> 1674 to 19
+        LearningLanguage.GERMAN -> 1650 to 19
+        LearningLanguage.FRENCH -> 1630 to 19
+        LearningLanguage.ITALIAN -> 1586 to 19
+        LearningLanguage.PORTUGUESE -> 1710 to 19
+        LearningLanguage.CZECH -> 1732 to 19
+    }
 }

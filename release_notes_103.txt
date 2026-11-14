@@ -1,0 +1,14 @@
+<cs-CZ>
+• Bleskové vyhodnocení řeči: optimalizován model a zkrácena detekce ticha – vyhodnocení po vyslovení slova je nyní okamžité v obou směrech (CZ i EN)
+• Animace denního cíle: světelný efekt splnění denního cíle přejede po liště přesně jednou při každém návratu na hlavní obrazovku
+• Optimalizace RAM a startu: katalog slovíček se načítá na vyžádání (lazy loading), což výrazně snižuje paměťovou náročnost a zrychluje aplikaci
+• Komprese zálohy postupu: cloudová záloha nově využívá efektivní GZIP kompresi s úsporou přes 80 % přenesených dat
+• Úsporný režim mikrofonu: při 3 minutách nečinnosti v lekci se mikrofon automaticky uspí pro úsporu baterie; probudíte jej jediným klepnutím
+</cs-CZ>
+<en-GB>
+• Instant speech recognition: unified language model and reduced silence detection timeout – evaluation is now immediate in both directions (EN and CS)
+• Daily goal animation: completion shine effect sweeps cleanly across the progress bar once upon returning to the main screen
+• RAM & startup optimization: vocabulary catalog is now loaded on-demand, saving significant memory and speeding up the app
+• Cloud backup compression: progress backups are now compressed with GZIP, saving over 80% bandwidth on sync and restore
+• Battery-saving Smart Mic Sleep: microphone automatically sleeps after 3 minutes of inactivity in study session; wake up with a single tap
+</en-GB>

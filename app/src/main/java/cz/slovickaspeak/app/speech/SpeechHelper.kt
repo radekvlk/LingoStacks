@@ -2018,12 +2018,8 @@ class SpeechSessionController(
         }
 
         val biasList = currentTargetBiasStrings
-        val isShortTarget = !listenInNative && (biasList.firstOrNull()?.split(Regex("\\s+"))?.size ?: 1) <= 2
-        val languageModel = if (isShortTarget) {
-            RecognizerIntent.LANGUAGE_MODEL_WEB_SEARCH
-        } else {
-            RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
-        }
+        // Use FREE_FORM across all recognition passes for instantaneous streaming partials and minimal latency
+        val languageModel = RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
 
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, languageModel)
@@ -2039,15 +2035,15 @@ class SpeechSessionController(
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 10)
             putExtra(
                 RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS,
-                if (isShortTarget) 900L else 1200L
+                650L
             )
             putExtra(
                 RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS,
-                if (isShortTarget) 550L else 700L
+                380L
             )
             putExtra(
                 RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS,
-                if (isShortTarget) 750L else 900L
+                480L
             )
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && biasList.isNotEmpty()) {
                 putStringArrayListExtra(RecognizerIntent.EXTRA_BIASING_STRINGS, ArrayList(biasList.take(15)))

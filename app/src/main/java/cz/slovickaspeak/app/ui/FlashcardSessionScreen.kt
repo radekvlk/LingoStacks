@@ -195,9 +195,15 @@ fun FlashcardSessionScreen(
     var cardActiveTimestamp by remember(wordsToPractice) { mutableLongStateOf(SystemClock.uptimeMillis()) }
 
     val currentView = LocalView.current
+    var isMicSleepingForBattery by remember { mutableStateOf(false) }
+    var lastUserActivityMillis by remember { mutableLongStateOf(SystemClock.uptimeMillis()) }
     var screenAwakeTimeoutJob by remember { mutableStateOf<Job?>(null) }
 
     fun keepScreenActive() {
+        lastUserActivityMillis = SystemClock.uptimeMillis()
+        if (isMicSleepingForBattery) {
+            isMicSleepingForBattery = false
+        }
         try {
             currentView.keepScreenOn = true
         } catch (_: Throwable) {
@@ -208,6 +214,17 @@ fun FlashcardSessionScreen(
             try {
                 currentView.keepScreenOn = false
             } catch (_: Throwable) {
+            }
+        }
+    }
+
+    LaunchedEffect(isAppResumed, isMicSleepingForBattery) {
+        if (!isAppResumed) return@LaunchedEffect
+        while (true) {
+            delay(15_000L)
+            val idleTime = SystemClock.uptimeMillis() - lastUserActivityMillis
+            if (!isMicSleepingForBattery && idleTime >= 180_000L) { // 3 minutes without speech or touch -> battery save sleep
+                isMicSleepingForBattery = true
             }
         }
     }
@@ -543,11 +560,11 @@ fun FlashcardSessionScreen(
     }
 
     val isModalBlocking = progressState.showOtaDialog
-    val isMicVisualActive = micAutoEnabled && isAppResumed && !isModalBlocking
+    val isMicVisualActive = micAutoEnabled && isAppResumed && !isModalBlocking && !isMicSleepingForBattery
 
-    LaunchedEffect(hasMicPermission, isModalBlocking, isAppResumed, micAutoEnabled, speechControllerRef) {
+    LaunchedEffect(hasMicPermission, isModalBlocking, isAppResumed, micAutoEnabled, isMicSleepingForBattery, speechControllerRef) {
         val controller = speechControllerRef ?: return@LaunchedEffect
-        if (isModalBlocking || !isAppResumed || !hasMicPermission || !micAutoEnabled) {
+        if (isModalBlocking || !isAppResumed || !hasMicPermission || !micAutoEnabled || isMicSleepingForBattery) {
             rmsLevel = 0f
             controller.stopListening()
         } else {
@@ -741,9 +758,14 @@ fun FlashcardSessionScreen(
             }
         }
         val handleToggleMic: () -> Unit = {
+            keepScreenActive()
             if (!hasMicPermission) {
                 micAutoEnabled = true
                 onRequestMicPermission()
+            } else if (isMicSleepingForBattery) {
+                isMicSleepingForBattery = false
+                micAutoEnabled = true
+                speechControllerRef?.startContinuousListening()
             } else {
                 micAutoEnabled = !micAutoEnabled
                 if (micAutoEnabled) {
@@ -832,7 +854,9 @@ fun FlashcardSessionScreen(
                         rmsLevelProvider = { rmsLevel },
                         animateMicWaves = isMicVisualActive,
                         expectCzech = isReversedCard,
-                        nativeLanguage = progressState.nativeLanguage
+                        nativeLanguage = progressState.nativeLanguage,
+                        isMicSleeping = isMicSleepingForBattery,
+                        onWakeMic = { keepScreenActive() }
                     )
                 }
 
@@ -938,7 +962,9 @@ fun FlashcardSessionScreen(
                     rmsLevelProvider = { rmsLevel },
                     animateMicWaves = isMicVisualActive,
                     expectCzech = isReversedCard,
-                    nativeLanguage = progressState.nativeLanguage
+                    nativeLanguage = progressState.nativeLanguage,
+                    isMicSleeping = isMicSleepingForBattery,
+                    onWakeMic = { keepScreenActive() }
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -2087,7 +2113,9 @@ private fun LiveSpeechBanner(
     rmsLevelProvider: () -> Float = { rmsLevel },
     animateMicWaves: Boolean = micAutoEnabled,
     expectCzech: Boolean = false,
-    nativeLanguage: LearningLanguage = LearningLanguage.CZECH
+    nativeLanguage: LearningLanguage = LearningLanguage.CZECH,
+    isMicSleeping: Boolean = false,
+    onWakeMic: () -> Unit = {}
 ) {
     val bgColor by animateColorAsState(
         targetValue = when (feedbackState) {
@@ -2101,14 +2129,16 @@ private fun LiveSpeechBanner(
     val dotColor = when (feedbackState) {
         CardFeedbackState.SPOKEN_CORRECT, CardFeedbackState.SWIPED_CORRECT -> AppleGreen
         CardFeedbackState.SWIPED_WRONG, CardFeedbackState.SPOKEN_WRONG_FLASH -> AppleRed
-        CardFeedbackState.NEUTRAL -> if (micAutoEnabled) AppleGreen else TextMuted
+        CardFeedbackState.NEUTRAL -> if (micAutoEnabled && !isMicSleeping) AppleGreen else TextMuted
     }
 
     Surface(
         shape = RoundedCornerShape(50),
         color = bgColor,
         border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = isMicSleeping, onClick = onWakeMic)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
@@ -2123,7 +2153,7 @@ private fun LiveSpeechBanner(
             )
 
             // Dynamic Audio Waveform (Canvas GPU draw phase with zero measure/layout churn)
-            if (micAutoEnabled && isListening && feedbackState == CardFeedbackState.NEUTRAL) {
+            if (micAutoEnabled && isListening && feedbackState == CardFeedbackState.NEUTRAL && !isMicSleeping) {
                 Spacer(modifier = Modifier.width(8.dp))
                 AudioWaveVisualizer(
                     color = dotColor,
@@ -2135,6 +2165,9 @@ private fun LiveSpeechBanner(
             Spacer(modifier = Modifier.width(8.dp))
 
             val statusText = when {
+                isMicSleeping ->
+                    if (strings.isCzech) "🔋 Mikrofon pozastaven pro úsporu (klepněte pro probuzení)"
+                    else "🔋 Mic paused for battery saver (tap to wake)"
                 feedbackState == CardFeedbackState.SPOKEN_CORRECT ->
                     strings.bannerSpokenCorrect(lastHeardText ?: "")
                 feedbackState == CardFeedbackState.SPOKEN_WRONG_FLASH ->

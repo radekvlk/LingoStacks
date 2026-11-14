@@ -1,6 +1,10 @@
 package cz.slovickaspeak.app.ui
 
 import android.content.res.Configuration
+import android.os.SystemClock
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -1232,8 +1236,22 @@ private fun DeckGoalIndicatorCard(
                 prevGoalReached = isGoalReached
             }
 
+            val lifecycleOwner = LocalLifecycleOwner.current
+            var screenVisitEpoch by remember { mutableLongStateOf(SystemClock.uptimeMillis()) }
+            DisposableEffect(lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME) {
+                        screenVisitEpoch = SystemClock.uptimeMillis()
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
+            }
+
             val shimmerAnim = remember { Animatable(0f) }
-            LaunchedEffect(isGoalReached) {
+            LaunchedEffect(isGoalReached, screenVisitEpoch) {
                 if (isGoalReached) {
                     shimmerAnim.snapTo(0f)
                     shimmerAnim.animateTo(
@@ -1906,8 +1924,7 @@ fun InitialLanguageDialog(
                                         color = TextDark
                                     )
                                     val (wordCount, deckCount) = remember(lang) {
-                                        val decks = cz.slovickaspeak.app.model.BuiltInVocabulary.decksForLanguage(lang)
-                                        decks.sumOf { it.words.size } to decks.size
+                                        cz.slovickaspeak.app.model.BuiltInVocabulary.catalogMetadata(lang)
                                     }
                                     Text(
                                         text = if (strings.isCzech) {

@@ -581,7 +581,7 @@ class ProgressStateHolder(context: Context) {
     }
 
     private fun getActiveLanguageCatalogCount(): Int {
-        return BuiltInVocabulary.decksForLanguage(selectedLanguage).sumOf { it.words.size }
+        return BuiltInVocabulary.catalogMetadata(selectedLanguage).first
     }
 
     val dailyLeaderboard: List<FriendProgress>
@@ -1277,6 +1277,34 @@ class ProgressStateHolder(context: Context) {
         }
     }
 
+    private fun compressIfBeneficial(text: String): String {
+        if (text.length < 128) return text
+        return try {
+            val byteOut = java.io.ByteArrayOutputStream()
+            java.util.zip.GZIPOutputStream(byteOut).use { gz ->
+                gz.write(text.toByteArray(Charsets.UTF_8))
+            }
+            val compressedBytes = byteOut.toByteArray()
+            val b64 = android.util.Base64.encodeToString(compressedBytes, android.util.Base64.NO_WRAP)
+            if (b64.length < text.length) "gz:$b64" else text
+        } catch (_: Throwable) {
+            text
+        }
+    }
+
+    private fun decompressIfCompressed(data: String): String {
+        if (!data.startsWith("gz:")) return data
+        return try {
+            val b64 = data.removePrefix("gz:")
+            val compressedBytes = android.util.Base64.decode(b64, android.util.Base64.NO_WRAP)
+            java.util.zip.GZIPInputStream(java.io.ByteArrayInputStream(compressedBytes)).use { gz ->
+                gz.bufferedReader(Charsets.UTF_8).readText()
+            }
+        } catch (_: Throwable) {
+            data
+        }
+    }
+
     /**
      * Uploads a full cross-device backup (`user_backups/{uid}`) containing all 5 languages'
      * SRS memory, mastered/review word sets, weekly logs, lifetime totals, and app settings.
@@ -1296,16 +1324,21 @@ class ProgressStateHolder(context: Context) {
         if (!force && now - lastBackupPushMillis < 60_000L) return
         lastBackupPushMillis = now
 
-        val weeklySerialized = weeklyDailyStats.entries.joinToString("\n") { (d, p) ->
+        val weeklyRaw = weeklyDailyStats.entries.joinToString("\n") { (d, p) ->
             "$d|${p.first}|${p.second}"
         }.take(20000)
-        val srsSerialized = wordSrsMap.values.joinToString("\n") {
+        val srsRaw = wordSrsMap.values.joinToString("\n") {
             "${it.wordId}|${it.box}|${it.lapses}|${it.dueAtMillis}"
         }.take(600000)
-        val masteredSerialized = masteredWordIds.joinToString("\n").take(400000)
-        val reviewSerialized = needsReviewWordIds.joinToString("\n").take(200000)
+        val masteredRaw = masteredWordIds.joinToString("\n").take(400000)
+        val reviewRaw = needsReviewWordIds.joinToString("\n").take(200000)
         val rawLastStudy = prefs.getString("last_study_date", null).orEmpty()
         val safeLastStudy = if (Regex("^[0-9]{4}-[0-9]{2}-[0-9]{2}$").matches(rawLastStudy)) rawLastStudy else ""
+
+        val weeklySerialized = compressIfBeneficial(weeklyRaw)
+        val srsSerialized = compressIfBeneficial(srsRaw)
+        val masteredSerialized = compressIfBeneficial(masteredRaw)
+        val reviewSerialized = compressIfBeneficial(reviewRaw)
 
         val backupMap = hashMapOf<String, Any>(
             "uid" to uid,
@@ -1504,7 +1537,7 @@ class ProgressStateHolder(context: Context) {
         }
 
         // Merge weekly daily log
-        val remoteWeeklyRaw = doc.getString("weeklyDailyLog").orEmpty()
+        val remoteWeeklyRaw = decompressIfCompressed(doc.getString("weeklyDailyLog").orEmpty())
         val weekStart = currentWeekStartKey()
         remoteWeeklyRaw.split("\n").forEach { line ->
             val parts = line.split("|")
@@ -1520,18 +1553,18 @@ class ProgressStateHolder(context: Context) {
         }
         updateTodayInWeeklyLog()
 
-        // 3. Merge full SRS memory + mastered / needsReview sets across all 5 languages
-        val remoteMastered = doc.getString("masteredWordIds").orEmpty()
+        // 3. Merge full SRS memory + mastered / needsReview sets across all 6 languages
+        val remoteMastered = decompressIfCompressed(doc.getString("masteredWordIds").orEmpty())
             .split("\n").map { it.trim() }.filter { it.isNotEmpty() }
         masteredWordIds.addAll(remoteMastered)
 
-        val remoteNeedsReview = doc.getString("needsReviewWordIds").orEmpty()
+        val remoteNeedsReview = decompressIfCompressed(doc.getString("needsReviewWordIds").orEmpty())
             .split("\n").map { it.trim() }.filter { it.isNotEmpty() }
         if (isFreshLocal) {
             needsReviewWordIds.addAll(remoteNeedsReview)
         }
 
-        val remoteSrsRaw = doc.getString("wordSrsStats").orEmpty()
+        val remoteSrsRaw = decompressIfCompressed(doc.getString("wordSrsStats").orEmpty())
         remoteSrsRaw.split("\n").forEach { line ->
             val parts = line.split("|")
             if (parts.size >= 4) {
