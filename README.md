@@ -2,14 +2,14 @@
   🇬🇧 <strong>English</strong> | <a href="README.cs.md">🇨🇿 Česky</a>
 </p>
 
-# 🗣️ LingoStacks — Voice-First Flashcard Language Learning for Android
+# 🗣️ LingoStacks — Voice-First Multilingual Flashcards for Android
 
-A modern Android app in **Cupertino Glass** design for actively practicing **5 world languages** (English, Spanish, German, French, and Italian) using your voice, swipe gestures, and smart *Spaced Repetition*.
+A modern Android app in **Cupertino Glass** design for actively mastering **6 world languages** (English, Spanish, German, French, Italian, and Portuguese) from **any native language** using your voice, swipe gestures, and smart *Spaced Repetition*.
 
 <table>
   <tr>
     <td>
-      <h3>⬇️ Download & Try (Android 8.0+)</h3>
+      <h3>⬇️ Download & Try (Android 8.0–16 / API 26–36)</h3>
       <p>
         <a href="https://github.com/radekvlk/LingoStacks/releases/latest/download/LingoStacks.apk">
           <img src="https://img.shields.io/badge/Download_LingoStacks-.apk-0A84FF?style=for-the-badge&logo=android&logoColor=white" alt="Download LingoStacks APK" />
@@ -23,9 +23,10 @@ A modern Android app in **Cupertino Glass** design for actively practicing **5 w
       </p>
       <p>
         🌐 <strong>Project Website:</strong> <a href="https://radekvlk.github.io/LingoStacks/">radekvlk.github.io/LingoStacks</a><br/>
-        📦 <strong>All Releases:</strong> <a href="https://github.com/radekvlk/LingoStacks/releases/latest">GitHub Releases</a>
+        📦 <strong>All Releases:</strong> <a href="https://github.com/radekvlk/LingoStacks/releases/latest">GitHub Releases</a><br/>
+        📱 <strong>Google Play:</strong> In Closed Testing (v1.0.0, API 36)
       </p>
-      <p><sub>Scan the QR code with your phone to download the latest APK directly.</sub></p>
+      <p><sub>Scan the QR code with your phone camera to download the latest APK directly.</sub></p>
     </td>
     <td align="center" width="160">
       <img src="docs/qr_download.png" alt="QR code to download LingoStacks APK" width="136" />
@@ -43,53 +44,61 @@ A modern Android app in **Cupertino Glass** design for actively practicing **5 w
   <img src="docs/screenshots/01_home.png" alt="Home Screen" width="180" />
   <img src="docs/screenshots/02_flashcard.png" alt="Voice Practice & Memory Context" width="180" />
   <img src="docs/screenshots/03_flashcard_hint.png" alt="Translation Reveal & Pronunciation" width="180" />
-  <img src="docs/screenshots/04_settings.png" alt="Settings" width="180" />
+  <img src="docs/screenshots/04_settings.png" alt="Settings & Native Language Selection" width="180" />
   <img src="docs/screenshots/05_stats.png" alt="Statistics & Daily Leaderboard" width="180" />
 </p>
 
 ## ✨ Key Features
 
-- **🔄 Bidirectional Learning (`CZ ↔ EN/ES/DE/FR/IT` & `Mix`):**
-  - Quickly switch between **CZ → Foreign Language (active recall)**, **Foreign Language → CZ (passive comprehension)**, or **Mix of both directions** right from the symmetrical top bar (**Language • Direction • Level**) beneath a subtle waving flag of the selected language, as well as in Settings.
-  - In the reversed direction, the app displays the foreign word with pronunciation, reads it aloud automatically (`AUTO`), recognizes **Czech translations via `cs-CZ` speech recognition** (including synonyms and minor inflection differences), and stores **separate SRS intervals** for passive recall so active mastery stays unaffected.
-- **🎙️ Continuous Voice Recognition (`SpeechRecognizer`):**
-  - Speak the translation aloud — the app listens continuously in English, Spanish, German, French, Italian, and Czech (`cs-CZ`), applies language-specific phonetic tolerance in `WordMatcher`, evaluates answers instantly, plays native pronunciation (`TextToSpeech`), and advances smoothly to the next card.
-  - Real-time visual voice equalizer and automatic hiding/showing of the **Know / Don't Know** buttons with a *bounce* animation when the mic is muted.
-- **🃏 Smooth Swipe Cards & Smart Context:**
-  - Swipe **right (Know)** / **left (Don't Know)** with immediate smooth card dismissal and parallel pronunciation playback.
-  - Expandable hint with phonetic transcription, one-tap example sentence audio, and recent attempt history.
-- **📚 8,270+ Words & Phrases Across 95 Thematic Decks (A1–C2):**
-  - 🇬🇧 **English (1,430 items / 19 decks):** A1–C2 vocabulary, essential and advanced **irregular verbs** (3 forms), and high-frequency travel & conversational **phrases**.
-  - 🇪🇸 **Spanish (1,710 items / 19 decks):** A1–C2 vocabulary, **irregular verbs** (present & past *indefinido*), and everyday & conversational **phrases**.
-  - 🇩🇪 **German (1,710 items / 19 decks):** A1–C2 vocabulary with articles, **irregular verbs** (present & past / *Partizip II*), and travel & conversational **phrases**.
-  - 🇫🇷 **French (1,710 items / 19 decks):** A1–C2 vocabulary with articles, **irregular verbs** (*présent* & *passé composé*), and travel & conversational **phrases**.
-  - 🇮🇹 **Italian (1,710 items / 19 decks):** A1–C2 vocabulary with articles, **irregular verbs** (*presente* & *passato prossimo*), and travel & conversational **phrases**.
+- **🌍 Truly Global & Multilingual (Cross-Language Native Bridge):**
+  - Not limited to a single native language! Choose your **Native Base Language** from 7 options: **English, Spanish, German, French, Italian, Portuguese, or Czech**.
+  - Study any of the **6 target languages** with over **30 language combinations**. All prompts, card hints, example sentences, speech recognition listeners, and pronunciation engines dynamically adapt to your selected native-target pair.
+- **🔄 Bidirectional Learning (`Native ↔ Target` & `Mix`):**
+  - Quickly switch between **Native → Target (active recall)**, **Target → Native (passive comprehension & listening)**, or **Dynamic Mix** directly from the symmetrical top bar (**Language • Direction • Level**) beneath a waving flag of the target language, or in Settings.
+  - In passive mode (Target → Native), the app automatically reads the target word out loud (`AUTO`), listens for your spoken translation in your native language via localized speech recognition, and tracks **independent SRS intervals** so passive practice never distorts your active mastery score.
+- **🎙️ Continuous Voice-First Practice (`SpeechRecognizer`):**
+  - Speak your answers naturally — the app listens continuously across all supported languages, applies language-tailored phonetic tolerance in `WordMatcher` (handling diacritics, elisions, articles, and common synonyms), instantly verifies your answer, triggers native audio (`TextToSpeech`), and smoothly auto-advances to the next card.
+  - Real-time animated voice equalizer and automatic hiding/showing of **Know / Don't Know** swipe buttons with a smooth *bounce* animation when muting the microphone.
+- **📚 9,980+ Words & Phrases Across 114 Thematic Decks (A1–C2):**
+  - 🇬🇧 **English (1,430 items / 19 decks):** A1–C2 vocabulary, essential and advanced **irregular verbs** (all 3 forms), and conversational & travel **phrases**.
+  - 🇪🇸 **Spanish (1,710 items / 19 decks):** A1–C2 vocabulary, **irregular verbs** (*presente* & *indefinido*), and everyday & travel **phrases**.
+  - 🇩🇪 **German (1,710 items / 19 decks):** A1–C2 vocabulary with gender articles, **irregular verbs** (present & past / *Partizip II*), and conversational & travel **phrases**.
+  - 🇫🇷 **French (1,710 items / 19 decks):** A1–C2 vocabulary with gender articles, **irregular verbs** (*présent* & *passé composé*), and everyday & travel **phrases**.
+  - 🇮🇹 **Italian (1,710 items / 19 decks):** A1–C2 vocabulary with gender articles, **irregular verbs** (*presente* & *passato prossimo*), and conversational & travel **phrases**.
+  - 🇵🇹 **Portuguese (1,710 items / 19 decks):** A1–C2 vocabulary with gender articles, **irregular verbs** (*presente* & *pretérito perfeito*), and everyday & travel **phrases**.
+- **🃏 Fluid Swipe Cards & Context Hints:**
+  - Swipe **right (Know)** / **left (Don't Know)** with immediate card dismissal and simultaneous native audio playback.
+  - Expandable context drawer with phonetic transcription, tap-to-play example sentences, and recent trial history.
 - **🧠 Smart Spaced Repetition (Leitner + SM-2):**
-  - Unknown words and words answered with a hint automatically return at optimal intervals, tracked separately for active and passive learning directions.
-- **📱 Foldable Phone Optimization (Galaxy Z Fold):**
-  - Two-column landscape layout for comfortable use on large screens.
-- **🏆 Daily Goal, Streak & Online Leaderboard:**
-  - Automatic midnight daily goal reset, streak tracking, overall vocabulary progress, and a compact daily leaderboard with *bounce* player details.
-- **🚀 Unified GitHub OTA Updates (`release`):**
-  - Automatic update checks via **GitHub Releases**, one-tap in-app download of the optimized `release` APK (with bilingual changelog and Play Protect guidance), and full progress preservation thanks to a consistent signing key.
+  - Challenging words and cards answered with hints automatically resurface at scientifically calculated optimal intervals, tracked separately for active speaking and passive listening directions.
+- **☁️ Cloud Backup & Community Leaderboards:**
+  - One-tap **Google Sign-In** with secure Cloud Firestore backup. Never lose your learning streaks or SRS levels when switching phones.
+  - Daily and weekly global leaderboards with *bounce* profile cards to keep your motivation high.
+- **📱 Responsive & Foldable Phone Optimized:**
+  - Fully adaptive layouts, including dedicated two-column view for book-style foldables (e.g. Galaxy Z Fold, Pixel Fold) and tablets.
+- **🚀 Dual Distribution & GitHub In-App OTA Updates:**
+  - **Google Play Store:** Version 1.0.0 in Closed Testing.
+  - **GitHub Releases:** Instant direct APK download with background OTA update checks, one-tap in-app installation, and cryptographically verified APK signatures.
 
 ---
 
 ## ⬇️ Download & Installation (Android 8.0+)
 
-The latest **`LingoStacks.apk`** installer is always available in [**Releases**](https://github.com/radekvlk/LingoStacks/releases/latest).
-Subsequent updates are delivered OTA directly inside the app.
+The latest official release **`LingoStacks.apk`** is always available on [**GitHub Releases**](https://github.com/radekvlk/LingoStacks/releases/latest).
+Subsequent updates install seamlessly in-app via OTA.
 
 > [!NOTE]
-> **Google Play Protect Warning During Installation:** When sideloading an app outside Google Play, Android may show a warning *(“Harmful app blocked” / „Nebezpečná aplikace zablokována“)*. **There is nothing to worry about** — this notice appears automatically because the app uses the microphone for voice learning and direct GitHub OTA updates rather than Play Store distribution. The entire source code is publicly available right here in this repository. To continue, tap **More details → Install anyway**.
+> **Google Play Protect Notice During Direct Sideloading:** When sideloading an APK outside Google Play, Android may show a standard verification prompt *(“Harmful app blocked” / „Nebezpečná aplikace zablokována“)*. **There is no risk** — this prompt triggers routinely because the app requests microphone permissions for voice practice and installs OTA updates directly from GitHub. The full source code is open and verifiable right here in this repository. To proceed, tap **More details → Install anyway**.
 
 ---
 
-## 🛠️ Technical Information
+## 🛠️ Technical Overview
 
-- **Language & UI:** Kotlin, Jetpack Compose, Material 3
-- **Minimum Android:** Android 8.0 (API 26) • **Target SDK:** Android 15 (API 35)
-- **Permissions:** `RECORD_AUDIO` (voice practice), `INTERNET` (leaderboard sync & OTA), `REQUEST_INSTALL_PACKAGES` (direct OTA APK install)
+- **Language & Framework:** Kotlin 2.0+, Jetpack Compose, Material 3 (Cupertino Glass theme)
+- **Minimum Android:** Android 8.0 (API 26) • **Target SDK:** Android 16 (API 36)
+- **Architecture:** Clean Architecture + MVVM, StateFlow, Kotlin Coroutines, Room / SharedPreferences / Firebase Firestore
+- **Audio & Speech:** Android `SpeechRecognizer` (continuous loop with auto-restart), Android native `TextToSpeech` (with instant pre-caching)
+- **Permissions:** `RECORD_AUDIO` (voice recognition), `INTERNET` (cloud sync & leaderboards), `REQUEST_INSTALL_PACKAGES` (direct OTA updates)
 
 ---
 
@@ -97,4 +106,4 @@ Subsequent updates are delivered OTA directly inside the app.
 
 **© 2026 Radek Vlk — All Rights Reserved.**
 
-The source code is published strictly for inspection and security verification (*source-available*). Without prior written permission from the author, copying, modifying, redistributing, or publishing the code or any of its parts as your own or a derivative application is not permitted.
+The source code is published strictly for personal inspection, security verification, and evaluation (*source-available*). Without explicit prior written permission from the author, copying, modifying, redistributing, or publishing this code or derivative works thereof as your own application is strictly prohibited.

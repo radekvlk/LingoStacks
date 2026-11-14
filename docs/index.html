@@ -4,27 +4,27 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LingoStacks — Voice-First Vocabulary &amp; Flashcard App for Android</title>
-  <meta name="description" content="Practice 8,270+ words and phrases in English, Spanish, German, French, and Italian out loud with real-time speech recognition, swipe flashcards, and smart spaced repetition." />
-  <meta name="keywords" content="LingoStacks, Android vocabulary app, language learning, flashcards, speech recognition, spaced repetition, English, Spanish, German, French, Italian" />
+  <meta name="description" content="Practice 9,980+ words and phrases in English, Spanish, German, French, Italian, and Portuguese out loud with real-time speech recognition, swipe flashcards, and smart spaced repetition. Learn from any native language." />
+  <meta name="keywords" content="LingoStacks, Android vocabulary app, language learning, flashcards, speech recognition, spaced repetition, English, Spanish, German, French, Italian, Portuguese, multilingual flashcards" />
   <link rel="canonical" href="https://radekvlk.github.io/LingoStacks/" />
 
   <!-- Open Graph / Social Share Preview -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://radekvlk.github.io/LingoStacks/" />
   <meta property="og:title" content="LingoStacks — Learn Words Out Loud on Android" />
-  <meta property="og:description" content="Voice-first flashcards &amp; spaced repetition for 5 languages (EN, ES, DE, FR, IT). Free, no ads, with Google cloud backup &amp; daily leaderboard." />
+  <meta property="og:description" content="Voice-first flashcards &amp; spaced repetition for 6 languages (EN, ES, DE, FR, IT, PT) from any native language. Free, no ads, Google cloud backup &amp; leaderboard." />
   <meta property="og:image" content="https://radekvlk.github.io/LingoStacks/screenshots/01_home.png" />
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="LingoStacks — Learn Words Out Loud on Android" />
-  <meta name="twitter:description" content="Voice-first flashcards &amp; spaced repetition for 5 languages. Free &amp; ad-free Android APK." />
+  <meta name="twitter:description" content="Voice-first flashcards &amp; spaced repetition for 6 languages from any native language. Free &amp; ad-free Android app." />
   <meta name="twitter:image" content="https://radekvlk.github.io/LingoStacks/screenshots/01_home.png" />
 
   <style>
     :root {
       --bg: #f3f5f9;
-      --surface: rgba(255, 255, 255, 0.82);
+      --surface: rgba(255, 255, 255, 0.85);
       --border: rgba(255, 255, 255, 0.9);
       --shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
       --text: #111827;
@@ -70,6 +70,7 @@
       font-size: 13px;
       cursor: pointer;
       color: var(--muted);
+      transition: all 0.15s ease;
     }
     .lang-btn.active {
       background: #fff;
@@ -255,12 +256,16 @@
       <div>
         <div class="brand">
           <svg width="42" height="42" viewBox="0 0 42 42" fill="none" aria-hidden="true">
-            <rect x="4" y="6" width="22" height="30" rx="6" transform="rotate(-12 15 21)" fill="url(#g1)" opacity="0.45"/>
-            <rect x="13" y="6" width="22" height="30" rx="6" fill="#FFFFFF" stroke="#5856D6" stroke-width="1.6"/>
-            <path d="M24 14L25.8 19.2L31 21L25.8 22.8L24 28L22.2 22.8L17 21L22.2 19.2L24 14Z" fill="#0A84FF"/>
+            <rect x="4" y="6" width="22" height="30" rx="6" transform="rotate(-13 15 21)" fill="url(#g1)" opacity="0.45"/>
+            <rect x="13" y="6" width="22" height="30" rx="6" transform="rotate(4 24 21)" fill="#FFFFFF" stroke="#007AFF" stroke-width="1.6"/>
+            <path d="M24 14L25.8 19.2L31 21L25.8 22.8L24 28L22.2 22.8L17 21L22.2 19.2L24 14Z" fill="url(#g2)"/>
             <defs>
               <linearGradient id="g1" x1="4" y1="6" x2="26" y2="36" gradientUnits="userSpaceOnUse">
-                <stop stop-color="#0A84FF"/>
+                <stop stop-color="#00B4FF"/>
+                <stop offset="1" stop-color="#0066FF"/>
+              </linearGradient>
+              <linearGradient id="g2" x1="17" y1="14" x2="31" y2="28" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#007AFF"/>
                 <stop offset="1" stop-color="#5856D6"/>
               </linearGradient>
             </defs>
@@ -272,8 +277,8 @@
             data-en="Learn vocabulary out loud,<br/>not just with your eyes."></h1>
 
         <p class="lead"
-           data-cs="Hlasové procvičování, plynulé swipe kartičky a chytré opakování (SRS) pro <strong>angličtinu, španělštinu, němčinu, francouzštinu a italštinu</strong>. Zdarma, bez reklam a s automatickou zálohou přes Google účet."
-           data-en="Voice-first practice, smooth swipe flashcards, and smart spaced repetition (SRS) for <strong>English, Spanish, German, French, and Italian</strong>. Free, ad-free, with automatic Google cloud backup."></p>
+           data-cs="Hlasové procvičování, plynulé swipe kartičky a chytré intervalové opakování (SRS) pro <strong>angličtinu, španělštinu, němčinu, francouzštinu, italštinu a portugalštinu</strong> s podporou <strong>libovolného rodného jazyka</strong>. Zdarma, bez reklam a s cloudovou zálohou přes Google účet."
+           data-en="Voice-first practice, smooth swipe flashcards, and smart spaced repetition (SRS) for <strong>English, Spanish, German, French, Italian, and Portuguese</strong> with support for <strong>any native language</strong>. Free, ad-free, with automatic Google cloud backup."></p>
 
         <div class="cta-row">
           <a class="btn btn-primary" href="https://github.com/radekvlk/LingoStacks/releases/latest/download/LingoStacks.apk"
@@ -294,18 +299,19 @@
         </div>
 
         <div class="badges">
-          <span class="pill">📱 Android 8.0+</span>
+          <span class="pill">📱 Android 8.0+ (API 26–36)</span>
           <span class="pill" data-cs="🎙️ Rozpoznávání hlasu" data-en="🎙️ Speech Recognition"></span>
-          <span class="pill" data-cs="📚 8 270+ slovíček &amp; frází" data-en="📚 8,270+ Words &amp; Phrases"></span>
-          <span class="pill" data-cs="🔄 Obousměrně CZ ↔ EN/ES/DE/FR/IT" data-en="🔄 Bidirectional Practice"></span>
+          <span class="pill" data-cs="📚 9 980+ slovíček a frází (114 balíčků)" data-en="📚 9,980+ Words &amp; Phrases (114 Decks)"></span>
+          <span class="pill" data-cs="🌍 30+ jazykových kombinací" data-en="🌍 30+ Language Combinations"></span>
+          <span class="pill" data-cs="🔄 Učte se z libovolného rodného jazyka" data-en="🔄 Learn from Any Native Language"></span>
         </div>
       </div>
 
       <div class="qr-card">
         <img src="qr_download.png" alt="QR code to download LingoStacks APK" />
         <strong data-cs="Stáhnout do telefonu" data-en="Scan to Download"></strong>
-        <small data-cs="Naskenujte QR kód foťákem a nainstalujte nejnovější APK."
-               data-en="Point your phone camera to install the latest APK."></small>
+        <small data-cs="Naskenujte QR kód foťákem a nainstalujte nejnovější APK s automatickými OTA aktualizacemi."
+               data-en="Point your phone camera to install the latest APK with seamless in-app OTA updates."></small>
       </div>
     </section>
 
@@ -322,30 +328,45 @@
     <section class="grid">
       <div class="card">
         <h3 data-cs="🎙️ Mluvení v reálném čase" data-en="🎙️ Real-Time Voice Practice"></h3>
-        <p data-cs="Vyslovte překlad nahlas — aplikace ho okamžitě vyhodnotí s fonetickou tolerancí, přehraje rodilou výslovnost a posune vás na další kartu."
+        <p data-cs="Vyslovte překlad nahlas — aplikace ho okamžitě vyhodnotí s fonetickou tolerancí, přehraje autentickou rodilou výslovnost a plynule posune kartu."
            data-en="Speak the translation out loud — the app evaluates your answer with phonetic tolerance, plays native pronunciation, and advances automatically."></p>
       </div>
       <div class="card">
-        <h3 data-cs="🧠 Chytré opakování (SRS)" data-en="🧠 Smart Spaced Repetition"></h3>
-        <p data-cs="Těžší slovíčka se automaticky vrací v optimálních intervalech (zvlášť pro aktivní i pasivní směr učení), takže neztrácíte čas tím, co už umíte."
-           data-en="Harder words automatically return at optimal intervals (separately for active and passive recall), so you focus only on what needs practice."></p>
+        <h3 data-cs="🧠 Chytré intervalové opakování (SRS)" data-en="🧠 Smart Spaced Repetition (SRS)"></h3>
+        <p data-cs="Těžší slovíčka se automaticky vrací v optimálních intervalech (zvlášť pro aktivní mluvení i pasivní poslech), takže neztrácíte čas tím, co už bezpečně umíte."
+           data-en="Challenging words automatically return at optimal intervals (separately for active speaking and passive recall), maximizing long-term memory retention."></p>
       </div>
       <div class="card">
-        <h3 data-cs="☁️ Záloha a žebříček" data-en="☁️ Cloud Backup &amp; Leaderboard"></h3>
-        <p data-cs="Přihlaste se Google účtem pro automatickou zálohu pokroku mezi zařízeními a porovnání v denním i týdenním žebříčku."
-           data-en="Sign in with Google to automatically sync your progress across devices and compete on the daily and weekly leaderboard."></p>
+        <h3 data-cs="🌍 Globální multijazyčná podpora" data-en="🌍 Global Multilingual Learning"></h3>
+        <p data-cs="Aplikace není jen pro české uživatele. Zvolte si svůj rodný jazyk (čeština, angličtina, španělština, němčina, francouzština, italština, portugalština) a učte se jakýkoliv jiný cizí jazyk s automaticky lokalizovanými zadáními i rozpoznáváním řeči."
+           data-en="Not limited to a single language pair! Select your native language (English, Spanish, German, French, Italian, Portuguese, or Czech) and study any target language with localized prompts and continuous speech recognition."></p>
+      </div>
+      <div class="card">
+        <h3 data-cs="🔄 Obousměrný trénink &amp; Mix" data-en="🔄 Bidirectional Recall &amp; Mix"></h3>
+        <p data-cs="Procvičujte aktivní vybavení (Rodný ➔ Cizí), pasivní porozumění (Cizí ➔ Rodný) s automatickým předčítáním výslovnosti, nebo dynamický Mix obou směrů."
+           data-en="Master active recall (Native ➔ Target), listening comprehension (Target ➔ Native) with automated native playback, or a dynamic Mix of both directions."></p>
+      </div>
+      <div class="card">
+        <h3 data-cs="☁️ Cloudová záloha &amp; Žebříček" data-en="☁️ Cloud Backup &amp; Leaderboards"></h3>
+        <p data-cs="Přihlaste se Google účtem pro bezproblémovou synchronizaci postupu mezi všemi vašimi zařízeními a zdravé porovnání v denním i týdenním žebříčku komunity."
+           data-en="Sign in with Google to effortlessly sync your study progress across all your devices and stay motivated on daily and weekly community leaderboards."></p>
+      </div>
+      <div class="card">
+        <h3 data-cs="🚫 100% Zdarma &amp; Bez reklam" data-en="🚫 100% Free &amp; Ad-Free"></h3>
+        <p data-cs="Žádné otravné reklamy, žádná placená předplatná. Čisté, elegantní Cupertino Glass rozhraní navržené pro maximální soustředění na učení."
+           data-en="Zero ads, no paywalls, and no subscription traps. A clean, distraction-free Cupertino Glass interface built entirely for focused language learning."></p>
       </div>
     </section>
 
-    <h2 data-cs="Jak aplikaci nainstalovat (30 sekund)" data-en="How to Install (30 seconds)"></h2>
+    <h2 data-cs="Dostupnost &amp; Instalace" data-en="Availability &amp; Installation"></h2>
     <section class="install-box">
       <ol>
-        <li data-cs="Klepněte na <strong>Stáhnout LingoStacks (.apk)</strong> nebo naskenujte QR kód výše."
-            data-en="Tap <strong>Download LingoStacks (.apk)</strong> or scan the QR code above."></li>
-        <li data-cs="Otevřete stažený soubor a potvrďte instalaci aplikace."
-            data-en="Open the downloaded APK file and confirm installation."></li>
-        <li data-cs="Pokud Android zobrazí okno <em>Google Play Protect („Nebezpečná aplikace zablokována“)</em> — objevuje se automaticky u aplikací mimo Obchod Play — klepněte na <strong>Více informací → Přesto nainstalovat</strong>. Další aktualizace už probíhají automaticky přímo uvnitř aplikace."
-            data-en="If Android shows a <em>Google Play Protect</em> prompt (standard for apps installed outside Google Play), tap <strong>More details → Install anyway</strong>. Future updates install seamlessly inside the app via GitHub OTA."></li>
+        <li data-cs="<strong>Google Play:</strong> Verze 1.0.0 (API 36) je v procesu uzavřeného testování a brzy bude k dispozici přímo v obchodě Google Play."
+            data-en="<strong>Google Play:</strong> Version 1.0.0 (targeting Android 16 / API 36) is currently in Closed Testing and will be available on Google Play."></li>
+        <li data-cs="<strong>Přímé stažení (GitHub):</strong> Klepněte na <strong>Stáhnout LingoStacks (.apk)</strong> nebo naskenujte QR kód výše a nainstalujte aplikaci. Všechny budoucí aktualizace se stahují automaticky přímo v aplikaci (OTA)."
+            data-en="<strong>Direct Download (GitHub):</strong> Tap <strong>Download LingoStacks (.apk)</strong> or scan the QR code above. Subsequent updates are delivered seamlessly in-app via OTA."></li>
+        <li data-cs="Pokud Android zobrazí hlášení <em>Google Play Protect („Nebezpečná aplikace zablokována“)</em> — objevuje se standardně u všech aplikací instalovaných mimo Obchod Play — klepněte na <strong>Více informací → Přesto nainstalovat</strong>. Celý zdrojový kód aplikace je veřejně auditovatelný na GitHubu."
+            data-en="If Android shows a <em>Google Play Protect</em> prompt (standard for apps sideloaded outside the store), tap <strong>More details → Install anyway</strong>. The entire source code is fully transparent and source-available on GitHub."></li>
       </ol>
     </section>
 
