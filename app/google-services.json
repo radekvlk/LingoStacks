@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "452987963824-q3muo32ej2vfhkri8do0dmjg488s099i.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "cz.slovickaspeak.app",
+            "certificate_hash": "8fedcb435d386acdce472e9ba2a63af50574955a"
+          }
+        },
+        {
           "client_id": "452987963824-q6b8grdjeo14i4k5j3kd7qkuk8b4q4eg.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
