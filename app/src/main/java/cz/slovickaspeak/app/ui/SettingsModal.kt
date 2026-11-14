@@ -2050,6 +2050,24 @@ private fun GoogleAccountSectionCard(
                     )
                 }
 
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                ) {
+                    Text(text = "☁️", fontSize = 11.sp)
+                    Text(
+                        text = if (strings.isCzech) {
+                            "Tato záloha nezabírá žádné místo na vašem Google účtu ani Disku."
+                        } else {
+                            "This backup does not take up any space on your Google account or Google Drive."
+                        },
+                        fontSize = 11.sp,
+                        color = TextMuted,
+                        lineHeight = 14.sp
+                    )
+                }
+
                 if (showEmailPrompt) {
                     Surface(
                         shape = RoundedCornerShape(14.dp),
@@ -2190,6 +2208,16 @@ private fun GoogleAccountSectionCard(
                                     color = if (fullBackupActive) AppleGreenDark else AppleOrange
                                 )
                                 if (!fullBackupActive) {
+                                    Text(
+                                        text = if (strings.isCzech) {
+                                            "ℹ️ Tato záloha nezabírá žádné místo na vašem Google účtu ani Disku."
+                                        } else {
+                                            "ℹ️ This backup does not take up any space on your Google account or Google Drive."
+                                        },
+                                        fontSize = 11.sp,
+                                        color = TextMuted,
+                                        lineHeight = 14.sp
+                                    )
                                     OutlinedButton(
                                         onClick = onStartGoogleSignIn,
                                         modifier = Modifier.fillMaxWidth(),
@@ -2205,6 +2233,25 @@ private fun GoogleAccountSectionCard(
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.SemiBold,
                                             color = AppleBlue
+                                        )
+                                    }
+                                } else {
+                                    OutlinedButton(
+                                        onClick = { progressState.pullAndMergeCloudBackup(pushMergedBack = true) },
+                                        enabled = !syncingBackup,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(10.dp),
+                                        border = BorderStroke(1.dp, AppleGreen.copy(alpha = 0.45f))
+                                    ) {
+                                        Text(
+                                            text = if (strings.isCzech) {
+                                                if (syncingBackup) "⏳ Stahuji zálohu z cloudu..." else "🔄 Obnovit data ze zálohy cloudu"
+                                            } else {
+                                                if (syncingBackup) "⏳ Downloading backup..." else "🔄 Restore from cloud backup"
+                                            },
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = if (syncingBackup) TextMuted else AppleGreenDark
                                         )
                                     }
                                 }

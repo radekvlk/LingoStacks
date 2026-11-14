@@ -2,6 +2,7 @@ package cz.slovickaspeak.app.ui
 
 import android.content.res.Configuration
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -1231,20 +1232,15 @@ private fun DeckGoalIndicatorCard(
                 prevGoalReached = isGoalReached
             }
 
-            val shimmerSweep: Float = if (isGoalReached) {
-                val infiniteTransition = rememberInfiniteTransition(label = "goalShimmerTransition")
-                val sweep by infiniteTransition.animateFloat(
-                    initialValue = -0.6f,
-                    targetValue = 1.6f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(durationMillis = 2200, easing = LinearEasing),
-                        repeatMode = RepeatMode.Restart
-                    ),
-                    label = "goalShimmerSweep"
-                )
-                sweep
-            } else {
-                -1f
+            val shimmerAnim = remember { Animatable(0f) }
+            LaunchedEffect(isGoalReached) {
+                if (isGoalReached) {
+                    shimmerAnim.snapTo(0f)
+                    shimmerAnim.animateTo(
+                        targetValue = 1f,
+                        animationSpec = tween(durationMillis = 1800, easing = FastOutSlowInEasing)
+                    )
+                }
             }
 
             val remaining = (dailyGoalWords - completedTodayWords).coerceAtLeast(0)
@@ -1314,17 +1310,32 @@ private fun DeckGoalIndicatorCard(
                     )
                 }
 
-                Box(
+                BoxWithConstraints(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(13.dp)
                         .clip(RoundedCornerShape(50))
                         .background(SurfaceBg)
                 ) {
+                    val barWidthPx = constraints.maxWidth.toFloat().coerceAtLeast(1f)
+                    val activeFraction = goalProgressFraction.coerceIn(0f, 1f)
+                    val activeWidthPx = barWidthPx * activeFraction
+                    val bandWidth = (barWidthPx * 0.35f).coerceIn(180f, 700f)
+
+                    val isAnimating = shimmerAnim.value in 0.001f..0.999f
+                    val sweepCenter = if (isAnimating) {
+                        val totalDistance = activeWidthPx + (2f * bandWidth)
+                        -bandWidth + (shimmerAnim.value * totalDistance)
+                    } else {
+                        0f
+                    }
+                    val gradientStartX = if (isAnimating) sweepCenter - (bandWidth / 2f) else 0f
+                    val gradientEndX = if (isAnimating) sweepCenter + (bandWidth / 2f) else activeWidthPx.coerceAtLeast(1f)
+
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
-                            .fillMaxWidth(goalProgressFraction.coerceIn(0f, 1f))
+                            .fillMaxWidth(activeFraction)
                             .clip(RoundedCornerShape(50))
                             .background(
                                 when {
@@ -1336,8 +1347,8 @@ private fun DeckGoalIndicatorCard(
                                                 AppleGreen,
                                                 AppleGreenDark
                                             ),
-                                            startX = shimmerSweep * 500f,
-                                            endX = shimmerSweep * 500f + 350f
+                                            startX = gradientStartX,
+                                            endX = gradientEndX
                                         )
                                     }
                                     isGoalReached -> {
@@ -1348,8 +1359,8 @@ private fun DeckGoalIndicatorCard(
                                                 Color(0xFFA5D6A7),
                                                 AppleGreen
                                             ),
-                                            startX = shimmerSweep * 500f,
-                                            endX = shimmerSweep * 500f + 350f
+                                            startX = gradientStartX,
+                                            endX = gradientEndX
                                         )
                                     }
                                     else -> {

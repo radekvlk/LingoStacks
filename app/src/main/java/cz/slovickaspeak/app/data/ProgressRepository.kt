@@ -654,6 +654,22 @@ class ProgressStateHolder(context: Context) {
 
     init {
         ioExecutor.execute { OtaUpdater.cleanupCachedUpdates(appContext) }
+        try {
+            FirebaseAuth.getInstance().addAuthStateListener { auth ->
+                val user = auth.currentUser
+                val isNonAnon = user != null && !user.isAnonymous
+                isFullCloudBackupActive = isNonAnon
+                if (isNonAnon && user != null) {
+                    if (initialBackupSyncDoneForUid != user.uid) {
+                        pullAndMergeCloudBackup(pushMergedBack = true) {
+                            pushMyProgressToCloud(force = false)
+                            refreshFromCloud()
+                        }
+                    }
+                }
+            }
+        } catch (_: Throwable) {
+        }
         if (isFullCloudBackupActive) {
             pullAndMergeCloudBackup(pushMergedBack = true)
         }
@@ -1154,6 +1170,13 @@ class ProgressStateHolder(context: Context) {
                 onResult(current.uid, null)
                 return
             }
+            // If the user has a saved Google account, never demote them to anonymous!
+            // Wait for Google Auth restore or trigger Google credential sign-in.
+            if (googleUser != null) {
+                // Return null with no error so caller doesn't overwrite with anon data
+                onResult(null, null)
+                return
+            }
             val task = synchronized(authLock) {
                 auth.currentUser?.let { existing ->
                     onResult(existing.uid, null)
@@ -1355,10 +1378,9 @@ class ProgressStateHolder(context: Context) {
             .addOnSuccessListener { doc ->
                 try {
                     if (doc.exists()) {
-                        val isFreshLocal = totalAttempts == 0 &&
+                        val isFreshLocal = (totalAttempts == 0 &&
                             wordSrsMap.isEmpty() &&
-                            masteredWordIds.isEmpty() &&
-                            needsReviewWordIds.isEmpty()
+                            masteredWordIds.isEmpty()) || selectedCefrLevel == null
                         mergeAndApplyCloudBackup(doc, isFreshLocal)
                         initialBackupSyncDoneForUid = uid
                         if (!isFreshLocal && pushMergedBack) {
@@ -1366,9 +1388,9 @@ class ProgressStateHolder(context: Context) {
                         }
                         lastSyncOnlineOk = true
                         lastSyncStatus = if (isCzechLocale()) {
-                            "Záloha účtu obnovena ✓"
+                            "Záloha účtu obnovena ✓ (${masteredWordIds.size} slov)"
                         } else {
-                            "Account backup synced ✓"
+                            "Account backup synced ✓ (${masteredWordIds.size} words)"
                         }
                     } else {
                         initialBackupSyncDoneForUid = uid
