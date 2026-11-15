@@ -1131,18 +1131,18 @@ private fun FilterDropdownPill(
     var fontSizeSp by remember(label, screenWidthDp) { mutableFloatStateOf(12f) }
 
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = CircleShape,
         color = SurfaceBg,
         border = BorderStroke(0.75.dp, CardBorderGray.copy(alpha = 0.85f)),
         modifier = modifier
             .height(36.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(CircleShape)
             .clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 6.dp),
+                .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
         ) {
@@ -1186,7 +1186,7 @@ private fun ModernDropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismissRequest,
         offset = offset,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(20.dp),
         containerColor = Color.White,
         tonalElevation = 0.dp,
         shadowElevation = 8.dp,
@@ -1271,12 +1271,12 @@ private fun DeckGoalIndicatorCard(
     var directionDropdownExpanded by remember { mutableStateOf(false) }
 
     Surface(
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(26.dp),
         color = CardSurface,
         border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(6.dp, RoundedCornerShape(22.dp), spotColor = Color.Black.copy(alpha = 0.05f))
+            .shadow(6.dp, RoundedCornerShape(26.dp), spotColor = Color.Black.copy(alpha = 0.05f))
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
@@ -1424,7 +1424,7 @@ private fun DeckGoalIndicatorCard(
 
             // Dynamic Island Capsule for Daily Goal & Streak
             Surface(
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(20.dp),
                 color = SurfaceBg,
                 border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.5f)),
                 modifier = Modifier
@@ -1748,13 +1748,13 @@ private fun DeckCard(
     val percentInt = (progressFraction * 100f).toInt()
 
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(24.dp),
         color = CardSurface,
         border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.45f)),
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(4.dp, RoundedCornerShape(20.dp), spotColor = Color.Black.copy(alpha = 0.04f))
-            .clip(RoundedCornerShape(20.dp))
+            .shadow(5.dp, RoundedCornerShape(24.dp), spotColor = Color.Black.copy(alpha = 0.04f))
+            .clip(RoundedCornerShape(24.dp))
             .clickable(onClick = onClick)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -1765,11 +1765,11 @@ private fun DeckCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // Sleek squircle vector icon container
+                // Sleek circular vector icon container
                 Box(
                     modifier = Modifier
                         .size(52.dp)
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(CircleShape)
                         .background(levelColor.copy(alpha = 0.12f)),
                     contentAlignment = Alignment.Center
                 ) {
@@ -1786,7 +1786,7 @@ private fun DeckCard(
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Surface(
-                            shape = RoundedCornerShape(6.dp),
+                            shape = CircleShape,
                             color = levelColor.copy(alpha = 0.14f)
                         ) {
                             Text(
@@ -1794,7 +1794,7 @@ private fun DeckCard(
                                 color = levelColor,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 11.sp,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
                             )
                         }
 
@@ -1889,13 +1889,16 @@ private fun DeckCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(3.dp)
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .height(3.5.dp)
+                        .clip(CircleShape)
                         .background(SurfaceBg)
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(progressFraction)
                             .fillMaxHeight()
+                            .clip(CircleShape)
                             .background(
                                 Brush.horizontalGradient(
                                     colors = listOf(
@@ -2320,13 +2323,13 @@ private fun LandscapeQuickResumeCard(
     val statusColor = if (hasReview) AppleRed else AppleBlue
 
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(24.dp),
         color = CardSurface,
         border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(5.dp, RoundedCornerShape(20.dp), spotColor = Color.Black.copy(alpha = 0.05f))
-            .clip(RoundedCornerShape(20.dp))
+            .shadow(5.dp, RoundedCornerShape(24.dp), spotColor = Color.Black.copy(alpha = 0.05f))
+            .clip(RoundedCornerShape(24.dp))
             .clickable(onClick = onClick)
     ) {
         Row(
@@ -2335,7 +2338,7 @@ private fun LandscapeQuickResumeCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Surface(
-                shape = RoundedCornerShape(14.dp),
+                shape = CircleShape,
                 color = SurfaceBg,
                 modifier = Modifier.size(44.dp)
             ) {
@@ -2480,13 +2483,13 @@ private fun LandscapeQuickStatsCard(
     }
 
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(24.dp),
         color = CardSurface,
         border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(5.dp, RoundedCornerShape(20.dp), spotColor = Color.Black.copy(alpha = 0.05f))
-            .clip(RoundedCornerShape(20.dp))
+            .shadow(5.dp, RoundedCornerShape(24.dp), spotColor = Color.Black.copy(alpha = 0.05f))
+            .clip(RoundedCornerShape(24.dp))
             .clickable(onClick = onOpenStats)
     ) {
         Column(
@@ -2568,12 +2571,12 @@ private fun LandscapeLanguagesCard(
     onSelectLanguage: (LearningLanguage) -> Unit
 ) {
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(24.dp),
         color = CardSurface,
         border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(5.dp, RoundedCornerShape(20.dp), spotColor = Color.Black.copy(alpha = 0.05f))
+            .shadow(5.dp, RoundedCornerShape(24.dp), spotColor = Color.Black.copy(alpha = 0.05f))
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),

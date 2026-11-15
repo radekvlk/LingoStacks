@@ -264,16 +264,16 @@ fun AppleFullSettingsDialog(
                         }
                     }
 
-                // iOS Segmented Tab Switcher
+                // iOS Segmented Tab Switcher (Apple Capsule Style)
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = CircleShape,
                     color = AppleSecondaryFill,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(3.dp),
+                            .padding(4.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         listOf(strings.tabGoalAndStats, strings.tabLeaderboardAndFriends).forEachIndexed { idx, rawTitle ->
@@ -281,13 +281,13 @@ fun AppleFullSettingsDialog(
                             val cleanTitle = rawTitle.replace("⚙️", "").replace("📊", "").trim()
                             val tabIcon = if (idx == 0) Icons.Filled.Settings else Icons.Filled.Leaderboard
                             Surface(
-                                shape = RoundedCornerShape(9.dp),
+                                shape = CircleShape,
                                 color = if (selected) CardElevatedSurface else Color.Transparent,
                                 border = if (selected) BorderStroke(1.dp, if (cz.slovickaspeak.app.ui.theme.isDarkThemeActive) AppleBlue.copy(alpha = 0.6f) else Color.Black.copy(alpha = 0.08f)) else null,
                                 shadowElevation = if (selected) 2.dp else 0.dp,
                                 modifier = Modifier
                                     .weight(1f)
-                                    .clip(RoundedCornerShape(9.dp))
+                                    .clip(CircleShape)
                                     .clickable { selectedTab = idx }
                             ) {
                                 Row(

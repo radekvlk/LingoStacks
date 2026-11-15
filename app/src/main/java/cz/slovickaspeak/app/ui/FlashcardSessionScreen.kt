@@ -1616,12 +1616,12 @@ private fun AppleSessionTopBar(
     modifier: Modifier = Modifier
 ) {
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(24.dp),
         color = CardSurface,
         border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
         modifier = modifier
             .fillMaxWidth()
-            .shadow(4.dp, RoundedCornerShape(20.dp), spotColor = Color.Black.copy(alpha = 0.04f))
+            .shadow(4.dp, RoundedCornerShape(24.dp), spotColor = Color.Black.copy(alpha = 0.04f))
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
@@ -1641,7 +1641,7 @@ private fun AppleSessionTopBar(
                     Box(
                         modifier = Modifier
                             .size(26.dp)
-                            .clip(RoundedCornerShape(7.dp))
+                            .clip(CircleShape)
                             .background(levelColor.copy(alpha = 0.14f)),
                         contentAlignment = Alignment.Center
                     ) {
