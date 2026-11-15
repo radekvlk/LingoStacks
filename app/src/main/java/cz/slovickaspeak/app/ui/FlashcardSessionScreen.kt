@@ -2205,28 +2205,28 @@ private fun SimpleEyeIcon(
     modifier: Modifier = Modifier.size(15.dp)
 ) {
     Canvas(modifier = modifier) {
-        val stroke = Stroke(width = 1.3.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+        val stroke = Stroke(width = 1.35.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
         val w = size.width
         val h = size.height
 
         val eyePath = Path().apply {
-            moveTo(w * 0.12f, h * 0.50f)
-            quadraticTo(w * 0.50f, h * 0.18f, w * 0.88f, h * 0.50f)
-            quadraticTo(w * 0.50f, h * 0.82f, w * 0.12f, h * 0.50f)
+            moveTo(w * 0.06f, h * 0.50f)
+            cubicTo(w * 0.26f, h * 0.08f, w * 0.74f, h * 0.08f, w * 0.94f, h * 0.50f)
+            cubicTo(w * 0.74f, h * 0.92f, w * 0.26f, h * 0.92f, w * 0.06f, h * 0.50f)
             close()
         }
         drawPath(eyePath, color = tint, style = stroke)
         drawCircle(
             color = tint,
-            radius = w * 0.13f,
+            radius = w * 0.17f,
             center = Offset(w * 0.50f, h * 0.50f)
         )
         if (!enabled) {
             drawLine(
                 color = tint,
-                start = Offset(w * 0.16f, h * 0.16f),
-                end = Offset(w * 0.84f, h * 0.84f),
-                strokeWidth = 1.3.dp.toPx(),
+                start = Offset(w * 0.12f, h * 0.12f),
+                end = Offset(w * 0.88f, h * 0.88f),
+                strokeWidth = 1.35.dp.toPx(),
                 cap = StrokeCap.Round
             )
         }
