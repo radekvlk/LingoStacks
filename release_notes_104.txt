@@ -1,0 +1,14 @@
+<cs-CZ>
+• Dynamic Island kapsle: denní cíl, streak a zbývající slova v jedné kompaktní Bento pilulce.
+• Trvalý progres lekce: v záhlaví karty se zobrazuje skutečný celkový stav dokončení balíčku.
+• Organický světelný lem: studijní karta při poslechu řeči jemně modře pulzuje.
+• Minimalistická ovládací pilulka: čisté tenké piktogramy na kartě.
+• Opravená geometrie české vlajky a Firebase synchronizace.
+</cs-CZ>
+<en-GB>
+• Dynamic Island capsule: daily goal, streak and remaining words unified in one compact Bento pill.
+• Persistent deck progress: session header now displays real overall completion of the deck.
+• Organic breathing glow: flashcard softly pulses with ambient light during active listening.
+• Minimalist toolbar capsule: clean outline vector pictograms.
+• Fixed Czech flag wedge geometry and Firebase cloud sync permissions.
+</en-GB>

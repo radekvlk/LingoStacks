@@ -5,20 +5,22 @@ import mimetypes
 
 TOKEN_PATH = r"C:\Users\radek.vlk\.gemini\antigravity\brain\43b0acd7-1097-4287-b01f-eedb0d465b28\scratch\github_token.txt"
 REPO = "radekvlk/LingoStacks"
-TAG = "v1.0.3"
-NAME = "LingoStacks v1.0.3"
+TAG = "v1.0.4"
+NAME = "LingoStacks v1.0.4"
 
 BODY = """[CS]
-• **Nový moderní vektorový design:** Všechny ikony napříč aplikací (zlatý pohár v záhlaví, balíčky A1–C2 včetně vědy, akademie a práva i ovládací prvky v Nastavení) byly nahrazeny čistými vektorovými ikonami místo emoji.
-• **Vyvážená flashkarta a plynulá nápověda:** Kartička se slovem má nyní vertikálně symetrické rozvržení s nezávislým středovým ukotvením; po kliknutí na nápovědu se rámeček rozbalí bez jakéhokoliv posunutí či odskoku slova.
-• **Přirozené řízení spotřeby:** Zrušeno manuální uspávání mikrofonu; aplikace plně respektuje systémové zhasínání displeje (pohyb karty funguje jako dotyk).
-• **Striktní soulad s pravidly Google Play:** V Google Play variantě je kompletně zablokováno externí stahování APK.
+• **Dynamic Island kapsle:** Denní cíl, streak a zbývající slova jsou sjednoceny v jedné elegantní Bento pilulce, která šetří místo a zpřehledňuje úvodní obrazovku.
+• **Trvalý progres v lekci:** V záhlaví studijní karty se nyní zobrazuje skutečný celkový stav zvládnutí balíčku (např. 10 / 80), nikoliv vynulované počítadlo relace.
+• **Organický světelný lem (Breathing Glow):** Studijní karta má při aktivním poslechu mikrofonu jemný pulzující modrý lem s ambientním stínem.
+• **Minimalistická ovládací pilulka:** Tři ikony v rohu karty (zobrazení slova, výslovnost, historie) jsou sjednoceny do čisté kapsle s tenkými vektorovými piktogramy.
+• **Opravená česká vlajka a synchronizace:** Opravena geometrie modrého trojúhelníkového klínu a nasazena podpora češtiny v Cloud Firestore pravidlech.
 
 [EN]
-• **Modern Vector UI:** Replaced all emoji icons across decks, headers, and settings with crisp monochrome vector icons.
-• **Balanced Flashcard Layout:** Card content is vertically centered; hint reveals smoothly downwards without jumping the word above.
-• **Native Screen Sleep:** Hands-free learning respects Android display timeout (card advance acts like a screen touch).
-• **Google Play Compliance:** External OTA APK self-updating strictly disabled in Play Store builds.
+• **Dynamic Island Capsule:** Daily goal, streak, and word counters unified into a compact, space-saving Bento pill widget.
+• **Persistent Deck Progress:** Lesson header accurately reflects permanent deck mastery progress (e.g. 10 / 80) across sessions.
+• **Organic Breathing Glow:** Active voice listening wraps the flashcard in a soft, ambient pulsing blue light.
+• **Minimalist Toolbar Capsule:** Balanced, outline vector icons unified in a discreet corner capsule.
+• **Czech Flag & Cloud Fixes:** True triangular wedge geometry for Czech flag waving animation and Firestore security rules update.
 """
 
 def main():
@@ -61,7 +63,7 @@ def main():
 
     # 2. Upload APK assets
     apk_paths = [
-        ("LingoStacks_v1.0.3.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.3.apk"),
+        ("LingoStacks_v1.0.4.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.4.apk"),
         ("LingoStacks.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks.apk")
     ]
 
