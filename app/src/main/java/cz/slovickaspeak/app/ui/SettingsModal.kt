@@ -22,6 +22,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -394,6 +395,9 @@ fun AppleFullSettingsDialog(
                             }
                         )
                     }
+
+                    Spacer(modifier = Modifier.navigationBarsPadding())
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
             }
         }
@@ -1917,6 +1921,7 @@ private fun StudyReminderSectionCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DailyGoalSectionCard(
     strings: UiStrings,
@@ -1973,8 +1978,20 @@ private fun DailyGoalSectionCard(
                     onSelectGoal(stepped)
                 },
                 valueRange = 5f..200f,
+                thumb = {
+                    SliderDefaults.Thumb(
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                        thumbSize = androidx.compose.ui.unit.DpSize(22.dp, 22.dp),
+                        colors = SliderDefaults.colors(
+                            thumbColor = Color.White
+                        ),
+                        modifier = Modifier
+                            .shadow(3.dp, CircleShape)
+                            .border(0.5.dp, CardBorderGray, CircleShape)
+                    )
+                },
                 colors = SliderDefaults.colors(
-                    thumbColor = AppleBlue,
+                    thumbColor = Color.White,
                     activeTrackColor = AppleBlue,
                     inactiveTrackColor = SurfaceBg
                 ),
@@ -2899,6 +2916,9 @@ fun AppleCompleteStatsDialog(
                             )
                         }
                     }
+
+                    Spacer(modifier = Modifier.navigationBarsPadding())
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
             }
         }

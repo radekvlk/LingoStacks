@@ -138,7 +138,13 @@ val czechStrings = UiStrings(
     },
     allLevelsButton = "Všechny úrovně (A1 – C2)",
     allStatsTitle = "Veškeré statistiky učení",
-    statStreakDays = { d -> "$d dní" },
+    statStreakDays = { d ->
+        when {
+            d == 1 -> "1 den"
+            d in 2..4 -> "$d dny"
+            else -> "$d dní"
+        }
+    },
     statStreakLabel = "Denní řada",
     statAccuracyLabel = "Úspěšnost",
     statSpokenLabel = "Vysloveno hlasem",
@@ -148,7 +154,14 @@ val czechStrings = UiStrings(
     leaderboardTitle = "🏆 Denní žebříček",
     leaderboardSubtitle = "Pouze reální uživatelé propojení s Google účtem",
     leaderboardEmptyHint = "Zatím není připojen žádný účet. Přihlaste se níže svým Google účtem, abyste se zobrazili v denním žebříčku reálných uživatelů.",
-    leaderboardRowSub = { streak, spoken -> "🔥 $streak dní • 🎙️ $spoken vysloveno" },
+    leaderboardRowSub = { streak, spoken ->
+        val s = when {
+            streak == 1 -> "1 den"
+            streak in 2..4 -> "$streak dny"
+            else -> "$streak dní"
+        }
+        "🔥 $s • 🎙️ $spoken vysloveno"
+    },
     leaderboardWordsToday = { n -> "$n slov dnes" },
     inviteFriendTitle = "Pozvat přítele ke sdílení pokroku",
     inviteFriendHint = { code -> "Váš kód je $code. Zadejte kód nebo Gmail přítele s propojeným účtem a uvidíte se v denním žebříčku:" },
@@ -266,7 +279,7 @@ val englishStrings = UiStrings(
     },
     allLevelsButton = "All Levels (A1 – C2)",
     allStatsTitle = "Learning Statistics",
-    statStreakDays = { d -> "$d days" },
+    statStreakDays = { d -> if (d == 1) "1 day" else "$d days" },
     statStreakLabel = "Daily Streak",
     statAccuracyLabel = "Accuracy",
     statSpokenLabel = "Spoken by Voice",
@@ -276,7 +289,10 @@ val englishStrings = UiStrings(
     leaderboardTitle = "🏆 Daily Leaderboard",
     leaderboardSubtitle = "Real users connected via Google accounts",
     leaderboardEmptyHint = "No accounts connected yet. Sign in below with your Google account to appear on the daily leaderboard.",
-    leaderboardRowSub = { streak, spoken -> "🔥 $streak days • 🎙️ $spoken spoken" },
+    leaderboardRowSub = { streak, spoken ->
+        val s = if (streak == 1) "1 day" else "$streak days"
+        "🔥 $s • 🎙️ $spoken spoken"
+    },
     leaderboardWordsToday = { n -> "$n words today" },
     inviteFriendTitle = "Invite a Friend to Share Progress",
     inviteFriendHint = { code -> "Your code is $code. Enter a friend's code or connected Gmail to see each other on the daily leaderboard:" },
@@ -384,7 +400,7 @@ val spanishStrings = UiStrings(
     languageLevelTitle = { lang -> "${lang.flagEmoji} Nivel de ${lang.titleEn} (A1 – C2)" },
     allLevelsButton = "Todos los niveles (A1 – C2)",
     allStatsTitle = "Estadísticas de aprendizaje",
-    statStreakDays = { d -> "$d días" },
+    statStreakDays = { d -> if (d == 1) "1 día" else "$d días" },
     statStreakLabel = "Racha diaria",
     statAccuracyLabel = "Precisión",
     statSpokenLabel = "Pronunciadas por voz",
@@ -394,7 +410,10 @@ val spanishStrings = UiStrings(
     leaderboardTitle = "🏆 Clasificación diaria",
     leaderboardSubtitle = "Usuarios reales conectados con cuenta de Google",
     leaderboardEmptyHint = "Aún no hay cuentas conectadas. Inicia sesión abajo con Google para aparecer en la clasificación.",
-    leaderboardRowSub = { streak, spoken -> "🔥 $streak días • 🎙️ $spoken pronunciadas" },
+    leaderboardRowSub = { streak, spoken ->
+        val s = if (streak == 1) "1 día" else "$streak días"
+        "🔥 $s • 🎙️ $spoken pronunciadas"
+    },
     leaderboardWordsToday = { n -> "$n palabras hoy" },
     inviteFriendTitle = "Invitar a un amigo",
     inviteFriendHint = { code -> "Tu código es $code. Introduce el código o Gmail de un amigo para veros en la clasificación:" },
@@ -482,7 +501,7 @@ val germanStrings = UiStrings(
     languageLevelTitle = { lang -> "${lang.flagEmoji} Sprachniveau ${lang.titleEn} (A1 – C2)" },
     allLevelsButton = "Alle Niveaus (A1 – C2)",
     allStatsTitle = "Lernstatistiken",
-    statStreakDays = { d -> "$d Tage" },
+    statStreakDays = { d -> if (d == 1) "1 Tag" else "$d Tage" },
     statStreakLabel = "Tages-Streak",
     statAccuracyLabel = "Genauigkeit",
     statSpokenLabel = "Per Stimme gesprochen",
@@ -492,7 +511,10 @@ val germanStrings = UiStrings(
     leaderboardTitle = "🏆 Tägliche Rangliste",
     leaderboardSubtitle = "Echte Nutzer mit Google-Konto verbunden",
     leaderboardEmptyHint = "Noch keine Konten verbunden. Melde dich unten mit deinem Google-Konto an, um in der Rangliste zu erscheinen.",
-    leaderboardRowSub = { streak, spoken -> "🔥 $streak Tage • 🎙️ $spoken gesprochen" },
+    leaderboardRowSub = { streak, spoken ->
+        val s = if (streak == 1) "1 Tag" else "$streak Tage"
+        "🔥 $s • 🎙️ $spoken gesprochen"
+    },
     leaderboardWordsToday = { n -> "$n Wörter heute" },
     inviteFriendTitle = "Freund einladen",
     inviteFriendHint = { code -> "Dein Code ist $code. Gib den Code oder die Gmail eines Freundes ein, um euch in der Rangliste zu sehen:" },
@@ -580,7 +602,7 @@ val frenchStrings = UiStrings(
     languageLevelTitle = { lang -> "${lang.flagEmoji} Niveau de ${lang.titleEn} (A1 – C2)" },
     allLevelsButton = "Tous les niveaux (A1 – C2)",
     allStatsTitle = "Statistiques d'apprentissage",
-    statStreakDays = { d -> "$d jours" },
+    statStreakDays = { d -> if (d == 1) "1 jour" else "$d jours" },
     statStreakLabel = "Série quotidienne",
     statAccuracyLabel = "Précision",
     statSpokenLabel = "Prononcés à la voix",
@@ -590,7 +612,10 @@ val frenchStrings = UiStrings(
     leaderboardTitle = "🏆 Classement quotidien",
     leaderboardSubtitle = "Vrais utilisateurs connectés avec Google",
     leaderboardEmptyHint = "Aucun compte connecté. Connectez-vous ci-dessous avec Google pour apparaître dans le classement.",
-    leaderboardRowSub = { streak, spoken -> "🔥 $streak jours • 🎙️ $spoken prononcés" },
+    leaderboardRowSub = { streak, spoken ->
+        val s = if (streak == 1) "1 jour" else "$streak jours"
+        "🔥 $s • 🎙️ $spoken prononcés"
+    },
     leaderboardWordsToday = { n -> "$n mots aujourd'hui" },
     inviteFriendTitle = "Inviter un ami",
     inviteFriendHint = { code -> "Votre code est $code. Entrez le code ou le Gmail d'un ami pour vous voir dans le classement:" },
@@ -678,7 +703,7 @@ val italianStrings = UiStrings(
     languageLevelTitle = { lang -> "${lang.flagEmoji} Livello di ${lang.titleEn} (A1 – C2)" },
     allLevelsButton = "Tutti i livelli (A1 – C2)",
     allStatsTitle = "Statistiche di apprendimento",
-    statStreakDays = { d -> "$d giorni" },
+    statStreakDays = { d -> if (d == 1) "1 giorno" else "$d giorni" },
     statStreakLabel = "Serie giornaliera",
     statAccuracyLabel = "Precisione",
     statSpokenLabel = "Pronunciate a voce",
@@ -688,7 +713,10 @@ val italianStrings = UiStrings(
     leaderboardTitle = "🏆 Classifica giornaliera",
     leaderboardSubtitle = "Utenti reali collegati tramite account Google",
     leaderboardEmptyHint = "Nessun account ancora collegato. Accedi sotto con Google per apparire nella classifica.",
-    leaderboardRowSub = { streak, spoken -> "🔥 $streak giorni • 🎙️ $spoken pronunciate" },
+    leaderboardRowSub = { streak, spoken ->
+        val s = if (streak == 1) "1 giorno" else "$streak giorni"
+        "🔥 $s • 🎙️ $spoken pronunciate"
+    },
     leaderboardWordsToday = { n -> "$n parole oggi" },
     inviteFriendTitle = "Invita un amico",
     inviteFriendHint = { code -> "Il tuo codice è $code. Inserisci il codice o l'email Gmail di un amico per vedervi nella classifica:" },
@@ -776,7 +804,7 @@ val portugueseStrings = UiStrings(
     languageLevelTitle = { lang -> "${lang.flagEmoji} Nível de ${lang.titleEn} (A1 – C2)" },
     allLevelsButton = "Todos os níveis (A1 – C2)",
     allStatsTitle = "Estatísticas de aprendizagem",
-    statStreakDays = { d -> "$d dias" },
+    statStreakDays = { d -> if (d == 1) "1 dia" else "$d dias" },
     statStreakLabel = "Sequência diária",
     statAccuracyLabel = "Precisão",
     statSpokenLabel = "Faladas por voz",
@@ -786,7 +814,10 @@ val portugueseStrings = UiStrings(
     leaderboardTitle = "🏆 Classificação diária",
     leaderboardSubtitle = "Usuários reais conectados com conta Google",
     leaderboardEmptyHint = "Nenhuma conta conectada ainda. Conecte sua conta Google abaixo para aparecer na classificação.",
-    leaderboardRowSub = { streak, spoken -> "🔥 $streak dias • 🎙️ $spoken faladas" },
+    leaderboardRowSub = { streak, spoken ->
+        val s = if (streak == 1) "1 dia" else "$streak dias"
+        "🔥 $s • 🎙️ $spoken faladas"
+    },
     leaderboardWordsToday = { n -> "$n palavras hoje" },
     inviteFriendTitle = "Convidar um amigo",
     inviteFriendHint = { code -> "Seu código é $code. Insira o código ou e-mail de um amigo para se verem na classificação:" },

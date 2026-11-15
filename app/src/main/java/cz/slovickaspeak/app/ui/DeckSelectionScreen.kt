@@ -1892,7 +1892,7 @@ private fun DeckCard(
 }
 
 @Composable
-private fun DeckVectorIcon(
+internal fun DeckVectorIcon(
     deck: VocabDeck,
     tint: Color,
     modifier: Modifier = Modifier

@@ -41,11 +41,11 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -837,6 +837,7 @@ fun FlashcardSessionScreen(
                     Flashcard3DStackArea(
                         strings = strings,
                         deck = deck,
+                        nativeLanguage = progressState.nativeLanguage,
                         currentWord = currentWord,
                         nextWord = nextWord,
                         thirdWord = thirdWord,
@@ -938,6 +939,7 @@ fun FlashcardSessionScreen(
                 Flashcard3DStackArea(
                     strings = strings,
                     deck = deck,
+                    nativeLanguage = progressState.nativeLanguage,
                     currentWord = currentWord,
                     nextWord = nextWord,
                     thirdWord = thirdWord,
@@ -1370,9 +1372,7 @@ private fun WordMemoryInsightsCard(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Lightbulb,
-                                    contentDescription = null,
+                                SimpleLightbulbIcon(
                                     tint = AppleBlue,
                                     modifier = Modifier.size(13.dp)
                                 )
@@ -1418,9 +1418,7 @@ private fun WordMemoryInsightsCard(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Lightbulb,
-                                contentDescription = null,
+                            SimpleLightbulbIcon(
                                 tint = AppleOrange,
                                 modifier = Modifier.size(14.dp)
                             )
@@ -1624,6 +1622,7 @@ private fun AppleSessionTopBar(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+            val levelColor = Color(deck.level.colorHex)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -1631,11 +1630,20 @@ private fun AppleSessionTopBar(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.weight(1f)
                 ) {
+                    Box(
+                        modifier = Modifier
+                            .size(26.dp)
+                            .clip(RoundedCornerShape(7.dp))
+                            .background(levelColor.copy(alpha = 0.14f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        DeckVectorIcon(deck = deck, tint = levelColor, modifier = Modifier.size(16.dp))
+                    }
                     Text(
-                        text = "${deck.emoji} ${if (strings.isCzech) deck.title else deck.titleEn}",
+                        text = if (strings.isCzech) deck.title else deck.titleEn,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,
                         color = TextDark,
@@ -1644,13 +1652,13 @@ private fun AppleSessionTopBar(
                     )
                     Surface(
                         shape = RoundedCornerShape(50),
-                        color = AppleBlue.copy(alpha = 0.12f)
+                        color = levelColor.copy(alpha = 0.14f)
                     ) {
                         Text(
                             text = deck.level.label,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            color = AppleBlue,
+                            color = levelColor,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
@@ -1693,16 +1701,29 @@ private fun AppleSessionTopBar(
                     color = if (remainingCount <= 0) AppleGreen else TextDark
                 )
 
-                Text(
-                    text = if (strings.isCzech) {
-                        "🎯 Dnes: ${progressState.todayCompletedWords} / ${progressState.dailyGoalWords}"
-                    } else {
-                        "🎯 Today: ${progressState.todayCompletedWords} / ${progressState.dailyGoalWords}"
-                    },
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 11.5.sp,
-                    color = if (progressState.todayCompletedWords >= progressState.dailyGoalWords) AppleGreen else AppleBlue
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    val goalReached = progressState.todayCompletedWords >= progressState.dailyGoalWords
+                    val goalColor = if (goalReached) AppleGreen else AppleBlue
+                    Icon(
+                        imageVector = Icons.Filled.TrackChanges,
+                        contentDescription = null,
+                        tint = goalColor,
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Text(
+                        text = if (strings.isCzech) {
+                            "Dnes: ${progressState.todayCompletedWords} / ${progressState.dailyGoalWords}"
+                        } else {
+                            "Today: ${progressState.todayCompletedWords} / ${progressState.dailyGoalWords}"
+                        },
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.5.sp,
+                        color = goalColor
+                    )
+                }
             }
 
             // Session Progress Bar
@@ -1734,6 +1755,7 @@ private fun AppleSessionTopBar(
 private fun Flashcard3DStackArea(
     strings: UiStrings,
     deck: VocabDeck,
+    nativeLanguage: cz.slovickaspeak.app.model.LearningLanguage = cz.slovickaspeak.app.model.LearningLanguage.CZECH,
     currentWord: VocabWord,
     nextWord: VocabWord?,
     thirdWord: VocabWord?,
@@ -1830,8 +1852,9 @@ private fun Flashcard3DStackArea(
         SwipeableVocabCard(
             strings = strings,
             language = deck.language,
+            nativeLanguage = nativeLanguage,
             word = currentWord,
-            deckLevelLabel = "${deck.language.flagEmoji} ${deck.level.label} • ${deck.localizedTitle(strings.isCzech)}",
+            deckLevelLabel = "${deck.level.label} • ${deck.level.localizedDescription(strings.isCzech)}",
             deckLevelColor = Color(deck.level.colorHex),
             offsetXProvider = offsetXProvider,
             scaleProvider = cardScaleProvider,
@@ -2323,6 +2346,43 @@ private fun SimpleHistoryIcon(
 }
 
 @Composable
+private fun SimpleLightbulbIcon(
+    tint: Color,
+    modifier: Modifier = Modifier.size(15.dp)
+) {
+    Canvas(modifier = modifier) {
+        val stroke = Stroke(width = 1.35.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+        val w = size.width
+        val h = size.height
+
+        // Bulb glass contour
+        val bulbPath = Path().apply {
+            moveTo(w * 0.36f, h * 0.70f)
+            cubicTo(w * 0.12f, h * 0.48f, w * 0.18f, h * 0.12f, w * 0.50f, h * 0.12f)
+            cubicTo(w * 0.82f, h * 0.12f, w * 0.88f, h * 0.48f, w * 0.64f, h * 0.70f)
+            lineTo(w * 0.36f, h * 0.70f)
+        }
+        drawPath(bulbPath, color = tint, style = stroke)
+
+        // Socket threaded base
+        drawLine(
+            color = tint,
+            start = Offset(w * 0.40f, h * 0.82f),
+            end = Offset(w * 0.60f, h * 0.82f),
+            strokeWidth = 1.35.dp.toPx(),
+            cap = StrokeCap.Round
+        )
+        drawLine(
+            color = tint,
+            start = Offset(w * 0.44f, h * 0.92f),
+            end = Offset(w * 0.56f, h * 0.92f),
+            strokeWidth = 1.35.dp.toPx(),
+            cap = StrokeCap.Round
+        )
+    }
+}
+
+@Composable
 private fun CardCornerToolbarCapsule(
     pauseWhileSpeaking: Boolean,
     onTogglePauseWhileSpeaking: () -> Unit,
@@ -2389,6 +2449,7 @@ private fun CardCornerToolbarCapsule(
 private fun SwipeableVocabCard(
     strings: UiStrings,
     language: cz.slovickaspeak.app.model.LearningLanguage,
+    nativeLanguage: cz.slovickaspeak.app.model.LearningLanguage = cz.slovickaspeak.app.model.LearningLanguage.CZECH,
     word: VocabWord,
     deckLevelLabel: String,
     deckLevelColor: Color,
@@ -2664,8 +2725,9 @@ private fun SwipeableVocabCard(
 
                 Spacer(modifier = Modifier.height(if (isUltraCompactCard) 5.dp else 8.dp))
 
+                val targetSpeakLanguage = if (isReversed) nativeLanguage else language
                 Text(
-                    text = if (isReversed) strings.cardPromptSpeakCzech else strings.cardPromptSpeakLanguage(language),
+                    text = strings.cardPromptSpeakLanguage(targetSpeakLanguage),
                     fontSize = if (isUltraCompactCard) 10.sp else 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = AppleBlue,
@@ -2737,9 +2799,7 @@ private fun SwipeableVocabCard(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(7.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Lightbulb,
-                                contentDescription = null,
+                            SimpleLightbulbIcon(
                                 tint = AppleOrange,
                                 modifier = Modifier.size(16.dp)
                             )
