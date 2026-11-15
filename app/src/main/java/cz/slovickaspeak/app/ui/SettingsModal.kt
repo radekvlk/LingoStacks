@@ -1524,7 +1524,7 @@ private fun NativeLanguageSectionCard(
                         .background(AppleBlueTint),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = nativeLanguage.flagEmoji, fontSize = 20.sp)
+                    LanguageVisualBadge(language = nativeLanguage, modifier = Modifier.size(width = 22.dp, height = 15.dp))
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -1535,9 +1535,9 @@ private fun NativeLanguageSectionCard(
                     )
                     Text(
                         text = if (strings.isCzech) {
-                            "Mluvím: ${nativeLanguage.flagEmoji} ${nativeLanguage.localizedTitle(true)}"
+                            "Mluvím: ${nativeLanguage.localizedTitle(true)}"
                         } else {
-                            "I speak: ${nativeLanguage.flagEmoji} ${nativeLanguage.localizedTitle(false)}"
+                            "I speak: ${nativeLanguage.localizedTitle(false)}"
                         },
                         fontSize = 12.sp,
                         color = TextMuted
@@ -1580,7 +1580,7 @@ private fun NativeLanguageSectionCard(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Text(text = lang.flagEmoji, fontSize = 20.sp)
+                                LanguageVisualBadge(language = lang, modifier = Modifier.size(width = 22.dp, height = 15.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = lang.localizedTitle(strings.isCzech),
@@ -2945,12 +2945,18 @@ private fun CompleteLanguageMasteryCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "${stats.language.flagEmoji} ${stats.language.localizedTitle(strings.isCzech)}",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextDark
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    LanguageVisualBadge(language = stats.language, modifier = Modifier.size(width = 20.dp, height = 14.dp))
+                    Text(
+                        text = stats.language.localizedTitle(strings.isCzech),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextDark
+                    )
+                }
                 Text(
                     text = if (strings.isCzech) "${stats.totalWords} slovíček" else "${stats.totalWords} words",
                     fontSize = 12.sp,

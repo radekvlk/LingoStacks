@@ -1118,6 +1118,7 @@ private fun DeckHeaderRow(
 @Composable
 private fun FilterDropdownPill(
     label: String,
+    leadingBadge: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
@@ -1138,8 +1139,11 @@ private fun FilterDropdownPill(
                 .fillMaxSize()
                 .padding(horizontal = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterHorizontally)
+            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
         ) {
+            if (leadingBadge != null) {
+                leadingBadge()
+            }
             Text(
                 text = label,
                 fontSize = fontSizeSp.sp,
@@ -1192,6 +1196,7 @@ private fun ModernDropdownMenu(
 @Composable
 private fun ModernDropdownMenuItem(
     text: String,
+    leadingBadge: (@Composable () -> Unit)? = null,
     isSelected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -1203,13 +1208,21 @@ private fun ModernDropdownMenuItem(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = text,
-                    fontSize = 13.sp,
-                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                    color = if (isSelected) AppleBlue else TextDark,
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.weight(1f, fill = false)
-                )
+                ) {
+                    if (leadingBadge != null) {
+                        leadingBadge()
+                    }
+                    Text(
+                        text = text,
+                        fontSize = 13.sp,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                        color = if (isSelected) AppleBlue else TextDark
+                    )
+                }
                 if (isSelected) {
                     Icon(
                         imageVector = Icons.Default.Check,
@@ -1278,7 +1291,8 @@ private fun DeckGoalIndicatorCard(
                 // Learning Language Dropdown (equal 1/3 pill width)
                 Box(modifier = Modifier.weight(1f)) {
                     FilterDropdownPill(
-                        label = "${selectedLanguage.flagEmoji} ${selectedLanguage.localizedTitle(strings.isCzech)}",
+                        label = selectedLanguage.localizedTitle(strings.isCzech),
+                        leadingBadge = { LanguageVisualBadge(language = selectedLanguage) },
                         modifier = Modifier.fillMaxWidth(),
                         onClick = { languageDropdownExpanded = true }
                     )
@@ -1290,7 +1304,8 @@ private fun DeckGoalIndicatorCard(
                     ) {
                         LearningLanguage.entries.filter { it != nativeLanguage }.forEach { lang ->
                             ModernDropdownMenuItem(
-                                text = "${lang.flagEmoji} ${lang.localizedTitle(strings.isCzech)}",
+                                text = lang.localizedTitle(strings.isCzech),
+                                leadingBadge = { LanguageVisualBadge(language = lang) },
                                 isSelected = selectedLanguage == lang,
                                 onClick = {
                                     onSelectLanguage(lang)
@@ -2102,7 +2117,7 @@ fun NativeLanguageOnboardingDialog(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
-                                Text(text = lang.flagEmoji, fontSize = 28.sp)
+                                LanguageVisualBadge(language = lang, modifier = Modifier.size(width = 28.dp, height = 20.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = lang.localizedTitle(selectedNative == LearningLanguage.CZECH),
@@ -2240,7 +2255,7 @@ fun InitialLanguageDialog(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
-                                Text(text = lang.flagEmoji, fontSize = 32.sp)
+                                LanguageVisualBadge(language = lang, modifier = Modifier.size(width = 30.dp, height = 21.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = lang.localizedTitle(strings.isCzech),
@@ -2605,12 +2620,18 @@ private fun LandscapeLanguagesCard(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "${stat.language.flagEmoji} ${stat.language.localizedTitle(strings.isCzech)}",
-                                fontSize = 12.5.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
-                                color = TextDark
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                LanguageVisualBadge(language = stat.language, modifier = Modifier.size(width = 16.dp, height = 11.dp))
+                                Text(
+                                    text = stat.language.localizedTitle(strings.isCzech),
+                                    fontSize = 12.5.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                                    color = TextDark
+                                )
+                            }
                             Text(
                                 text = "$learned / ${stat.totalWords}",
                                 fontSize = 11.sp,
