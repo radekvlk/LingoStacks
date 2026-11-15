@@ -2696,9 +2696,9 @@ fun AppleFloatingGlassBar(
         if (isDark) {
             Brush.verticalGradient(
                 colors = listOf(
-                    Color.White.copy(alpha = 0.42f),
-                    Color.White.copy(alpha = 0.14f),
-                    Color(0x05FFFFFF)
+                    Color.White.copy(alpha = 0.40f),
+                    Color.White.copy(alpha = 0.12f),
+                    Color(0x06FFFFFF)
                 )
             )
         } else {
@@ -2717,15 +2717,15 @@ fun AppleFloatingGlassBar(
         if (isDark) {
             Brush.verticalGradient(
                 colors = listOf(
-                    Color(0xF02A2A2E),
-                    Color(0xE41C1C1E),
-                    Color(0xD8141416)
+                    Color(0xE826262A),
+                    Color(0xF018181A),
+                    Color(0xF6101012)
                 )
             )
         } else {
             Brush.verticalGradient(
                 colors = listOf(
-                    Color(0xF6FFFFFF),
+                    Color(0xF8FFFFFF),
                     Color(0xEEF6F8FC),
                     Color(0xE6EDF2F9)
                 )
@@ -2735,47 +2735,97 @@ fun AppleFloatingGlassBar(
 
     Box(
         modifier = modifier
-            .widthIn(max = 400.dp)
+            .widthIn(max = 390.dp)
             .fillMaxWidth()
             .shadow(
-                elevation = 20.dp,
-                shape = RoundedCornerShape(32.dp),
-                spotColor = if (isDark) Color(0x99000000) else Color(0x40001830),
-                ambientColor = Color(0x20000000)
+                elevation = 22.dp,
+                shape = CircleShape,
+                spotColor = if (isDark) Color(0xB8000000) else Color(0x35001830),
+                ambientColor = Color(0x28000000)
             )
             .border(
                 width = 1.dp,
                 brush = glassBorderBrush,
-                shape = RoundedCornerShape(32.dp)
+                shape = CircleShape
             )
-            .clip(RoundedCornerShape(32.dp))
+            .clip(CircleShape)
             .background(brush = glassBgBrush)
-            .padding(horizontal = 8.dp, vertical = 6.dp),
+            .padding(4.dp),
         contentAlignment = Alignment.Center
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             tabs.forEach { tab ->
                 val isSelected = selectedTab == tab.index
-                val iconTint by animateColorAsState(
-                    targetValue = if (isSelected) AppleBlue else if (isDark) Color(0xFF98989F) else Color(0xFF8E8E93),
-                    label = "tabTint_${tab.index}"
+
+                val contentColor by animateColorAsState(
+                    targetValue = if (isSelected) {
+                        if (isDark) Color.White else Color(0xFF141416)
+                    } else {
+                        if (isDark) Color.White.copy(alpha = 0.58f) else Color(0xFF8E8E93)
+                    },
+                    animationSpec = tween(durationMillis = 180),
+                    label = "tabContentColor_${tab.index}"
                 )
-                val pillBg by animateColorAsState(
-                    targetValue = if (isSelected) AppleBlue.copy(alpha = if (isDark) 0.20f else 0.12f) else Color.Transparent,
-                    label = "tabPillBg_${tab.index}"
+
+                val pillAlpha by animateFloatAsState(
+                    targetValue = if (isSelected) (if (isDark) 0.22f else 0.10f) else 0f,
+                    animationSpec = tween(durationMillis = 180),
+                    label = "tabPillAlpha_${tab.index}"
+                )
+
+                val pillBorderAlpha by animateFloatAsState(
+                    targetValue = if (isSelected) (if (isDark) 0.32f else 0.08f) else 0f,
+                    animationSpec = tween(durationMillis = 180),
+                    label = "tabPillBorder_${tab.index}"
                 )
 
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(pillBg)
-                        .clickable { onSelectTab(tab.index) }
-                        .padding(vertical = 5.dp),
+                        .fillMaxHeight()
+                        .clip(CircleShape)
+                        .then(
+                            if (pillAlpha > 0.005f) {
+                                Modifier
+                                    .background(
+                                        if (isDark) {
+                                            Brush.verticalGradient(
+                                                listOf(
+                                                    Color.White.copy(alpha = pillAlpha * 1.2f),
+                                                    Color.White.copy(alpha = pillAlpha * 0.8f)
+                                                )
+                                            )
+                                        } else {
+                                            Brush.verticalGradient(
+                                                listOf(
+                                                    Color.Black.copy(alpha = pillAlpha),
+                                                    Color.Black.copy(alpha = pillAlpha)
+                                                )
+                                            )
+                                        }
+                                    )
+                                    .border(
+                                        width = 0.75.dp,
+                                        brush = Brush.verticalGradient(
+                                            listOf(
+                                                (if (isDark) Color.White else Color.Black).copy(alpha = pillBorderAlpha),
+                                                (if (isDark) Color.White else Color.Black).copy(alpha = pillBorderAlpha * 0.35f)
+                                            )
+                                        ),
+                                        shape = CircleShape
+                                    )
+                            } else Modifier
+                        )
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { onSelectTab(tab.index) },
                     contentAlignment = Alignment.Center
                 ) {
                     Column(
@@ -2786,8 +2836,8 @@ fun AppleFloatingGlassBar(
                             Icon(
                                 imageVector = tab.icon,
                                 contentDescription = tab.title,
-                                tint = iconTint,
-                                modifier = Modifier.size(22.dp)
+                                tint = contentColor,
+                                modifier = Modifier.size(21.dp)
                             )
                             if (tab.badge > 0) {
                                 Box(
@@ -2810,9 +2860,9 @@ fun AppleFloatingGlassBar(
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = tab.title,
-                            fontSize = 10.5.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = iconTint
+                            fontSize = 10.sp,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                            color = contentColor
                         )
                     }
                 }
