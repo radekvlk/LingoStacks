@@ -246,20 +246,23 @@ fun AppleFullSettingsDialog(
                                 )
                             }
                         }
-                        // Apple iOS "Hotovo" (Done) button
-                        Surface(
-                            shape = RoundedCornerShape(50),
-                            color = AppleBlueTint,
+                        // Apple iOS "Hotovo" (Done) button - clean borderless text button
+                        Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(50))
-                                .clickable(onClick = onDismiss)
+                                .clip(CircleShape)
+                                .clickable(
+                                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = onDismiss
+                                )
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = if (strings.isCzech) "Hotovo" else "Done",
-                                fontSize = 14.sp,
+                                fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = AppleBlue,
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                                color = AppleBlue
                             )
                         }
                     }
