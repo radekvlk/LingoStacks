@@ -1182,15 +1182,19 @@ private fun ModernDropdownMenu(
     offset: DpOffset = DpOffset(0.dp, 8.dp),
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val isDark = cz.slovickaspeak.app.ui.theme.isDarkThemeActive
     DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismissRequest,
         offset = offset,
-        shape = RoundedCornerShape(20.dp),
-        containerColor = Color.White,
+        shape = RoundedCornerShape(18.dp),
+        containerColor = if (isDark) Color(0xFF242428) else Color.White,
         tonalElevation = 0.dp,
-        shadowElevation = 8.dp,
-        border = BorderStroke(1.dp, CardBorderGray.copy(alpha = 0.85f)),
+        shadowElevation = 14.dp,
+        border = BorderStroke(
+            width = if (isDark) 0.75.dp else 0.5.dp,
+            color = if (isDark) Color(0x35FFFFFF) else CardBorderGray.copy(alpha = 0.75f)
+        ),
         modifier = modifier
             .widthIn(min = 185.dp)
             .padding(vertical = 4.dp),
@@ -1206,6 +1210,7 @@ private fun ModernDropdownMenuItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isDark = cz.slovickaspeak.app.ui.theme.isDarkThemeActive
     DropdownMenuItem(
         text = {
             Row(
@@ -1242,7 +1247,11 @@ private fun ModernDropdownMenuItem(
         modifier = modifier
             .padding(horizontal = 6.dp, vertical = 2.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(if (isSelected) AppleBlue.copy(alpha = 0.12f) else Color.Transparent),
+            .background(
+                if (isSelected) {
+                    if (isDark) Color(0xFF142C48) else AppleBlue.copy(alpha = 0.12f)
+                } else Color.Transparent
+            ),
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
     )
 }
@@ -1615,11 +1624,11 @@ fun AppleGoalSettingsDialog(
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(26.dp),
-            color = Color.White,
+            color = CardSurface,
             border = BorderStroke(0.5.dp, CardBorderGray),
             modifier = Modifier
                 .fillMaxWidth()
-                .shadow(20.dp, RoundedCornerShape(26.dp), spotColor = Color.Black.copy(alpha = 0.15f))
+                .shadow(20.dp, RoundedCornerShape(26.dp), spotColor = Color.Black.copy(alpha = 0.25f))
         ) {
             Column(
                 modifier = Modifier.padding(22.dp),
@@ -1683,7 +1692,7 @@ fun AppleGoalSettingsDialog(
                             val isSelected = currentGoal == option
                             Surface(
                                 shape = RoundedCornerShape(10.dp),
-                                color = if (isSelected) Color.White else Color.Transparent,
+                                color = if (isSelected) CardSurface else Color.Transparent,
                                 shadowElevation = if (isSelected) 2.dp else 0.dp,
                                 modifier = Modifier
                                     .weight(1f)
@@ -1714,9 +1723,10 @@ private fun LevelFilterChip(
     selected: Boolean,
     onClick: () -> Unit
 ) {
+    val isDark = cz.slovickaspeak.app.ui.theme.isDarkThemeActive
     Surface(
         shape = RoundedCornerShape(50),
-        color = if (selected) TextDark else Color.White,
+        color = if (selected) TextDark else (if (isDark) CardSurface else Color.White),
         border = BorderStroke(0.5.dp, if (selected) TextDark else CardBorderGray),
         modifier = Modifier
             .clip(RoundedCornerShape(50))
@@ -1724,7 +1734,7 @@ private fun LevelFilterChip(
     ) {
         Text(
             text = label,
-            color = if (selected) Color.White else TextDark,
+            color = if (selected) (if (isDark) Color.Black else Color.White) else TextDark,
             fontWeight = FontWeight.SemiBold,
             fontSize = 13.sp,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
