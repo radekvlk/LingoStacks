@@ -341,7 +341,7 @@ fun AppleFullSettingsDialog(
                         // Section 2: Appearance & Behavior (Unified Apple Inset Card)
                         AppleSectionHeader(if (strings.isCzech) "Vzhled a chování karet" else "Appearance & Audio")
                         Surface(
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(22.dp),
                             color = CardSurface,
                             border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.55f)),
                             modifier = Modifier.fillMaxWidth()
@@ -353,11 +353,11 @@ fun AppleFullSettingsDialog(
                                     checked = progressState.isDarkMode,
                                     onCheckedChange = { progressState.updateDarkMode(it) },
                                     vectorIcon = Icons.Filled.DarkMode,
-                                    iconTint = Color(0xFF5E5CE6),
-                                    iconBg = Color(0xFF5E5CE6).copy(alpha = 0.14f)
+                                    iconTint = Color.White,
+                                    iconBg = Color(0xFF5856D6)
                                 )
                                 HorizontalDivider(
-                                    modifier = Modifier.padding(start = 58.dp),
+                                    modifier = Modifier.padding(start = 56.dp),
                                     thickness = 0.5.dp,
                                     color = CardBorderGray.copy(alpha = 0.45f)
                                 )
@@ -367,11 +367,11 @@ fun AppleFullSettingsDialog(
                                     checked = progressState.pauseCardWhileSpeaking,
                                     onCheckedChange = { progressState.updatePauseCardWhileSpeaking(it) },
                                     vectorIcon = Icons.Filled.Visibility,
-                                    iconTint = ApplePurple,
-                                    iconBg = ApplePurple.copy(alpha = 0.14f)
+                                    iconTint = Color.White,
+                                    iconBg = ApplePurple
                                 )
                                 HorizontalDivider(
-                                    modifier = Modifier.padding(start = 58.dp),
+                                    modifier = Modifier.padding(start = 56.dp),
                                     thickness = 0.5.dp,
                                     color = CardBorderGray.copy(alpha = 0.45f)
                                 )
@@ -381,8 +381,8 @@ fun AppleFullSettingsDialog(
                                     checked = progressState.autoPronounceEnabled,
                                     onCheckedChange = { progressState.setAutoPronounce(it) },
                                     vectorIcon = Icons.Filled.VolumeUp,
-                                    iconTint = AppleBlue,
-                                    iconBg = AppleBlueTint
+                                    iconTint = Color.White,
+                                    iconBg = AppleBlue
                                 )
                             }
                         }
@@ -913,7 +913,7 @@ private fun AppleInsetToggleRow(
         ) {
             Box(
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(30.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(iconBg),
                 contentAlignment = Alignment.Center
@@ -922,7 +922,7 @@ private fun AppleInsetToggleRow(
                     imageVector = vectorIcon,
                     contentDescription = null,
                     tint = iconTint,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(17.dp)
                 )
             }
             Column(
@@ -995,7 +995,7 @@ private fun AppVersionSectionCard(
     }
 
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(22.dp),
         color = CardSurface,
         border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
         modifier = Modifier.fillMaxWidth()
@@ -1026,8 +1026,8 @@ private fun AppVersionSectionCard(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(38.dp)
-                            .clip(RoundedCornerShape(11.dp))
+                            .size(30.dp)
+                            .clip(RoundedCornerShape(8.dp))
                             .background(Brush.linearGradient(listOf(AppleBlue, AppleIndigo))),
                         contentAlignment = Alignment.Center
                     ) {
@@ -1035,7 +1035,7 @@ private fun AppVersionSectionCard(
                             imageVector = Icons.Default.SystemUpdate,
                             contentDescription = null,
                             tint = Color.White,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(17.dp)
                         )
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
@@ -1633,7 +1633,7 @@ private fun NativeLanguageSectionCard(
     var expanded by remember { mutableStateOf(false) }
 
     Surface(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(22.dp),
         color = CardSurface,
         border = BorderStroke(0.5.dp, CardBorderGray),
         modifier = Modifier.fillMaxWidth()
@@ -1651,12 +1651,12 @@ private fun NativeLanguageSectionCard(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(34.dp)
-                        .clip(RoundedCornerShape(9.dp))
-                        .background(AppleBlueTint),
+                        .size(30.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(AppleBlue.copy(alpha = 0.12f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    LanguageVisualBadge(language = nativeLanguage, modifier = Modifier.size(width = 22.dp, height = 15.dp))
+                    LanguageVisualBadge(language = nativeLanguage, modifier = Modifier.size(width = 20.dp, height = 14.dp))
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -1892,7 +1892,7 @@ private fun StudyReminderSectionCard(
     }
 
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(22.dp),
         color = CardSurface,
         border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
         modifier = Modifier.fillMaxWidth()
@@ -1915,16 +1915,16 @@ private fun StudyReminderSectionCard(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(AppleOrange.copy(alpha = 0.15f)),
+                            .size(30.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(AppleRed),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Notifications,
                             contentDescription = null,
-                            tint = AppleOrange,
-                            modifier = Modifier.size(20.dp)
+                            tint = Color.White,
+                            modifier = Modifier.size(17.dp)
                         )
                     }
                     Column(
@@ -2269,15 +2269,15 @@ private fun AppleStatTile(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(26.dp)
-                        .clip(RoundedCornerShape(7.dp))
-                        .background(accentColor.copy(alpha = 0.15f)),
+                        .size(28.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(accentColor),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = accentColor,
+                        tint = Color.White,
                         modifier = Modifier.size(15.dp)
                     )
                 }
