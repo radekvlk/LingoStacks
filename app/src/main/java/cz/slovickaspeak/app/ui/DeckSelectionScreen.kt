@@ -90,6 +90,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -1165,6 +1166,70 @@ private fun FilterDropdownPill(
 }
 
 @Composable
+private fun ModernDropdownMenu(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+    offset: DpOffset = DpOffset(0.dp, 8.dp),
+    content: @Composable ColumnScope.() -> Unit
+) {
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismissRequest,
+        offset = offset,
+        shape = RoundedCornerShape(18.dp),
+        containerColor = Color.White,
+        tonalElevation = 0.dp,
+        shadowElevation = 8.dp,
+        border = BorderStroke(1.dp, CardBorderGray.copy(alpha = 0.85f)),
+        modifier = modifier
+            .widthIn(min = 185.dp)
+            .padding(vertical = 4.dp),
+        content = content
+    )
+}
+
+@Composable
+private fun ModernDropdownMenuItem(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    DropdownMenuItem(
+        text = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = text,
+                    fontSize = 13.sp,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                    color = if (isSelected) AppleBlue else TextDark,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                if (isSelected) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Selected",
+                        tint = AppleBlue,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        },
+        onClick = onClick,
+        modifier = modifier
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (isSelected) AppleBlue.copy(alpha = 0.12f) else Color.Transparent),
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
+    )
+}
+
+@Composable
 private fun DeckGoalIndicatorCard(
     strings: UiStrings,
     nativeLanguage: LearningLanguage = LearningLanguage.CZECH,
@@ -1199,6 +1264,12 @@ private fun DeckGoalIndicatorCard(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            val screenWidthDp = LocalConfiguration.current.screenWidthDp
+            val pillWidthDp = ((screenWidthDp - 80) / 3).dp
+            val menuWidthDp = 185.dp
+            val centerOffsetXDp = (pillWidthDp - menuWidthDp) / 2
+            val rightOffsetXDp = pillWidthDp - menuWidthDp
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1212,18 +1283,15 @@ private fun DeckGoalIndicatorCard(
                         onClick = { languageDropdownExpanded = true }
                     )
 
-                    DropdownMenu(
+                    ModernDropdownMenu(
                         expanded = languageDropdownExpanded,
-                        onDismissRequest = { languageDropdownExpanded = false }
+                        onDismissRequest = { languageDropdownExpanded = false },
+                        offset = DpOffset(0.dp, 8.dp)
                     ) {
                         LearningLanguage.entries.filter { it != nativeLanguage }.forEach { lang ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = "${lang.flagEmoji} ${lang.localizedTitle(strings.isCzech)}",
-                                        fontWeight = if (selectedLanguage == lang) FontWeight.Bold else FontWeight.Medium
-                                    )
-                                },
+                            ModernDropdownMenuItem(
+                                text = "${lang.flagEmoji} ${lang.localizedTitle(strings.isCzech)}",
+                                isSelected = selectedLanguage == lang,
                                 onClick = {
                                     onSelectLanguage(lang)
                                     languageDropdownExpanded = false
@@ -1241,20 +1309,15 @@ private fun DeckGoalIndicatorCard(
                         onClick = { directionDropdownExpanded = true }
                     )
 
-                    DropdownMenu(
+                    ModernDropdownMenu(
                         expanded = directionDropdownExpanded,
-                        onDismissRequest = { directionDropdownExpanded = false }
+                        onDismissRequest = { directionDropdownExpanded = false },
+                        offset = DpOffset(centerOffsetXDp, 8.dp)
                     ) {
                         StudyDirection.entries.forEach { dir ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = dir.localizedDescription(strings.isCzech, selectedLanguage, nativeLanguage),
-                                        fontWeight = if (studyDirection == dir) FontWeight.Bold else FontWeight.Medium,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                },
+                            ModernDropdownMenuItem(
+                                text = dir.localizedDescription(strings.isCzech, selectedLanguage, nativeLanguage),
+                                isSelected = studyDirection == dir,
                                 onClick = {
                                     onSelectDirection(dir)
                                     directionDropdownExpanded = false
@@ -1272,30 +1335,23 @@ private fun DeckGoalIndicatorCard(
                         onClick = { levelDropdownExpanded = true }
                     )
 
-                    DropdownMenu(
+                    ModernDropdownMenu(
                         expanded = levelDropdownExpanded,
-                        onDismissRequest = { levelDropdownExpanded = false }
+                        onDismissRequest = { levelDropdownExpanded = false },
+                        offset = DpOffset(rightOffsetXDp, 8.dp)
                     ) {
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = strings.allLevelsLabel,
-                                    fontWeight = if (selectedLevel == null) FontWeight.Bold else FontWeight.Medium
-                                )
-                            },
+                        ModernDropdownMenuItem(
+                            text = strings.allLevelsLabel,
+                            isSelected = selectedLevel == null,
                             onClick = {
                                 onSelectLevel(null)
                                 levelDropdownExpanded = false
                             }
                         )
                         CefrLevel.entries.forEach { level ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = "${level.label} • ${level.localizedDescription(strings.isCzech)}",
-                                        fontWeight = if (selectedLevel == level) FontWeight.Bold else FontWeight.Medium
-                                    )
-                                },
+                            ModernDropdownMenuItem(
+                                text = "${level.label} • ${level.localizedDescription(strings.isCzech)}",
+                                isSelected = selectedLevel == level,
                                 onClick = {
                                     onSelectLevel(level)
                                     levelDropdownExpanded = false
@@ -1365,16 +1421,15 @@ private fun DeckGoalIndicatorCard(
                         .padding(horizontal = 14.dp, vertical = 10.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    Box(
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         // Left: Streak Badge Pill
                         Surface(
                             shape = RoundedCornerShape(50),
                             color = if (streakDays > 0) AppleOrange.copy(alpha = 0.14f) else Color.Transparent,
-                            border = if (streakDays > 0) BorderStroke(0.5.dp, AppleOrange.copy(alpha = 0.35f)) else null
+                            border = if (streakDays > 0) BorderStroke(0.5.dp, AppleOrange.copy(alpha = 0.35f)) else null,
+                            modifier = Modifier.align(Alignment.CenterStart)
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
@@ -1400,7 +1455,7 @@ private fun DeckGoalIndicatorCard(
                             }
                         }
 
-                        // Center: Words Progress (Dynamic Island Pill)
+                        // Center: Words Progress (Dynamic Island Pill) - EXACTLY ALIGNED WITH CS -> EN PILL ABOVE
                         Surface(
                             shape = RoundedCornerShape(50),
                             color = when {
@@ -1415,7 +1470,8 @@ private fun DeckGoalIndicatorCard(
                                     isGoalReached -> AppleGreen.copy(alpha = 0.4f)
                                     else -> CardBorderGray.copy(alpha = 0.6f)
                                 }
-                            )
+                            ),
+                            modifier = Modifier.align(Alignment.Center)
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
@@ -1456,7 +1512,8 @@ private fun DeckGoalIndicatorCard(
                                 isGoalReached -> AppleGreen
                                 remaining in 1..9 -> AppleIndigo
                                 else -> AppleBlue
-                            }
+                            },
+                            modifier = Modifier.align(Alignment.CenterEnd)
                         )
                     }
 
