@@ -14,6 +14,7 @@ import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import cz.slovickaspeak.app.BuildConfig
 import cz.slovickaspeak.app.model.AnswerMethod
 import cz.slovickaspeak.app.model.BuiltInVocabulary
 import cz.slovickaspeak.app.model.CardAttemptResult
@@ -674,7 +675,9 @@ class ProgressStateHolder(context: Context) {
             pullAndMergeCloudBackup(pushMergedBack = true)
         }
         refreshFromCloud()
-        checkForOtaUpdate(manual = false)
+        if (BuildConfig.ENABLE_OTA_UPDATES) {
+            checkForOtaUpdate(manual = false)
+        }
         if (studyReminderEnabled) {
             cz.slovickaspeak.app.notifications.StudyReminderScheduler.scheduleOrCancel(
                 context = appContext,
@@ -1878,6 +1881,7 @@ class ProgressStateHolder(context: Context) {
     }
 
     fun openOtaModal() {
+        if (!BuildConfig.ENABLE_OTA_UPDATES) return
         showOtaDialog = true
     }
 
@@ -1890,6 +1894,10 @@ class ProgressStateHolder(context: Context) {
     }
 
     fun checkForOtaUpdate(manual: Boolean = false) {
+        if (!BuildConfig.ENABLE_OTA_UPDATES) {
+            availableOtaRelease = null
+            return
+        }
         if (isCheckingOta || isDownloadingOta) return
         val now = System.currentTimeMillis()
         // Battery & radio optimization: check automatically at most once every 4 hours (even across restarts/resumes)
@@ -1953,6 +1961,7 @@ class ProgressStateHolder(context: Context) {
     }
 
     fun downloadAndInstallOta() {
+        if (!BuildConfig.ENABLE_OTA_UPDATES) return
         val release = availableOtaRelease ?: return
         if (isDownloadingOta) return
 

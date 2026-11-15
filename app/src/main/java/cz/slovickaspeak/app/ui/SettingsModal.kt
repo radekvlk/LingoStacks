@@ -42,6 +42,20 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.TrackChanges
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.Leaderboard
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -155,27 +169,52 @@ fun AppleFullSettingsDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Surface(
-            shape = RoundedCornerShape(28.dp),
-            color = SurfaceBg,
-            border = BorderStroke(0.5.dp, CardBorderGray),
+        Box(
             modifier = Modifier
-                .fillMaxWidth(0.94f)
-                .fillMaxHeight(0.90f)
-                .shadow(24.dp, RoundedCornerShape(28.dp), spotColor = Color.Black.copy(alpha = 0.18f))
+                .fillMaxSize()
+                .clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss
+                ),
+            contentAlignment = Alignment.BottomCenter
         ) {
-            Column(
+            Surface(
+                shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
+                color = SurfaceBg,
+                border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.5f)),
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.88f)
+                    .clickable(
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                        indication = null,
+                        onClick = {} // Consume click inside sheet
+                    )
+                    .shadow(32.dp, RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp), spotColor = Color.Black.copy(alpha = 0.22f))
             ) {
-                // Top Modal Header
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
+                    // Sleek iOS Drag Handle
+                    Box(
+                        modifier = Modifier
+                            .width(36.dp)
+                            .height(4.5.dp)
+                            .clip(CircleShape)
+                            .background(TextMuted.copy(alpha = 0.35f))
+                            .align(Alignment.CenterHorizontally)
+                    )
+
+                    // Top Modal Header
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                     Column {
                         Text(
                             text = strings.settingsAndLeaderboard,
@@ -223,8 +262,10 @@ fun AppleFullSettingsDialog(
                             .padding(3.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        listOf(strings.tabGoalAndStats, strings.tabLeaderboardAndFriends).forEachIndexed { idx, title ->
+                        listOf(strings.tabGoalAndStats, strings.tabLeaderboardAndFriends).forEachIndexed { idx, rawTitle ->
                             val selected = selectedTab == idx
+                            val cleanTitle = rawTitle.replace("⚙️", "").replace("📊", "").trim()
+                            val tabIcon = if (idx == 0) Icons.Filled.Settings else Icons.Filled.Leaderboard
                             Surface(
                                 shape = RoundedCornerShape(9.dp),
                                 color = if (selected) CardElevatedSurface else Color.Transparent,
@@ -235,15 +276,27 @@ fun AppleFullSettingsDialog(
                                     .clip(RoundedCornerShape(9.dp))
                                     .clickable { selectedTab = idx }
                             ) {
-                                Text(
-                                    text = title,
-                                    color = if (selected) (if (cz.slovickaspeak.app.ui.theme.isDarkThemeActive) Color.White else TextDark) else TextMuted,
-                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                    fontSize = 13.sp,
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center,
                                     modifier = Modifier
                                         .padding(vertical = 8.dp)
-                                        .wrapContentWidth(Alignment.CenterHorizontally)
-                                )
+                                        .fillMaxWidth()
+                                ) {
+                                    Icon(
+                                        imageVector = tabIcon,
+                                        contentDescription = null,
+                                        tint = if (selected) (if (cz.slovickaspeak.app.ui.theme.isDarkThemeActive) AppleBlue else TextDark) else TextMuted,
+                                        modifier = Modifier.size(15.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = cleanTitle,
+                                        color = if (selected) (if (cz.slovickaspeak.app.ui.theme.isDarkThemeActive) Color.White else TextDark) else TextMuted,
+                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                        fontSize = 13.sp
+                                    )
+                                }
                             }
                         }
                     }
@@ -346,6 +399,7 @@ fun AppleFullSettingsDialog(
         }
     }
 }
+}
 
 @Composable
 fun DailyLeaderboardSectionCard(
@@ -379,12 +433,31 @@ fun DailyLeaderboardSectionCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = if (strings.isCzech) "🏆 Žebříček" else "🏆 Leaderboard",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextDark
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFFE5A100).copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.EmojiEvents,
+                                contentDescription = null,
+                                tint = Color(0xFFE5A100),
+                                modifier = Modifier.size(15.dp)
+                            )
+                        }
+                        Text(
+                            text = if (strings.isCzech) "Žebříček" else "Leaderboard",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextDark
+                        )
+                    }
                     Text(
                         text = when {
                             !isSignedIn -> if (strings.isCzech) {
@@ -392,8 +465,8 @@ fun DailyLeaderboardSectionCard(
                             } else {
                                 "Available after signing in"
                             }
-                            strings.isCzech -> "🎙️ +2 XP hlasem  •  👉 +1 XP swipe  •  🎯 +5 XP cíl"
-                            else -> "🎙️ +2 XP spoken  •  👉 +1 XP swipe  •  🎯 +5 XP goal"
+                            strings.isCzech -> "+2 XP mluvení  •  +1 XP swipe  •  +5 XP cíl"
+                            else -> "+2 XP spoken  •  +1 XP swipe  •  +5 XP goal"
                         },
                         fontSize = 10.5.sp,
                         color = TextMuted
@@ -417,8 +490,8 @@ fun DailyLeaderboardSectionCard(
             if (isSignedIn) {
                 AppleSegmentedControl(
                     options = listOf(
-                        LeaderboardPeriod.TODAY to (if (strings.isCzech) "📅 Dnes" else "📅 Today"),
-                        LeaderboardPeriod.WEEK to (if (strings.isCzech) "🗓️ Tento týden" else "🗓️ This Week")
+                        LeaderboardPeriod.TODAY to (if (strings.isCzech) "Dnes" else "Today"),
+                        LeaderboardPeriod.WEEK to (if (strings.isCzech) "Tento týden" else "This Week")
                     ),
                     selectedValue = selectedPeriod,
                     onSelect = { selectedPeriod = it },
@@ -444,7 +517,12 @@ fun DailyLeaderboardSectionCard(
                             modifier = Modifier.size(36.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Text(text = "🔒", fontSize = 16.sp)
+                                Icon(
+                                    imageVector = Icons.Filled.Lock,
+                                    contentDescription = null,
+                                    tint = AppleBlue,
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
                         }
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -492,12 +570,7 @@ fun DailyLeaderboardSectionCard(
                     animationSpec = spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMediumLow),
                     label = "leaderboardChevron"
                 )
-                val rankMedal = when (index) {
-                    0 -> "🥇"
-                    1 -> "🥈"
-                    2 -> "🥉"
-                    else -> "${index + 1}."
-                }
+
                 val langFlag = if (entry.languageCode == "es") "🇪🇸" else "🇬🇧"
                 val dailyGoal = entry.dailyGoal.coerceAtLeast(1)
                 val dailyGoalMet = entry.todayCompleted >= dailyGoal
@@ -547,11 +620,27 @@ fun DailyLeaderboardSectionCard(
                                 horizontalArrangement = Arrangement.spacedBy(7.dp),
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text(
-                                    text = rankMedal,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            when (index) {
+                                                0 -> Color(0xFFE5A100)
+                                                1 -> Color(0xFF8E8E93)
+                                                2 -> Color(0xFFCD7F32)
+                                                else -> CardBorderGray.copy(alpha = 0.35f)
+                                            }
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "${index + 1}",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (index in 0..2) Color.White else TextMuted
+                                    )
+                                }
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = "$langFlag ${entry.displayName}",
@@ -562,9 +651,9 @@ fun DailyLeaderboardSectionCard(
                                         overflow = TextOverflow.Ellipsis
                                     )
                                     val subLine = if (isWeeklyPeriod) {
-                                        "🔥 ${entry.streakDays}d  •  🎯 ${entry.accuracyPercent}%  •  $periodWords ${if (strings.isCzech) "slov/týd." else "words/wk"}"
+                                        "${entry.streakDays}d streak  •  ${entry.accuracyPercent}%  •  $periodWords ${if (strings.isCzech) "slov/týd." else "words/wk"}"
                                     } else {
-                                        "🔥 ${entry.streakDays}d  •  🎯 ${entry.accuracyPercent}%  •  $periodWords/$dailyGoal ${if (strings.isCzech) "slov" else "words"}"
+                                        "${entry.streakDays}d streak  •  ${entry.accuracyPercent}%  •  $periodWords/$dailyGoal ${if (strings.isCzech) "slov" else "words"}"
                                     }
                                     Text(
                                         text = subLine,
@@ -656,9 +745,9 @@ fun DailyLeaderboardSectionCard(
                                     ) {
                                         Text(
                                             text = if (strings.isCzech) {
-                                                "📚 Celkový progres: ${entry.masteredCount} / $catalogTotal slov"
+                                                "Celkový progres: ${entry.masteredCount} / $catalogTotal slov"
                                             } else {
-                                                "📚 Overall: ${entry.masteredCount} / $catalogTotal words"
+                                                "Overall: ${entry.masteredCount} / $catalogTotal words"
                                             },
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.SemiBold,
@@ -694,20 +783,20 @@ fun DailyLeaderboardSectionCard(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = if (strings.isCzech) "🎙️ ${entry.totalSpoken} hlasem" else "🎙️ ${entry.totalSpoken} spoken",
+                                            text = if (strings.isCzech) "${entry.totalSpoken} hlasem" else "${entry.totalSpoken} spoken",
                                             fontSize = 10.sp,
                                             color = TextMuted
                                         )
                                         Text(
-                                            text = if (strings.isCzech) "🏆 ${entry.completedSessions} lekcí" else "🏆 ${entry.completedSessions} lessons",
+                                            text = if (strings.isCzech) "${entry.completedSessions} lekcí" else "${entry.completedSessions} lessons",
                                             fontSize = 10.sp,
                                             color = TextMuted
                                         )
                                         Text(
                                             text = if (entry.accuracyPercent > 0) {
-                                                if (strings.isCzech) "🎯 ${entry.accuracyPercent}% přesnost" else "🎯 ${entry.accuracyPercent}% acc."
+                                                if (strings.isCzech) "${entry.accuracyPercent}% přesnost" else "${entry.accuracyPercent}% acc."
                                             } else {
-                                                "🕒 $activeLabel"
+                                                activeLabel
                                             },
                                             fontSize = 10.sp,
                                             color = TextMuted
@@ -1305,7 +1394,10 @@ private fun SettingsSwitchCard(
     title: String,
     subtitle: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    vectorIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    iconTint: Color = AppleBlue,
+    iconBg: Color = AppleBlueTint
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
@@ -1320,24 +1412,46 @@ private fun SettingsSwitchCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
+            Row(
                 modifier = Modifier
                     .weight(1f)
                     .padding(end = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    text = title,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextDark
-                )
-                Text(
-                    text = subtitle,
-                    fontSize = 12.sp,
-                    color = TextMuted,
-                    lineHeight = 16.sp
-                )
+                if (vectorIcon != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(iconBg),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = vectorIcon,
+                            contentDescription = null,
+                            tint = iconTint,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = title,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextDark
+                    )
+                    Text(
+                        text = subtitle,
+                        fontSize = 12.sp,
+                        color = TextMuted,
+                        lineHeight = 16.sp
+                    )
+                }
             }
             Switch(
                 checked = checked,
@@ -1360,14 +1474,17 @@ private fun AppearanceSectionCard(
     onSelectDarkMode: (Boolean) -> Unit
 ) {
     SettingsSwitchCard(
-        title = if (strings.isCzech) "🌙 Tmavý režim" else "🌙 Dark Mode",
+        title = if (strings.isCzech) "Tmavý režim" else "Dark Mode",
         subtitle = if (strings.isCzech) {
             "Přepne vzhled aplikace mezi světlým a tmavým motivem."
         } else {
             "Switches app appearance between Light and Dark theme."
         },
         checked = isDarkMode,
-        onCheckedChange = onSelectDarkMode
+        onCheckedChange = onSelectDarkMode,
+        vectorIcon = Icons.Filled.DarkMode,
+        iconTint = Color(0xFF5E5CE6),
+        iconBg = Color(0xFF5E5CE6).copy(alpha = 0.14f)
     )
 }
 
@@ -1506,14 +1623,17 @@ private fun AutoPronounceSectionCard(
     onToggleAutoPronounce: (Boolean) -> Unit
 ) {
     SettingsSwitchCard(
-        title = if (strings.isCzech) "🔊 Zopakovat výslovnost" else "🔊 Repeat Pronunciation",
+        title = if (strings.isCzech) "Zopakovat výslovnost" else "Repeat Pronunciation",
         subtitle = if (strings.isCzech) {
             "Po vyřešení karty nahlas zopakuje správnou výslovnost (i při volbě Nevím)."
         } else {
             "Repeats correct pronunciation out loud after finishing each card (and on Unknown)."
         },
         checked = autoPronounceEnabled,
-        onCheckedChange = onToggleAutoPronounce
+        onCheckedChange = onToggleAutoPronounce,
+        vectorIcon = Icons.Filled.VolumeUp,
+        iconTint = AppleBlue,
+        iconBg = AppleBlueTint
     )
 }
 
@@ -1524,14 +1644,17 @@ private fun CardExitSpeedSectionCard(
     onSelectPauseWhileSpeaking: (Boolean) -> Unit
 ) {
     SettingsSwitchCard(
-        title = if (strings.isCzech) "📖 Zobrazení slova po odpovědi" else "📖 Word Display After Answer",
+        title = if (strings.isCzech) "Zobrazení slova po odpovědi" else "Word Display After Answer",
         subtitle = if (strings.isCzech) {
             "Po odjezdu karty ukáže bounce okno se slovem; vypnuté přejde ihned na další kartu."
         } else {
             "Shows a bounce bubble with the word between cards; turn off for an instant transition."
         },
         checked = pauseWhileSpeaking,
-        onCheckedChange = onSelectPauseWhileSpeaking
+        onCheckedChange = onSelectPauseWhileSpeaking,
+        vectorIcon = Icons.Filled.Visibility,
+        iconTint = ApplePurple,
+        iconBg = ApplePurple.copy(alpha = 0.14f)
     )
 }
 
@@ -1647,27 +1770,48 @@ private fun StudyReminderSectionCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(
+                Row(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(end = 12.dp)
+                        .padding(end = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(
-                        text = if (strings.isCzech) "🔔 Denní připomenutí učení" else "🔔 Daily Study Reminder",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextDark
-                    )
-                    Text(
-                        text = if (strings.isCzech) {
-                            "Upozorní tě ve zvolený čas, pokud ještě nemáš splněný denní cíl."
-                        } else {
-                            "Notifies you at your chosen time if today's daily goal isn't done yet."
-                        },
-                        fontSize = 12.sp,
-                        color = TextMuted,
-                        lineHeight = 16.sp
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(AppleOrange.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Notifications,
+                            contentDescription = null,
+                            tint = AppleOrange,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            text = if (strings.isCzech) "Denní připomenutí učení" else "Daily Study Reminder",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextDark
+                        )
+                        Text(
+                            text = if (strings.isCzech) {
+                                "Upozorní tě ve zvolený čas, pokud ještě nemáš splněný denní cíl."
+                            } else {
+                                "Notifies you at your chosen time if today's daily goal isn't done yet."
+                            },
+                            fontSize = 12.sp,
+                            color = TextMuted,
+                            lineHeight = 16.sp
+                        )
+                    }
                 }
 
                 Switch(
@@ -1886,7 +2030,7 @@ private fun AllStatisticsSectionCard(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 AppleStatTile(
-                    emoji = "🔥",
+                    icon = Icons.Filled.LocalFireDepartment,
                     value = strings.statStreakDays(progressState.streakDays),
                     label = strings.statStreakLabel,
                     accentColor = AppleOrange,
@@ -1894,7 +2038,7 @@ private fun AllStatisticsSectionCard(
                     onClick = onTileClick
                 )
                 AppleStatTile(
-                    emoji = "🎯",
+                    icon = Icons.Filled.TrackChanges,
                     value = "${progressState.accuracyPercent} %",
                     label = strings.statAccuracyLabel,
                     accentColor = AppleGreen,
@@ -1908,7 +2052,7 @@ private fun AllStatisticsSectionCard(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 AppleStatTile(
-                    emoji = "🎙️",
+                    icon = Icons.Filled.Mic,
                     value = "${progressState.totalSpokenCorrect}",
                     label = strings.statSpokenLabel,
                     accentColor = AppleBlue,
@@ -1916,7 +2060,7 @@ private fun AllStatisticsSectionCard(
                     onClick = onTileClick
                 )
                 AppleStatTile(
-                    emoji = "✅",
+                    icon = Icons.Filled.CheckCircle,
                     value = "${progressState.todayCompletedWords}/${progressState.dailyGoalWords}",
                     label = strings.statTodayGoalLabel,
                     accentColor = AppleIndigo,
@@ -1930,7 +2074,7 @@ private fun AllStatisticsSectionCard(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 AppleStatTile(
-                    emoji = "📚",
+                    icon = Icons.Filled.MenuBook,
                     value = "${progressState.totalCorrect}",
                     label = strings.statTotalLearnedLabel,
                     accentColor = AppleGreenDark,
@@ -1938,7 +2082,7 @@ private fun AllStatisticsSectionCard(
                     onClick = onTileClick
                 )
                 AppleStatTile(
-                    emoji = "🏆",
+                    icon = Icons.Filled.EmojiEvents,
                     value = "${progressState.completedSessions}",
                     label = strings.statCompletedLessonsLabel,
                     accentColor = ApplePurple,
@@ -1952,7 +2096,7 @@ private fun AllStatisticsSectionCard(
 
 @Composable
 private fun AppleStatTile(
-    emoji: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     value: String,
     label: String,
     accentColor: Color,
@@ -1968,23 +2112,36 @@ private fun AppleStatTile(
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(text = emoji, fontSize = 16.sp)
+                Box(
+                    modifier = Modifier
+                        .size(26.dp)
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(accentColor.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(15.dp)
+                    )
+                }
                 Text(
                     text = value,
-                    fontSize = 18.sp,
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
                     color = accentColor
                 )
             }
             Text(
                 text = label,
-                fontSize = 12.sp,
+                fontSize = 11.5.sp,
                 color = TextMuted,
                 fontWeight = FontWeight.Medium
             )
@@ -2055,7 +2212,12 @@ private fun GoogleAccountSectionCard(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                 ) {
-                    Text(text = "☁️", fontSize = 11.sp)
+                    Icon(
+                        imageVector = Icons.Filled.Info,
+                        contentDescription = null,
+                        tint = AppleBlue,
+                        modifier = Modifier.size(14.dp)
+                    )
                     Text(
                         text = if (strings.isCzech) {
                             "Tato záloha nezabírá žádné místo na vašem Google účtu ani Disku."
@@ -2188,19 +2350,19 @@ private fun GoogleAccountSectionCard(
                                 Text(
                                     text = when {
                                         fullBackupActive && syncingBackup -> if (strings.isCzech) {
-                                            "☁️ Synchronizuji zálohu účtu..."
+                                            "Synchronizuji zálohu účtu..."
                                         } else {
-                                            "☁️ Syncing full cloud backup..."
+                                            "Syncing full cloud backup..."
                                         }
                                         fullBackupActive -> if (strings.isCzech) {
-                                            "☁️ Plná záloha účtu aktivní"
+                                            "Plná záloha účtu aktivní"
                                         } else {
-                                            "☁️ Full cloud backup active"
+                                            "Full cloud backup active"
                                         }
                                         else -> if (strings.isCzech) {
-                                            "⚠️ Jen lokální profil / žebříček — připoj Google účet pro obnovu slovíček na jiném telefonu."
+                                            "Jen lokální profil / žebříček — připoj Google účet pro obnovu slovíček na jiném telefonu."
                                         } else {
-                                            "⚠️ Local profile / leaderboard only — connect Google for full cross-device word backup."
+                                            "Local profile / leaderboard only — connect Google for full cross-device word backup."
                                         }
                                     },
                                     fontSize = 12.sp,
@@ -2210,9 +2372,9 @@ private fun GoogleAccountSectionCard(
                                 if (!fullBackupActive) {
                                     Text(
                                         text = if (strings.isCzech) {
-                                            "ℹ️ Tato záloha nezabírá žádné místo na vašem Google účtu ani Disku."
+                                            "Tato záloha nezabírá žádné místo na vašem Google účtu ani Disku."
                                         } else {
-                                            "ℹ️ This backup does not take up any space on your Google account or Google Drive."
+                                            "This backup does not take up any space on your Google account or Google Drive."
                                         },
                                         fontSize = 11.sp,
                                         color = TextMuted,
@@ -2224,16 +2386,27 @@ private fun GoogleAccountSectionCard(
                                         shape = RoundedCornerShape(10.dp),
                                         border = BorderStroke(1.dp, AppleBlue.copy(alpha = 0.45f))
                                     ) {
-                                        Text(
-                                            text = if (strings.isCzech) {
-                                                "🔐 Propojit Google pro plnou zálohu"
-                                            } else {
-                                                "🔐 Connect Google for full backup"
-                                            },
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = AppleBlue
-                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Filled.Lock,
+                                                contentDescription = null,
+                                                tint = AppleBlue,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Text(
+                                                text = if (strings.isCzech) {
+                                                    "Propojit Google pro plnou zálohu"
+                                                } else {
+                                                    "Connect Google for full backup"
+                                                },
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = AppleBlue
+                                            )
+                                        }
                                     }
                                 } else {
                                     OutlinedButton(
@@ -2382,7 +2555,12 @@ fun OtaUpdateModalDialog(
                             modifier = Modifier.size(40.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Text(text = "🚀", fontSize = 20.sp)
+                                Icon(
+                                    imageVector = Icons.Filled.SystemUpdate,
+                                    contentDescription = null,
+                                    tint = AppleGreen,
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
                         }
                         Column {
@@ -2621,7 +2799,7 @@ fun AppleCompleteStatsDialog(
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
-                            text = if (strings.isCzech) "📊 Kompletní statistika" else "📊 Complete Statistics",
+                            text = if (strings.isCzech) "Kompletní statistika" else "Complete Statistics",
                             fontSize = 21.sp,
                             fontWeight = FontWeight.Bold,
                             color = TextDark
@@ -2696,12 +2874,23 @@ fun AppleCompleteStatsDialog(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = if (strings.isCzech) "🏆 Otevřít denní žebříček" else "🏆 Open Daily Leaderboard",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = AppleBlue
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.EmojiEvents,
+                                    contentDescription = null,
+                                    tint = Color(0xFFE5A100),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = if (strings.isCzech) "Otevřít denní žebříček" else "Open Daily Leaderboard",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = AppleBlue
+                                )
+                            }
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                 contentDescription = null,

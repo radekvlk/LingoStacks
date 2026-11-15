@@ -1,5 +1,7 @@
 package cz.slovickaspeak.app.ui
 
+import cz.slovickaspeak.app.BuildConfig
+
 import android.content.res.Configuration
 import android.os.SystemClock
 import androidx.lifecycle.Lifecycle
@@ -35,6 +37,34 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.Flight
+import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.ChatBubble
+import androidx.compose.material.icons.filled.Work
+import androidx.compose.material.icons.filled.LocalHospital
+import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Mood
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.RecordVoiceOver
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.TrackChanges
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.WorkspacePremium
+import androidx.compose.material.icons.filled.Gavel
+import androidx.compose.material.icons.filled.Spellcheck
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -199,7 +229,7 @@ fun DeckSelectionScreen(
                         )
                     }
 
-                    val pendingOta = progressState.availableOtaRelease
+                    val pendingOta = if (BuildConfig.ENABLE_OTA_UPDATES) progressState.availableOtaRelease else null
                     if (pendingOta != null && !progressState.otaBannerDismissed) {
                         item {
                             OtaUpdateBannerCard(
@@ -336,7 +366,7 @@ fun DeckSelectionScreen(
                     )
                 }
 
-                val pendingOta = progressState.availableOtaRelease
+                val pendingOta = if (BuildConfig.ENABLE_OTA_UPDATES) progressState.availableOtaRelease else null
                 if (pendingOta != null && !progressState.otaBannerDismissed) {
                     item {
                         OtaUpdateBannerCard(
@@ -416,7 +446,20 @@ private fun OtaUpdateBannerCard(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                Text(text = "🚀", fontSize = 18.sp)
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(AppleGreen.copy(alpha = 0.16f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.CloudDownload,
+                        contentDescription = null,
+                        tint = AppleGreen,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
                 Column {
                     Text(
                         text = if (strings.isCzech) "Nová verze v$newVersionName" else "New version v$newVersionName",
@@ -1004,7 +1047,12 @@ private fun DeckHeaderRow(
                         .clickable { onOpenLeaderboard() }
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text(text = "🏆", fontSize = 18.sp)
+                        Icon(
+                            imageVector = Icons.Filled.EmojiEvents,
+                            contentDescription = strings.tabLeaderboardAndFriends,
+                            tint = Color(0xFFE5A100),
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
 
@@ -1283,8 +1331,8 @@ private fun DeckGoalIndicatorCard(
                 ) {
                     Text(
                         text = if (isOverachiever) {
-                            if (strings.isCzech) "🌟 Dnes: $completedTodayWords / $dailyGoalWords slov ($progressPercent %)"
-                            else "🌟 Today: $completedTodayWords / $dailyGoalWords words ($progressPercent %)"
+                            if (strings.isCzech) "Dnes: $completedTodayWords / $dailyGoalWords slov ($progressPercent %)"
+                            else "Today: $completedTodayWords / $dailyGoalWords words ($progressPercent %)"
                         } else {
                             if (strings.isCzech) "Dnes: $completedTodayWords / $dailyGoalWords slov"
                             else "Today: $completedTodayWords / $dailyGoalWords words"
@@ -1302,16 +1350,16 @@ private fun DeckGoalIndicatorCard(
                     Text(
                         text = when {
                             isOverachiever -> {
-                                if (strings.isCzech) "Nad plán! 🏆 (+$totalBonusXp XP)"
-                                else "Overachiever! 🏆 (+$totalBonusXp XP)"
+                                if (strings.isCzech) "Nad plán (+$totalBonusXp XP)"
+                                else "Overachiever (+$totalBonusXp XP)"
                             }
                             isGoalReached -> {
-                                if (strings.isCzech) "Cíl splněn! 🎉 (+$goalBonusXp XP)"
-                                else "Goal reached! 🎉 (+$goalBonusXp XP)"
+                                if (strings.isCzech) "Cíl splněn (+$goalBonusXp XP)"
+                                else "Goal reached (+$goalBonusXp XP)"
                             }
                             remaining in 1..9 -> {
-                                if (strings.isCzech) "Už jen $remaining do cíle! 🚀"
-                                else "Just $remaining left! 🚀"
+                                if (strings.isCzech) "Už jen $remaining do cíle"
+                                else "Just $remaining left"
                             }
                             strings.isCzech -> "zbývá $remaining"
                             else -> "$remaining left"
@@ -1531,112 +1579,236 @@ private fun DeckCard(
     val levelColor = Color(deck.level.colorHex)
     val learnedAnyCount = memorySummary.learnedAnyCount
     val needsReviewCount = memorySummary.needsReviewCount
+    val progressFraction = if (deck.words.isNotEmpty()) {
+        (learnedAnyCount.toFloat() / deck.words.size.toFloat()).coerceIn(0f, 1f)
+    } else 0f
+    val percentInt = (progressFraction * 100f).toInt()
 
     Surface(
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(20.dp),
         color = CardSurface,
-        border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
+        border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.45f)),
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(6.dp, RoundedCornerShape(22.dp), spotColor = Color.Black.copy(alpha = 0.05f))
-            .clip(RoundedCornerShape(22.dp))
+            .shadow(4.dp, RoundedCornerShape(20.dp), spotColor = Color.Black.copy(alpha = 0.04f))
+            .clip(RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            Box(
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
                 modifier = Modifier
-                    .size(58.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(SurfaceBg),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Text(text = deck.emoji, fontSize = 32.sp)
-            }
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(3.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // Sleek squircle vector icon container
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(levelColor.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = levelColor.copy(alpha = 0.14f)
+                    DeckVectorIcon(deck = deck, tint = levelColor)
+                }
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    // Header row: Level & metadata dots
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text(
-                            text = deck.level.label,
-                            color = levelColor,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
-                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
-                        )
-                    }
-                    Text(
-                        text = if (learnedAnyCount > 0) {
-                            if (strings.isCzech) "Naučeno $learnedAnyCount / ${deck.words.size}" else "Learned $learnedAnyCount / ${deck.words.size}"
-                        } else {
-                            strings.wordsInDeck(deck.words.size)
-                        },
-                        fontSize = 12.sp,
-                        color = if (learnedAnyCount > 0) AppleGreen else TextMuted,
-                        fontWeight = FontWeight.Medium
-                    )
-                    if (needsReviewCount > 0) {
                         Surface(
                             shape = RoundedCornerShape(6.dp),
-                            color = AppleRedTint
+                            color = levelColor.copy(alpha = 0.14f)
                         ) {
                             Text(
-                                text = if (strings.isCzech) "K opakování: $needsReviewCount" else "Review: $needsReviewCount",
-                                color = AppleRed,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 10.sp,
+                                text = deck.level.label,
+                                color = levelColor,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
+
+                        Text(
+                            text = "•",
+                            fontSize = 11.sp,
+                            color = TextMuted
+                        )
+
+                        Text(
+                            text = if (learnedAnyCount > 0) {
+                                if (strings.isCzech) "$learnedAnyCount ze ${deck.words.size} slov" else "$learnedAnyCount of ${deck.words.size} words"
+                            } else {
+                                strings.wordsInDeck(deck.words.size)
+                            },
+                            fontSize = 12.sp,
+                            color = if (learnedAnyCount > 0) AppleGreen else TextMuted,
+                            fontWeight = FontWeight.Medium
+                        )
+
+                        if (needsReviewCount > 0) {
+                            Text(
+                                text = "•",
+                                fontSize = 11.sp,
+                                color = TextMuted
+                            )
+                            Text(
+                                text = if (strings.isCzech) "$needsReviewCount k opakování" else "$needsReviewCount to review",
+                                color = AppleRed,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 11.sp
+                            )
+                        }
                     }
+
+                    // Title
+                    Text(
+                        text = deck.localizedTitle(strings.isCzech),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextDark
+                    )
+
+                    // Subtitle
+                    Text(
+                        text = deck.localizedSubtitle(strings.isCzech),
+                        fontSize = 12.sp,
+                        color = TextMuted,
+                        maxLines = 1
+                    )
                 }
 
-                Text(
-                    text = deck.localizedTitle(strings.isCzech),
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextDark
-                )
-
-                Text(
-                    text = deck.localizedSubtitle(strings.isCzech),
-                    fontSize = 13.sp,
-                    color = TextMuted
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-                DeckMemoryProgressRow(summary = memorySummary)
+                // Trailing progress indicator or chevron
+                if (learnedAnyCount > 0) {
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            text = "$percentInt%",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (percentInt >= 100) AppleGreen else AppleBlue
+                        )
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = TextMuted.copy(alpha = 0.6f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(CircleShape)
+                            .background(SurfaceBg),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = "Spustit lekci",
+                            tint = TextMuted,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
             }
 
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(CircleShape)
-                    .background(SurfaceBg),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = "Spustit lekci",
-                    tint = TextMuted
-                )
+            // Sleek docked bottom progress line
+            if (learnedAnyCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .background(SurfaceBg)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(progressFraction)
+                            .fillMaxHeight()
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(
+                                        levelColor.copy(alpha = 0.8f),
+                                        if (progressFraction >= 1f) AppleGreen else AppleBlue
+                                    )
+                                )
+                            )
+                    )
+                }
             }
         }
     }
+}
+
+@Composable
+private fun DeckVectorIcon(
+    deck: VocabDeck,
+    tint: Color,
+    modifier: Modifier = Modifier
+) {
+    val idLower = deck.id.lowercase()
+    val titleLower = deck.titleEn.lowercase()
+    val titleCsLower = deck.title.lowercase()
+
+    val iconVector: androidx.compose.ui.graphics.vector.ImageVector = when {
+        idLower.contains("academic") || titleLower.contains("academic") || titleCsLower.contains("akademick") || idLower.contains("study") || titleLower.contains("study") ->
+            Icons.Filled.School
+        idLower.contains("mastery") || titleLower.contains("mastery") || titleCsLower.contains("mistrovsk") || idLower.contains("c2") || titleLower.contains("nuance") ->
+            Icons.Filled.WorkspacePremium
+        idLower.contains("society") || titleLower.contains("society") || idLower.contains("env") || titleLower.contains("environment") || titleLower.contains("global") || titleCsLower.contains("společnost") || titleCsLower.contains("prostředí") ->
+            Icons.Filled.Public
+        idLower.contains("law") || titleLower.contains("law") || titleCsLower.contains("právo") || titleLower.contains("legal") ->
+            Icons.Filled.Gavel
+        idLower.contains("irregular") || idLower.contains("grammar") ->
+            Icons.Filled.Spellcheck
+        idLower.contains("verb") || titleLower.contains("verb") || idLower.contains("routine") || titleLower.contains("routine") || idLower.contains("phrasal") || titleLower.contains("phrasal") ->
+            Icons.Filled.Bolt
+        idLower.contains("food") || titleLower.contains("food") || idLower.contains("restaurant") || titleLower.contains("restaurant") || idLower.contains("drink") || titleLower.contains("drink") || idLower.contains("tapas") ->
+            Icons.Filled.Restaurant
+        idLower.contains("travel") || titleLower.contains("travel") || idLower.contains("transport") || titleLower.contains("airport") || idLower.contains("vacation") || titleLower.contains("flight") ->
+            Icons.Filled.Flight
+        idLower.contains("animal") || titleLower.contains("animal") || idLower.contains("nature") || titleLower.contains("nature") ->
+            Icons.Filled.Pets
+        idLower.contains("family") || titleLower.contains("family") || idLower.contains("people") || titleLower.contains("people") || idLower.contains("human") ->
+            Icons.Filled.Groups
+        idLower.contains("phrase") || titleLower.contains("phrase") || idLower.contains("conversation") || titleLower.contains("talk") || idLower.contains("dialog") || idLower.contains("survival") ->
+            Icons.Filled.ChatBubble
+        idLower.contains("work") || titleLower.contains("work") || idLower.contains("business") || titleLower.contains("business") || idLower.contains("career") || titleLower.contains("office") || titleCsLower.contains("práce") || titleCsLower.contains("byznys") || titleCsLower.contains("profesn") ->
+            Icons.Filled.Work
+        idLower.contains("health") || titleLower.contains("health") || idLower.contains("medical") || titleLower.contains("doctor") || idLower.contains("body") ->
+            Icons.Filled.LocalHospital
+        idLower.contains("shop") || titleLower.contains("shop") || idLower.contains("clothes") || titleLower.contains("fashion") ->
+            Icons.Filled.ShoppingBag
+        idLower.contains("home") || titleLower.contains("home") || idLower.contains("house") || titleLower.contains("living") || idLower.contains("city") ->
+            Icons.Filled.Home
+        idLower.contains("tech") || titleLower.contains("tech") || idLower.contains("computer") || titleLower.contains("internet") || idLower.contains("digital") || idLower.contains("media") || titleLower.contains("media") ->
+            Icons.Filled.Devices
+        idLower.contains("sport") || titleLower.contains("sport") || idLower.contains("fitness") || idLower.contains("hobby") ->
+            Icons.Filled.FitnessCenter
+        idLower.contains("art") || titleLower.contains("art") || idLower.contains("culture") || titleLower.contains("music") || idLower.contains("cinema") ->
+            Icons.Filled.Palette
+        idLower.contains("emotion") || titleLower.contains("emotion") || idLower.contains("feeling") || titleLower.contains("psychology") ->
+            Icons.Filled.Mood
+        idLower.contains("time") || titleLower.contains("time") || idLower.contains("calendar") || idLower.contains("season") ->
+            Icons.Filled.Schedule
+        else ->
+            Icons.AutoMirrored.Filled.MenuBook
+    }
+
+    Icon(
+        imageVector = iconVector,
+        contentDescription = null,
+        tint = tint,
+        modifier = modifier.size(28.dp)
+    )
 }
 
 @Composable
@@ -1729,7 +1901,12 @@ fun NativeLanguageOnboardingDialog(
                     modifier = Modifier.size(68.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text(text = "🗣️", fontSize = 34.sp)
+                        Icon(
+                            imageVector = Icons.Filled.RecordVoiceOver,
+                            contentDescription = null,
+                            tint = AppleBlue,
+                            modifier = Modifier.size(34.dp)
+                        )
                     }
                 }
 
@@ -1870,7 +2047,12 @@ fun InitialLanguageDialog(
                     modifier = Modifier.size(68.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text(text = "🌍", fontSize = 34.sp)
+                        Icon(
+                            imageVector = Icons.Filled.Public,
+                            contentDescription = null,
+                            tint = AppleBlue,
+                            modifier = Modifier.size(34.dp)
+                        )
                     }
                 }
 
@@ -2067,7 +2249,7 @@ private fun LandscapeQuickResumeCard(
 
 @Composable
 private fun LandscapeQuickStatTile(
-    icon: String,
+    vectorIcon: androidx.compose.ui.graphics.vector.ImageVector,
     value: String,
     label: String,
     accentColor: Color,
@@ -2084,7 +2266,20 @@ private fun LandscapeQuickStatTile(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(text = icon, fontSize = 17.sp)
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(accentColor.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = vectorIcon,
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(15.dp)
+                )
+            }
             Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(
                     text = value,
@@ -2095,11 +2290,9 @@ private fun LandscapeQuickStatTile(
                 )
                 Text(
                     text = label,
-                    fontSize = 10.5.sp,
+                    fontSize = 10.sp,
                     color = TextMuted,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    maxLines = 1
                 )
             }
         }
@@ -2161,7 +2354,7 @@ private fun LandscapeQuickStatsCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 LandscapeQuickStatTile(
-                    icon = "🔥",
+                    vectorIcon = Icons.Filled.LocalFireDepartment,
                     value = if (strings.isCzech) "$streakDays d" else "$streakDays days",
                     label = if (strings.isCzech) "Řada dnů" else "Streak",
                     accentColor = AppleOrange,
@@ -2169,7 +2362,7 @@ private fun LandscapeQuickStatsCard(
                     modifier = Modifier.weight(1f)
                 )
                 LandscapeQuickStatTile(
-                    icon = "🎯",
+                    vectorIcon = Icons.Filled.TrackChanges,
                     value = "$accuracyPercent %",
                     label = if (strings.isCzech) "Přesnost" else "Accuracy",
                     accentColor = if (isDarkThemeActive) AppleGreen else AppleGreenDark,
@@ -2183,7 +2376,7 @@ private fun LandscapeQuickStatsCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 LandscapeQuickStatTile(
-                    icon = "📚",
+                    vectorIcon = Icons.Filled.MenuBook,
                     value = "$masteredInLang / ${activeLangStats.totalWords}",
                     label = if (strings.isCzech) "Naučeno (${selectedLanguage.code.uppercase()})" else "Learned (${selectedLanguage.code.uppercase()})",
                     accentColor = AppleBlue,
@@ -2191,7 +2384,7 @@ private fun LandscapeQuickStatsCard(
                     modifier = Modifier.weight(1f)
                 )
                 LandscapeQuickStatTile(
-                    icon = "🎙️",
+                    vectorIcon = Icons.Filled.Mic,
                     value = "$totalSpokenCorrect",
                     label = if (strings.isCzech) "Hlasem" else "Spoken",
                     accentColor = AppleIndigo,

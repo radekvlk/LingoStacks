@@ -195,53 +195,23 @@ fun FlashcardSessionScreen(
     var cardActiveTimestamp by remember(wordsToPractice) { mutableLongStateOf(SystemClock.uptimeMillis()) }
 
     val currentView = LocalView.current
-    var isMicSleepingForBattery by remember { mutableStateOf(false) }
-    var lastUserActivityMillis by remember { mutableLongStateOf(SystemClock.uptimeMillis()) }
-    var screenAwakeTimeoutJob by remember { mutableStateOf<Job?>(null) }
 
-    fun keepScreenActive() {
-        lastUserActivityMillis = SystemClock.uptimeMillis()
-        if (isMicSleepingForBattery) {
-            isMicSleepingForBattery = false
-        }
+    // Movement simulates touch: screen is kept awake ONLY while cards are actively moving/transitioning.
+    // When stationary, keepScreenOn is false so the device naturally follows its native display timeout.
+    fun setCardMovingAwake(isMoving: Boolean) {
         try {
-            currentView.keepScreenOn = true
+            currentView.keepScreenOn = isMoving
         } catch (_: Throwable) {
-        }
-        screenAwakeTimeoutJob?.cancel()
-        screenAwakeTimeoutJob = coroutineScope.launch {
-            delay(60_000L) // Hands-free learning: screen kept awake during active session
-            try {
-                currentView.keepScreenOn = false
-            } catch (_: Throwable) {
-            }
-        }
-    }
-
-    LaunchedEffect(isAppResumed, isMicSleepingForBattery) {
-        if (!isAppResumed) return@LaunchedEffect
-        while (true) {
-            delay(15_000L)
-            val idleTime = SystemClock.uptimeMillis() - lastUserActivityMillis
-            if (!isMicSleepingForBattery && idleTime >= 180_000L) { // 3 minutes without speech or touch -> battery save sleep
-                isMicSleepingForBattery = true
-            }
         }
     }
 
     DisposableEffect(Unit) {
-        keepScreenActive()
         onDispose {
-            screenAwakeTimeoutJob?.cancel()
-            try {
-                currentView.keepScreenOn = false
-            } catch (_: Throwable) {
-            }
+            setCardMovingAwake(false)
         }
     }
 
     fun triggerWrongSpokenFlash(heardSnippet: String) {
-        keepScreenActive()
         val now = SystemClock.uptimeMillis()
         // Ignore stale audio that finished decoding from the previous card transition (within 550ms)
         if (now - cardActiveTimestamp < 550L) return
@@ -282,7 +252,7 @@ fun FlashcardSessionScreen(
         method: AnswerMethod,
         spokenMatch: String? = null
     ) {
-        keepScreenActive()
+        setCardMovingAwake(true)
         val word = currentWordState ?: return
         val currentState = feedbackStateUpdated
         if (isTransitioningUpdated || (currentState != CardFeedbackState.NEUTRAL && currentState != CardFeedbackState.SPOKEN_WRONG_FLASH)) return
@@ -414,6 +384,7 @@ fun FlashcardSessionScreen(
                     delay(40L)
                 }
                 speechControllerRef?.stopListening()
+                setCardMovingAwake(false)
                 progressState.recordSessionCompleted()
                 onSessionFinished(results.toList())
             } else {
@@ -444,7 +415,7 @@ fun FlashcardSessionScreen(
                 // Settle timestamp, enable speech acceptance, and start listening cleanly once TTS finishes!
                 cardActiveTimestamp = SystemClock.uptimeMillis()
                 isTransitioningCard = false
-                keepScreenActive()
+                setCardMovingAwake(false)
                 val nextIsReversed = when (progressState.studyDirection) {
                     StudyDirection.NATIVE_TO_FOREIGN -> false
                     StudyDirection.FOREIGN_TO_NATIVE -> true
@@ -459,7 +430,6 @@ fun FlashcardSessionScreen(
     }
 
     val handleSpeechCandidates: (List<String>, Boolean) -> Unit = { candidates, isFinal ->
-        keepScreenActive()
         val word = currentWordState
         val state = feedbackStateUpdated
         val isReversed = isReversedCardState
@@ -532,7 +502,6 @@ fun FlashcardSessionScreen(
                 Lifecycle.Event.ON_RESUME -> {
                     isAppResumed = true
                     rmsLevel = 0f
-                    keepScreenActive()
                     if (hasMicPermState && micAutoState && !showOtaDialogUpdated) {
                         controller.startContinuousListening()
                     }
@@ -541,11 +510,7 @@ fun FlashcardSessionScreen(
                     // Immediately release mic DSP, waves, and screen wake lock when paused or minimized
                     isAppResumed = false
                     rmsLevel = 0f
-                    screenAwakeTimeoutJob?.cancel()
-                    try {
-                        currentView.keepScreenOn = false
-                    } catch (_: Throwable) {
-                    }
+                    setCardMovingAwake(false)
                     controller.stopListening()
                 }
                 else -> {}
@@ -560,11 +525,11 @@ fun FlashcardSessionScreen(
     }
 
     val isModalBlocking = progressState.showOtaDialog
-    val isMicVisualActive = micAutoEnabled && isAppResumed && !isModalBlocking && !isMicSleepingForBattery
+    val isMicVisualActive = micAutoEnabled && isAppResumed && !isModalBlocking
 
-    LaunchedEffect(hasMicPermission, isModalBlocking, isAppResumed, micAutoEnabled, isMicSleepingForBattery, speechControllerRef) {
+    LaunchedEffect(hasMicPermission, isModalBlocking, isAppResumed, micAutoEnabled, speechControllerRef) {
         val controller = speechControllerRef ?: return@LaunchedEffect
-        if (isModalBlocking || !isAppResumed || !hasMicPermission || !micAutoEnabled || isMicSleepingForBattery) {
+        if (isModalBlocking || !isAppResumed || !hasMicPermission || !micAutoEnabled) {
             rmsLevel = 0f
             controller.stopListening()
         } else {
@@ -673,6 +638,7 @@ fun FlashcardSessionScreen(
             if (currentWordState?.id == targetWord.id) return@reopen
 
             isTransitioningCard = true
+            setCardMovingAwake(true)
             wrongWordDebounceJob?.cancel()
             wrongFlashResetJob?.cancel()
             lastFlashedWrongWord = null
@@ -705,7 +671,7 @@ fun FlashcardSessionScreen(
 
                 cardActiveTimestamp = SystemClock.uptimeMillis()
                 isTransitioningCard = false
-                keepScreenActive()
+                setCardMovingAwake(false)
                 val reopenedReversed = when (progressState.studyDirection) {
                     StudyDirection.NATIVE_TO_FOREIGN -> false
                     StudyDirection.FOREIGN_TO_NATIVE -> true
@@ -723,7 +689,6 @@ fun FlashcardSessionScreen(
             if (toggleFeedbackPopup != null) {
                 toggleFeedbackPopup = null
             }
-            keepScreenActive()
             if (isCardInteractive) {
                 coroutineScope.launch {
                     offsetX.snapTo(offsetX.value + delta)
@@ -758,14 +723,9 @@ fun FlashcardSessionScreen(
             }
         }
         val handleToggleMic: () -> Unit = {
-            keepScreenActive()
             if (!hasMicPermission) {
                 micAutoEnabled = true
                 onRequestMicPermission()
-            } else if (isMicSleepingForBattery) {
-                isMicSleepingForBattery = false
-                micAutoEnabled = true
-                speechControllerRef?.startContinuousListening()
             } else {
                 micAutoEnabled = !micAutoEnabled
                 if (micAutoEnabled) {
@@ -854,9 +814,7 @@ fun FlashcardSessionScreen(
                         rmsLevelProvider = { rmsLevel },
                         animateMicWaves = isMicVisualActive,
                         expectCzech = isReversedCard,
-                        nativeLanguage = progressState.nativeLanguage,
-                        isMicSleeping = isMicSleepingForBattery,
-                        onWakeMic = { keepScreenActive() }
+                        nativeLanguage = progressState.nativeLanguage
                     )
                 }
 
@@ -962,9 +920,7 @@ fun FlashcardSessionScreen(
                     rmsLevelProvider = { rmsLevel },
                     animateMicWaves = isMicVisualActive,
                     expectCzech = isReversedCard,
-                    nativeLanguage = progressState.nativeLanguage,
-                    isMicSleeping = isMicSleepingForBattery,
-                    onWakeMic = { keepScreenActive() }
+                    nativeLanguage = progressState.nativeLanguage
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -2391,16 +2347,16 @@ private fun SwipeableVocabCard(
                 else -> 64.dp
             }
 
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 18.dp, vertical = cardVertPadding),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+                .padding(horizontal = 18.dp, vertical = cardVertPadding)
         ) {
             // Top Row: Left/Right Swipe Badges + Word Display & Auto-Pronounce Corner Toggles
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -2507,14 +2463,14 @@ private fun SwipeableVocabCard(
                 }
             }
 
-            // 2. Middle Content (Weighted + height-adaptive so Czech prompt is NEVER clipped)
+            // 2. Middle Content (Centered in card with optical center offset)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
+                    .align(Alignment.Center)
+                    .offset(y = if (isUltraCompactCard) (-4).dp else (-18).dp)
                     .padding(vertical = 2.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 val emojiCorner = if (isUltraCompactCard) 18.dp else 24.dp
                 Surface(
@@ -2598,8 +2554,9 @@ private fun SwipeableVocabCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
                     .heightIn(min = hintSlotMinHeight),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.BottomCenter
             ) {
                 androidx.compose.animation.AnimatedVisibility(
                     visible = !showHintTranslation,
