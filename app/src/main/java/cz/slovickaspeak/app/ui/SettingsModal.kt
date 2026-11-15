@@ -246,8 +246,10 @@ fun AppleFullSettingsDialog(
                                 )
                             }
                         }
-                        // Apple iOS "Hotovo" (Done) button - clean borderless text button
-                        Box(
+                        // Apple iOS "Hotovo" (Done) pill button (Apple Capsule)
+                        Surface(
+                            shape = CircleShape,
+                            color = AppleBlueTint,
                             modifier = Modifier
                                 .clip(CircleShape)
                                 .clickable(
@@ -255,14 +257,13 @@ fun AppleFullSettingsDialog(
                                     indication = null,
                                     onClick = onDismiss
                                 )
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
-                            contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = if (strings.isCzech) "Hotovo" else "Done",
-                                fontSize = 16.sp,
+                                fontSize = 14.5.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = AppleBlue
+                                color = AppleBlue,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.5.dp)
                             )
                         }
                     }

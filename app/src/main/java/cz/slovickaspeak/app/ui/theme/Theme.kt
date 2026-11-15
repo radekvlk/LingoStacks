@@ -16,7 +16,7 @@ var isDarkThemeActive by mutableStateOf(false)
 val AppleBlue = Color(0xFF0A84FF)
 val AppleBlueDark = Color(0xFF0051D5)
 val AppleBlueTint: Color
-    get() = if (isDarkThemeActive) Color(0xFF0E294B) else Color(0xFFEBF4FF)
+    get() = if (isDarkThemeActive) Color(0xFF132A46) else Color(0xFFDDEBFA)
 
 val AppleGreen = Color(0xFF34C759)
 val AppleGreenDark = Color(0xFF248A3D)
