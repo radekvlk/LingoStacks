@@ -574,10 +574,14 @@ fun FlashcardSessionScreen(
 
     if (currentWord == null) return
 
-    val masteredCount = masteredWordIdsInSession.size.coerceAtMost(sessionTargetCount)
-    val remainingCount = (sessionTargetCount - masteredCount).coerceAtLeast(0)
+    val deckMemorySummary = remember(deck.id, progressState.srsRevision, progressState.studyDirection) {
+        progressState.getDeckMemorySummary(deck)
+    }
+    val totalDeckWords = deck.words.size.coerceAtLeast(1)
+    val persistentLearnedCount = deckMemorySummary.learnedAnyCount.coerceIn(0, totalDeckWords)
+    val remainingCount = (totalDeckWords - persistentLearnedCount).coerceAtLeast(0)
     val sessionProgressFraction by animateFloatAsState(
-        targetValue = (masteredCount.toFloat() / sessionTargetCount.toFloat()).coerceIn(0f, 1f),
+        targetValue = (persistentLearnedCount.toFloat() / totalDeckWords.toFloat()).coerceIn(0f, 1f),
         animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
         label = "sessionProgressBar"
     )
@@ -761,8 +765,8 @@ fun FlashcardSessionScreen(
                         deck = deck,
                         strings = strings,
                         progressState = progressState,
-                        masteredCount = masteredCount,
-                        sessionTargetCount = sessionTargetCount,
+                        masteredCount = persistentLearnedCount,
+                        sessionTargetCount = totalDeckWords,
                         remainingCount = remainingCount,
                         sessionProgressFraction = sessionProgressFraction,
                         onCloseSession = {
@@ -903,8 +907,8 @@ fun FlashcardSessionScreen(
                     deck = deck,
                     strings = strings,
                     progressState = progressState,
-                    masteredCount = masteredCount,
-                    sessionTargetCount = sessionTargetCount,
+                    masteredCount = persistentLearnedCount,
+                    sessionTargetCount = totalDeckWords,
                     remainingCount = remainingCount,
                     sessionProgressFraction = sessionProgressFraction,
                     onCloseSession = {
