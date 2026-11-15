@@ -5,22 +5,20 @@ import mimetypes
 
 TOKEN_PATH = r"C:\Users\radek.vlk\.gemini\antigravity\brain\43b0acd7-1097-4287-b01f-eedb0d465b28\scratch\github_token.txt"
 REPO = "radekvlk/LingoStacks"
-TAG = "v1.0.2"
-NAME = "LingoStacks v1.0.2"
+TAG = "v1.0.3"
+NAME = "LingoStacks v1.0.3"
 
 BODY = """[CS]
-• **Bleskové vyhodnocení řeči:** Sjednocen model rozpoznávání a zkrácena detekce ticha na ~480 ms – vyhodnocení správnosti po vyslovení slova je nyní okamžité v obou směrech (CZ i EN).
-• **Animace denního cíle:** Světelný efekt splněného cíle přejede po liště přesně jednou při každém návratu na hlavní obrazovku.
-• **Optimalizace RAM a startu:** Katalog slovní zásoby se načítá na vyžádání (lazy loading), což výrazně snižuje využití RAM a zrychluje přepínání jazyků.
-• **Komprese zálohy postupu:** Cloudová záloha nově využívá efektivní GZIP kompresi s úsporou přes 80 % přenesených dat při zálohování a obnově.
-• **Úsporný režim mikrofonu (Smart Mic Sleep):** Při 3 minutách nečinnosti v lekci se mikrofon automaticky uspí pro úsporu baterie; probudíte jej jediným klepnutím na kartu, banner nebo mikrofon.
+• **Nový moderní vektorový design:** Všechny ikony napříč aplikací (zlatý pohár v záhlaví, balíčky A1–C2 včetně vědy, akademie a práva i ovládací prvky v Nastavení) byly nahrazeny čistými vektorovými ikonami místo emoji.
+• **Vyvážená flashkarta a plynulá nápověda:** Kartička se slovem má nyní vertikálně symetrické rozvržení s nezávislým středovým ukotvením; po kliknutí na nápovědu se rámeček rozbalí bez jakéhokoliv posunutí či odskoku slova.
+• **Přirozené řízení spotřeby:** Zrušeno manuální uspávání mikrofonu; aplikace plně respektuje systémové zhasínání displeje (pohyb karty funguje jako dotyk).
+• **Striktní soulad s pravidly Google Play:** V Google Play variantě je kompletně zablokováno externí stahování APK.
 
 [EN]
-• **Instant Speech Recognition:** Unified language model and optimized silence detection timeout – answer evaluation is now immediate in both study directions (EN and CS).
-• **Daily Goal Animation:** Completion shine effect sweeps cleanly across the progress bar once upon returning to the main screen.
-• **RAM & Startup Optimization:** Vocabulary catalog is now loaded on-demand, significantly reducing memory consumption and speeding up language switching.
-• **Cloud Backup Compression:** Progress backups are now compressed using GZIP, saving over 80% bandwidth on backup and restore operations.
-• **Battery-Saving Smart Mic Sleep:** Microphone automatically enters sleep mode after 3 minutes of inactivity in study sessions; wake it up with a single tap anywhere on screen.
+• **Modern Vector UI:** Replaced all emoji icons across decks, headers, and settings with crisp monochrome vector icons.
+• **Balanced Flashcard Layout:** Card content is vertically centered; hint reveals smoothly downwards without jumping the word above.
+• **Native Screen Sleep:** Hands-free learning respects Android display timeout (card advance acts like a screen touch).
+• **Google Play Compliance:** External OTA APK self-updating strictly disabled in Play Store builds.
 """
 
 def main():
@@ -63,7 +61,7 @@ def main():
 
     # 2. Upload APK assets
     apk_paths = [
-        ("LingoStacks_v1.0.2.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.2.apk"),
+        ("LingoStacks_v1.0.3.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.3.apk"),
         ("LingoStacks.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks.apk")
     ]
 

@@ -1,14 +1,12 @@
 <cs-CZ>
-• Okamžité vyhodnocení řeči: zkrácena prodleva po vyslovení slova (okamžitá odezva v CZ i EN)
-• Animace denního cíle: světelný efekt proběhne přesně jednou při každém návratu na obrazovku
-• Optimalizace RAM a startu: katalog slov se načítá na vyžádání (lazy), šetří paměť RAM
-• Komprese zálohy v cloudu: GZIP komprese šetří přes 80 % přenesených dat
-• Úsporný režim mikrofonu: po 3 minutách nečinnosti se mikrofon uspí; probudíte jej klepnutím
+• Nový moderní vektorový design: Všechny ikony (pohár, balíčky A1–C2 i nastavení) nahrazeny čistou vektorovou grafikou
+• Vylepšená flashkarta: Dokonale vyvážené rozvržení s nezávislým středovým ukotvením; nápověda se rozbaluje plynule bez odskoku slova
+• Přirozené řízení spotřeby: Aplikace plně respektuje systémové zhasínání displeje (pohyb karty funguje jako dotyk)
+• Striktní soulad s pravidly Google Play (vypnuto OTA stahování APK)
 </cs-CZ>
 <en-GB>
-• Instant speech evaluation: optimized silence detection for instant recognition in both EN and CS
-• Daily goal animation: completion shine effect sweeps once upon entering the screen
-• RAM & startup optimization: on-demand lazy vocabulary loading saves device memory
-• Cloud backup compression: GZIP compression saves over 80% bandwidth on cloud sync
-• Battery-saving Smart Mic Sleep: microphone automatically sleeps after 3 minutes of inactivity
+• Modern Vector UI: Replaced all emoji icons across decks, headers, and settings with crisp monochrome vector icons
+• Balanced Flashcard: Card content is vertically centered; hint expands smoothly without jumping the word
+• Native Screen Sleep: Hands-free learning respects Android display timeout (card advance acts like a screen touch)
+• Google Play compliance: External self-updating OTA disabled in Play Store builds
 </en-GB>
