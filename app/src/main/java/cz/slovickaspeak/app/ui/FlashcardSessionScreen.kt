@@ -853,6 +853,8 @@ fun FlashcardSessionScreen(
                         onDragDelta = handleDragDelta,
                         onDragEnd = handleDragEnd,
                         isReversed = isReversedCard,
+                        isListening = isListening,
+                        micAutoEnabled = micAutoEnabled,
                         readbackWord = readbackWord,
                         readbackIsCorrect = readbackIsCorrect,
                         readbackIsReversed = readbackIsReversed,
@@ -952,6 +954,8 @@ fun FlashcardSessionScreen(
                     onDragDelta = handleDragDelta,
                     onDragEnd = handleDragEnd,
                     isReversed = isReversedCard,
+                    isListening = isListening,
+                    micAutoEnabled = micAutoEnabled,
                     readbackWord = readbackWord,
                     readbackIsCorrect = readbackIsCorrect,
                     readbackIsReversed = readbackIsReversed,
@@ -1747,6 +1751,8 @@ private fun Flashcard3DStackArea(
     onDragEnd: () -> Unit,
     modifier: Modifier = Modifier,
     isReversed: Boolean = false,
+    isListening: Boolean = false,
+    micAutoEnabled: Boolean = true,
     readbackWord: VocabWord? = null,
     readbackIsCorrect: Boolean = true,
     readbackIsReversed: Boolean = false
@@ -1839,7 +1845,9 @@ private fun Flashcard3DStackArea(
             onReopenRecentWord = onReopenRecentWord,
             onDragDelta = onDragDelta,
             onDragEnd = onDragEnd,
-            isReversed = isReversed
+            isReversed = isReversed,
+            isListening = isListening,
+            micAutoEnabled = micAutoEnabled
         )
 
         // Compact Cupertino bounce card displaying spoken word + phonetic after card exits
@@ -2165,6 +2173,7 @@ private fun Modifier.softRoundedShadow(
     spreadDp: Dp = 16.dp,
     offsetYDp: Dp = 6.dp,
     layers: Int = 6,
+    shadowColor: Color = Color.Black,
     alphaProvider: () -> Float = { 1f }
 ): Modifier = drawBehind {
     val externalAlpha = alphaProvider().coerceIn(0f, 1f)
@@ -2177,7 +2186,7 @@ private fun Modifier.softRoundedShadow(
         val extra = maxSpread * fraction
         val layerAlpha = ((maxAlpha / layers) * (1.6f - fraction * 0.85f) * externalAlpha)
         drawRoundRect(
-            color = Color.Black.copy(alpha = layerAlpha.coerceIn(0f, maxAlpha)),
+            color = shadowColor.copy(alpha = layerAlpha.coerceIn(0f, maxAlpha)),
             topLeft = Offset(-extra * 0.5f, -extra * 0.3f + offsetY * fraction),
             size = Size(size.width + extra, size.height + extra),
             cornerRadius = CornerRadius(baseRadius + extra * 0.5f, baseRadius + extra * 0.5f)
@@ -2243,7 +2252,9 @@ private fun SwipeableVocabCard(
     onReopenRecentWord: (VocabWord) -> Unit = {},
     onDragDelta: (Float) -> Unit,
     onDragEnd: () -> Unit,
-    isReversed: Boolean = false
+    isReversed: Boolean = false,
+    isListening: Boolean = false,
+    micAutoEnabled: Boolean = true
 ) {
     // Derived states so swipe badges only recompose when crossing the 75px threshold, NOT every frame!
     val showLeftSwipeBadge by remember {
@@ -2252,6 +2263,18 @@ private fun SwipeableVocabCard(
     val showRightSwipeBadge by remember {
         derivedStateOf { offsetXProvider() > 75f }
     }
+
+    val isListeningActive = micAutoEnabled && isListening && feedbackState == CardFeedbackState.NEUTRAL
+    val infiniteTransition = rememberInfiniteTransition(label = "micBreathing")
+    val breathingPulse by infiniteTransition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 0.90f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1400, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glowPulse"
+    )
 
     val cardBg by animateColorAsState(
         targetValue = when (feedbackState) {
@@ -2271,6 +2294,7 @@ private fun SwipeableVocabCard(
             feedbackState == CardFeedbackState.SWIPED_WRONG ||
                     feedbackState == CardFeedbackState.SPOKEN_WRONG_FLASH ||
                     showLeftSwipeBadge -> AppleRed
+            isListeningActive -> AppleBlue.copy(alpha = 0.45f + 0.45f * breathingPulse)
             else -> CardBorderGray.copy(alpha = 0.55f)
         },
         animationSpec = tween(160),
@@ -2293,9 +2317,10 @@ private fun SwipeableVocabCard(
             }
             .softRoundedShadow(
                 cornerRadius = 34.dp,
-                maxAlpha = 0.11f,
-                spreadDp = 16.dp,
+                maxAlpha = if (isListeningActive) (0.12f + 0.08f * breathingPulse) else 0.11f,
+                spreadDp = if (isListeningActive) (16f + 6f * breathingPulse).dp else 16.dp,
                 offsetYDp = 6.dp,
+                shadowColor = if (isListeningActive) AppleBlue else Color.Black,
                 alphaProvider = alphaProvider
             )
             .pointerInput(word.id) {
@@ -2313,7 +2338,9 @@ private fun SwipeableVocabCard(
             shape = RoundedCornerShape(34.dp),
             color = cardBg,
             border = BorderStroke(
-                if (feedbackState == CardFeedbackState.NEUTRAL && !showLeftSwipeBadge && !showRightSwipeBadge) 1.dp else 2.5.dp,
+                if (feedbackState == CardFeedbackState.NEUTRAL && !showLeftSwipeBadge && !showRightSwipeBadge) {
+                    if (isListeningActive) 1.5.dp else 1.dp
+                } else 2.5.dp,
                 cardBorder
             ),
             shadowElevation = 0.dp,

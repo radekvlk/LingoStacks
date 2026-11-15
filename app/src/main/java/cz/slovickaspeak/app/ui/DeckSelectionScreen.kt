@@ -250,6 +250,7 @@ fun DeckSelectionScreen(
                             studyDirection = studyDirection,
                             completedTodayWords = completedTodayWords,
                             dailyGoalWords = dailyGoalWords,
+                            streakDays = progressState.streakDays,
                             isGoalReached = isGoalReached,
                             goalProgressFraction = goalProgressFraction,
                             goalBonusXp = progressState.todayGoalBonusXp,
@@ -387,6 +388,7 @@ fun DeckSelectionScreen(
                         studyDirection = studyDirection,
                         completedTodayWords = completedTodayWords,
                         dailyGoalWords = dailyGoalWords,
+                        streakDays = progressState.streakDays,
                         isGoalReached = isGoalReached,
                         goalProgressFraction = goalProgressFraction,
                         goalBonusXp = progressState.todayGoalBonusXp,
@@ -1170,6 +1172,7 @@ private fun DeckGoalIndicatorCard(
     studyDirection: StudyDirection,
     completedTodayWords: Int,
     dailyGoalWords: Int,
+    streakDays: Int = 0,
     isGoalReached: Boolean,
     goalProgressFraction: Float,
     goalBonusXp: Int = 0,
@@ -1342,131 +1345,183 @@ private fun DeckGoalIndicatorCard(
             val remaining = (dailyGoalWords - completedTodayWords).coerceAtLeast(0)
             val progressPercent = if (dailyGoalWords > 0) ((completedTodayWords.toFloat() / dailyGoalWords) * 100f).toInt() else 0
 
-            // Clickable progress strip + bar opening Complete Statistics without altering visual design
-            Column(
+            // Dynamic Island Capsule for Daily Goal & Streak
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = SurfaceBg,
+                border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.5f)),
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                         onClick = onOpenStats
-                    ),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                    )
             ) {
-                // Clean single-line row for Today Words progress & remaining count
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = if (isOverachiever) {
-                            if (strings.isCzech) "Dnes: $completedTodayWords / $dailyGoalWords slov ($progressPercent %)"
-                            else "Today: $completedTodayWords / $dailyGoalWords words ($progressPercent %)"
-                        } else {
-                            if (strings.isCzech) "Dnes: $completedTodayWords / $dailyGoalWords slov"
-                            else "Today: $completedTodayWords / $dailyGoalWords words"
-                        },
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = when {
-                            isOverachiever -> AppleOrange
-                            isGoalReached -> AppleGreen
-                            else -> TextDark
-                        },
-                        maxLines = 1
-                    )
-
-                    Text(
-                        text = when {
-                            isOverachiever -> {
-                                if (strings.isCzech) "Nad plán (+$totalBonusXp XP)"
-                                else "Overachiever (+$totalBonusXp XP)"
-                            }
-                            isGoalReached -> {
-                                if (strings.isCzech) "Cíl splněn (+$goalBonusXp XP)"
-                                else "Goal reached (+$goalBonusXp XP)"
-                            }
-                            remaining in 1..9 -> {
-                                if (strings.isCzech) "Už jen $remaining do cíle"
-                                else "Just $remaining left"
-                            }
-                            strings.isCzech -> "zbývá $remaining"
-                            else -> "$remaining left"
-                        },
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = when {
-                            isOverachiever -> AppleOrange
-                            isGoalReached -> AppleGreen
-                            remaining in 1..9 -> AppleIndigo
-                            else -> AppleBlue
-                        },
-                        maxLines = 1
-                    )
-                }
-
-                BoxWithConstraints(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(13.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(SurfaceBg)
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    val barWidthPx = constraints.maxWidth.toFloat().coerceAtLeast(1f)
-                    val activeFraction = goalProgressFraction.coerceIn(0f, 1f)
-                    val activeWidthPx = barWidthPx * activeFraction
-                    val bandWidth = (barWidthPx * 0.35f).coerceIn(180f, 700f)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Left: Streak Badge Pill
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = if (streakDays > 0) AppleOrange.copy(alpha = 0.14f) else Color.Transparent,
+                            border = if (streakDays > 0) BorderStroke(0.5.dp, AppleOrange.copy(alpha = 0.35f)) else null
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.LocalFireDepartment,
+                                    contentDescription = "Streak",
+                                    tint = if (streakDays > 0) AppleOrange else TextMuted,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Text(
+                                    text = if (streakDays > 0) {
+                                        if (strings.isCzech) "$streakDays d" else "${streakDays}d"
+                                    } else {
+                                        if (strings.isCzech) "0 d" else "0d"
+                                    },
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (streakDays > 0) AppleOrange else TextMuted
+                                )
+                            }
+                        }
 
-                    val isAnimating = shimmerAnim.value in 0.001f..0.999f
-                    val sweepCenter = if (isAnimating) {
-                        val totalDistance = activeWidthPx + (2f * bandWidth)
-                        -bandWidth + (shimmerAnim.value * totalDistance)
-                    } else {
-                        0f
-                    }
-                    val gradientStartX = if (isAnimating) sweepCenter - (bandWidth / 2f) else 0f
-                    val gradientEndX = if (isAnimating) sweepCenter + (bandWidth / 2f) else activeWidthPx.coerceAtLeast(1f)
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .fillMaxWidth(activeFraction)
-                            .clip(RoundedCornerShape(50))
-                            .background(
+                        // Center: Words Progress (Dynamic Island Pill)
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = when {
+                                isOverachiever -> AppleOrange.copy(alpha = 0.12f)
+                                isGoalReached -> AppleGreen.copy(alpha = 0.14f)
+                                else -> CardElevatedSurface
+                            },
+                            border = BorderStroke(
+                                0.5.dp,
                                 when {
-                                    isOverachiever -> {
-                                        Brush.horizontalGradient(
-                                            colors = listOf(
-                                                Color(0xFFFFB300),
-                                                Color(0xFFFFE082),
-                                                AppleGreen,
-                                                AppleGreenDark
-                                            ),
-                                            startX = gradientStartX,
-                                            endX = gradientEndX
-                                        )
-                                    }
-                                    isGoalReached -> {
-                                        Brush.horizontalGradient(
-                                            colors = listOf(
-                                                AppleGreenDark,
-                                                AppleGreen,
-                                                Color(0xFFA5D6A7),
-                                                AppleGreen
-                                            ),
-                                            startX = gradientStartX,
-                                            endX = gradientEndX
-                                        )
-                                    }
-                                    else -> {
-                                        Brush.horizontalGradient(
-                                            colors = listOf(AppleBlue, AppleIndigo)
-                                        )
-                                    }
+                                    isOverachiever -> AppleOrange.copy(alpha = 0.4f)
+                                    isGoalReached -> AppleGreen.copy(alpha = 0.4f)
+                                    else -> CardBorderGray.copy(alpha = 0.6f)
                                 }
                             )
-                    )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = "$completedTodayWords / $dailyGoalWords",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = when {
+                                        isOverachiever -> AppleOrange
+                                        isGoalReached -> AppleGreen
+                                        else -> TextDark
+                                    }
+                                )
+                                Text(
+                                    text = if (strings.isCzech) "slov" else "words",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = TextMuted
+                                )
+                            }
+                        }
+
+                        // Right: Status / Remaining / XP
+                        Text(
+                            text = when {
+                                isOverachiever -> "+$totalBonusXp XP"
+                                isGoalReached -> "+$goalBonusXp XP"
+                                remaining in 1..9 -> if (strings.isCzech) "zbývá $remaining" else "$remaining left"
+                                else -> "$progressPercent %"
+                            },
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = when {
+                                isOverachiever -> AppleOrange
+                                isGoalReached -> AppleGreen
+                                remaining in 1..9 -> AppleIndigo
+                                else -> AppleBlue
+                            }
+                        )
+                    }
+
+                    // Sleek compact progress bar along bottom of island capsule (height 6.dp)
+                    BoxWithConstraints(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(CardBorderGray.copy(alpha = 0.35f))
+                    ) {
+                        val barWidthPx = constraints.maxWidth.toFloat().coerceAtLeast(1f)
+                        val activeFraction = goalProgressFraction.coerceIn(0f, 1f)
+                        val activeWidthPx = barWidthPx * activeFraction
+                        val bandWidth = (barWidthPx * 0.35f).coerceIn(180f, 700f)
+
+                        val isAnimating = shimmerAnim.value in 0.001f..0.999f
+                        val sweepCenter = if (isAnimating) {
+                            val totalDistance = activeWidthPx + (2f * bandWidth)
+                            -bandWidth + (shimmerAnim.value * totalDistance)
+                        } else {
+                            0f
+                        }
+                        val gradientStartX = if (isAnimating) sweepCenter - (bandWidth / 2f) else 0f
+                        val gradientEndX = if (isAnimating) sweepCenter + (bandWidth / 2f) else activeWidthPx.coerceAtLeast(1f)
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .fillMaxWidth(activeFraction)
+                                .clip(RoundedCornerShape(50))
+                                .background(
+                                    when {
+                                        isOverachiever -> {
+                                            Brush.horizontalGradient(
+                                                colors = listOf(
+                                                    Color(0xFFFFB300),
+                                                    Color(0xFFFFE082),
+                                                    AppleGreen,
+                                                    AppleGreenDark
+                                                ),
+                                                startX = gradientStartX,
+                                                endX = gradientEndX
+                                            )
+                                        }
+                                        isGoalReached -> {
+                                            Brush.horizontalGradient(
+                                                colors = listOf(
+                                                    AppleGreenDark,
+                                                    AppleGreen,
+                                                    Color(0xFFA5D6A7),
+                                                    AppleGreen
+                                                ),
+                                                startX = gradientStartX,
+                                                endX = gradientEndX
+                                            )
+                                        }
+                                        else -> {
+                                            Brush.horizontalGradient(
+                                                colors = listOf(AppleBlue, AppleIndigo)
+                                            )
+                                        }
+                                    }
+                                )
+                        )
+                    }
                 }
             }
         }
