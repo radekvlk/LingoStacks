@@ -216,40 +216,52 @@ fun AppleFullSettingsDialog(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                    Column {
-                        Text(
-                            text = strings.settingsAndLeaderboard,
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextDark
-                        )
-                        Text(
-                            text = progressState.lastSyncStatus,
-                            fontSize = 11.sp,
-                            color = if (progressState.lastSyncOnlineOk) {
-                                if (isDarkThemeActive) AppleGreen else AppleGreenDark
-                            } else {
-                                AppleOrange
-                            },
-                            fontWeight = FontWeight.Medium
-                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(
+                                text = strings.settingsAndLeaderboard,
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextDark
+                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.padding(start = 1.dp, top = 1.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(7.dp)
+                                        .clip(CircleShape)
+                                        .background(if (progressState.lastSyncOnlineOk) AppleGreen else AppleOrange)
+                                )
+                                Text(
+                                    text = if (progressState.lastSyncOnlineOk) {
+                                        if (strings.isCzech) "Synchronizováno s cloudem" else "Synced with cloud"
+                                    } else {
+                                        progressState.lastSyncStatus.replace("✓", "").trim()
+                                    },
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = TextMuted
+                                )
+                            }
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(CardSurface)
+                                .clickable(onClick = onDismiss),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = null,
+                                tint = TextMuted,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(CardSurface)
-                            .clickable(onClick = onDismiss),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = null,
-                            tint = TextMuted,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
 
                 // iOS Segmented Tab Switcher
                 Surface(

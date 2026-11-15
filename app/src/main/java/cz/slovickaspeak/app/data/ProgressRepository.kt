@@ -1270,7 +1270,7 @@ class ProgressStateHolder(context: Context) {
                 .addOnSuccessListener {
                     android.util.Log.d("LingoSync", "Firestore write OK uid=$uid code=$safeCode")
                     lastSyncOnlineOk = true
-                    lastSyncStatus = if (isCzechLocale()) "Synchronizováno online ✓" else "Synced online ✓"
+                    lastSyncStatus = if (isCzechLocale()) "Synchronizováno online" else "Synced online"
                 }
                 .addOnFailureListener { e ->
                     android.util.Log.w("LingoSync", "Firestore write FAILED uid=$uid err=${e.message} map=$entryMap", e)
@@ -1424,9 +1424,9 @@ class ProgressStateHolder(context: Context) {
                         }
                         lastSyncOnlineOk = true
                         lastSyncStatus = if (isCzechLocale()) {
-                            "Záloha účtu obnovena ✓ (${masteredWordIds.size} slov)"
+                            "Záloha účtu obnovena (${masteredWordIds.size} slov)"
                         } else {
-                            "Account backup synced ✓ (${masteredWordIds.size} words)"
+                            "Account backup synced (${masteredWordIds.size} words)"
                         }
                     } else {
                         initialBackupSyncDoneForUid = uid
