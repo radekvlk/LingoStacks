@@ -497,8 +497,8 @@ fun DailyLeaderboardSectionCard(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(24.dp)
-                                .clip(RoundedCornerShape(6.dp))
+                                .size(26.dp)
+                                .clip(CircleShape)
                                 .background(Color(0xFFE5A100).copy(alpha = 0.15f)),
                             contentAlignment = Alignment.Center
                         ) {
@@ -917,8 +917,8 @@ private fun AppleInsetToggleRow(
         ) {
             Box(
                 modifier = Modifier
-                    .size(30.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .size(32.dp)
+                    .clip(CircleShape)
                     .background(iconBg),
                 contentAlignment = Alignment.Center
             ) {
@@ -926,7 +926,7 @@ private fun AppleInsetToggleRow(
                     imageVector = vectorIcon,
                     contentDescription = null,
                     tint = iconTint,
-                    modifier = Modifier.size(17.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
             Column(
@@ -1030,8 +1030,8 @@ private fun AppVersionSectionCard(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(30.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .size(32.dp)
+                            .clip(CircleShape)
                             .background(Brush.linearGradient(listOf(AppleBlue, AppleIndigo))),
                         contentAlignment = Alignment.Center
                     ) {
@@ -1039,7 +1039,7 @@ private fun AppVersionSectionCard(
                             imageVector = Icons.Default.SystemUpdate,
                             contentDescription = null,
                             tint = Color.White,
-                            modifier = Modifier.size(17.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
@@ -1107,7 +1107,7 @@ private fun AppVersionSectionCard(
                             Box(
                                 modifier = Modifier
                                     .size(26.dp)
-                                    .clip(RoundedCornerShape(7.dp))
+                                    .clip(CircleShape)
                                     .background(AppleBlueTint),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -1157,7 +1157,7 @@ private fun AppVersionSectionCard(
                             Box(
                                 modifier = Modifier
                                     .size(26.dp)
-                                    .clip(RoundedCornerShape(7.dp))
+                                    .clip(CircleShape)
                                     .background(AppleGreenTint),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -1202,7 +1202,7 @@ private fun AppVersionSectionCard(
                             Box(
                                 modifier = Modifier
                                     .size(26.dp)
-                                    .clip(RoundedCornerShape(7.dp))
+                                    .clip(CircleShape)
                                     .background(AppleBlueTint),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -1245,7 +1245,7 @@ private fun AppVersionSectionCard(
                             Box(
                                 modifier = Modifier
                                     .size(26.dp)
-                                    .clip(RoundedCornerShape(7.dp))
+                                    .clip(CircleShape)
                                     .background(AppleBlueTint),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -1294,7 +1294,7 @@ private fun AppVersionSectionCard(
                             Box(
                                 modifier = Modifier
                                     .size(26.dp)
-                                    .clip(RoundedCornerShape(7.dp))
+                                    .clip(CircleShape)
                                     .background(AppleBlueTint),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -1348,7 +1348,7 @@ private fun AppVersionSectionCard(
                             Box(
                                 modifier = Modifier
                                     .size(26.dp)
-                                    .clip(RoundedCornerShape(7.dp))
+                                    .clip(CircleShape)
                                     .background(Color(0xFFFF5E5B).copy(alpha = 0.14f)),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -1562,8 +1562,8 @@ private fun SettingsSwitchCard(
                 if (vectorIcon != null) {
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(10.dp))
+                            .size(32.dp)
+                            .clip(CircleShape)
                             .background(iconBg),
                         contentAlignment = Alignment.Center
                     ) {
@@ -1571,7 +1571,7 @@ private fun SettingsSwitchCard(
                             imageVector = vectorIcon,
                             contentDescription = null,
                             tint = iconTint,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
@@ -1655,8 +1655,8 @@ private fun NativeLanguageSectionCard(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(30.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .size(32.dp)
+                        .clip(CircleShape)
                         .background(AppleBlue.copy(alpha = 0.12f)),
                     contentAlignment = Alignment.Center
                 ) {
@@ -1919,8 +1919,8 @@ private fun StudyReminderSectionCard(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(30.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .size(32.dp)
+                            .clip(CircleShape)
                             .background(AppleRed),
                         contentAlignment = Alignment.Center
                     ) {
@@ -1928,7 +1928,7 @@ private fun StudyReminderSectionCard(
                             imageVector = Icons.Filled.Notifications,
                             contentDescription = null,
                             tint = Color.White,
-                            modifier = Modifier.size(17.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                     Column(
@@ -2273,8 +2273,8 @@ private fun AppleStatTile(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(28.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .size(30.dp)
+                        .clip(CircleShape)
                         .background(accentColor),
                     contentAlignment = Alignment.Center
                 ) {
@@ -2282,7 +2282,7 @@ private fun AppleStatTile(
                         imageVector = icon,
                         contentDescription = null,
                         tint = Color.White,
-                        modifier = Modifier.size(15.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                 }
                 Text(
