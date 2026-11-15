@@ -170,7 +170,7 @@ fun DeckSelectionScreen(
         AppleCompleteStatsDialog(
             progressState = progressState,
             onOpenLeaderboard = {
-                settingsInitialTab = 1
+                settingsInitialTab = 0
                 showSettingsDialog = true
             },
             onDismiss = {
@@ -241,11 +241,11 @@ fun DeckSelectionScreen(
                             strings = strings,
                             animateWave = isLandscapeHeaderVisible,
                             onOpenLeaderboard = {
-                                settingsInitialTab = 1
+                                settingsInitialTab = 0
                                 showSettingsDialog = true
                             },
                             onOpenSettings = {
-                                settingsInitialTab = 0
+                                settingsInitialTab = 1
                                 showSettingsDialog = true
                             }
                         )
@@ -452,11 +452,11 @@ fun DeckSelectionScreen(
                         }
                     }
                     2 -> {
-                        settingsInitialTab = 1
+                        settingsInitialTab = 0
                         showSettingsDialog = true
                     }
                     3 -> {
-                        settingsInitialTab = 0
+                        settingsInitialTab = 1
                         showSettingsDialog = true
                     }
                 }

@@ -98,7 +98,7 @@ fun AppleFullSettingsDialog(
 ) {
     val context = LocalContext.current
     val strings = rememberAppStrings(progressState.nativeLanguage)
-    var selectedTab by remember { mutableIntStateOf(initialTab) } // 0 = Goal & Stats, 1 = Leaderboard
+    var selectedTab by remember { mutableIntStateOf(initialTab) } // 0 = Leaderboard & Stats, 1 = Goal & Settings
     var showCompleteStatsInModal by remember { mutableStateOf(false) }
     var showGoogleEmailPrompt by remember { mutableStateOf(false) }
     var manualGoogleEmail by remember { mutableStateOf("") }
@@ -113,7 +113,7 @@ fun AppleFullSettingsDialog(
         showGoogleEmailPrompt = false
     }
     LaunchedEffect(selectedTab, progressState.googleUser, showCompleteStatsInModal, lifecycleOwner) {
-        if (selectedTab == 1 && progressState.googleUser != null && !showCompleteStatsInModal) {
+        if (selectedTab == 0 && progressState.googleUser != null && !showCompleteStatsInModal) {
             lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 while (true) {
                     progressState.refreshFromCloud()
@@ -160,7 +160,7 @@ fun AppleFullSettingsDialog(
             progressState = progressState,
             onOpenLeaderboard = {
                 showCompleteStatsInModal = false
-                selectedTab = 1
+                selectedTab = 0
             },
             onDismiss = { showCompleteStatsInModal = false }
         )
@@ -276,10 +276,10 @@ fun AppleFullSettingsDialog(
                             .padding(4.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        listOf(strings.tabGoalAndStats, strings.tabLeaderboardAndFriends).forEachIndexed { idx, rawTitle ->
+                        listOf(strings.tabLeaderboardAndFriends, strings.tabGoalAndStats).forEachIndexed { idx, rawTitle ->
                             val selected = selectedTab == idx
                             val cleanTitle = rawTitle.replace("⚙️", "").replace("📊", "").trim()
-                            val tabIcon = if (idx == 0) Icons.Filled.Settings else Icons.Filled.Leaderboard
+                            val tabIcon = if (idx == 0) Icons.Filled.Leaderboard else Icons.Filled.Settings
                             Surface(
                                 shape = CircleShape,
                                 color = if (selected) CardElevatedSurface else Color.Transparent,
@@ -324,6 +324,45 @@ fun AppleFullSettingsDialog(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     if (selectedTab == 0) {
+                        // 1. Overall Personal Statistics
+                        AllStatisticsSectionCard(
+                            strings = strings,
+                            progressState = progressState,
+                            onTileClick = { showCompleteStatsInModal = true }
+                        )
+
+                        // 2. Fair Daily & Weekly XP Leaderboard
+                        DailyLeaderboardSectionCard(
+                            strings = strings,
+                            leaderboard = progressState.dailyLeaderboard,
+                            weeklyLeaderboard = progressState.weeklyLeaderboard,
+                            isSignedIn = progressState.googleUser != null,
+                            isSyncing = progressState.isSyncingCloud,
+                            onRefresh = { progressState.refreshFromCloud() }
+                        )
+
+                        // 3. Google Account Profile
+                        GoogleAccountSectionCard(
+                            strings = strings,
+                            progressState = progressState,
+                            showEmailPrompt = showGoogleEmailPrompt,
+                            manualName = manualGoogleName,
+                            manualEmail = manualGoogleEmail,
+                            onManualNameChange = { manualGoogleName = it },
+                            onManualEmailChange = { manualGoogleEmail = it },
+                            onConfirmManualSignIn = {
+                                progressState.signInWithGoogle(manualGoogleName, manualGoogleEmail)
+                                showGoogleEmailPrompt = false
+                            },
+                            onStartGoogleSignIn = {
+                                try {
+                                    googleAccountLauncher.launch(googleSignInClient.signInIntent)
+                                } catch (_: Exception) {
+                                    showGoogleEmailPrompt = true
+                                }
+                            }
+                        )
+                    } else {
                         // Section 1: Learning Preferences
                         AppleSectionHeader(if (strings.isCzech) "Předvolby učení" else "Learning Preferences")
                         DailyGoalSectionCard(
@@ -404,45 +443,6 @@ fun AppleFullSettingsDialog(
                         AppVersionSectionCard(
                             strings = strings,
                             progressState = progressState
-                        )
-                    } else {
-                        // 1. Overall Personal Statistics
-                        AllStatisticsSectionCard(
-                            strings = strings,
-                            progressState = progressState,
-                            onTileClick = { showCompleteStatsInModal = true }
-                        )
-
-                        // 2. Fair Daily & Weekly XP Leaderboard
-                        DailyLeaderboardSectionCard(
-                            strings = strings,
-                            leaderboard = progressState.dailyLeaderboard,
-                            weeklyLeaderboard = progressState.weeklyLeaderboard,
-                            isSignedIn = progressState.googleUser != null,
-                            isSyncing = progressState.isSyncingCloud,
-                            onRefresh = { progressState.refreshFromCloud() }
-                        )
-
-                        // 2. Google Account Profile
-                        GoogleAccountSectionCard(
-                            strings = strings,
-                            progressState = progressState,
-                            showEmailPrompt = showGoogleEmailPrompt,
-                            manualName = manualGoogleName,
-                            manualEmail = manualGoogleEmail,
-                            onManualNameChange = { manualGoogleName = it },
-                            onManualEmailChange = { manualGoogleEmail = it },
-                            onConfirmManualSignIn = {
-                                progressState.signInWithGoogle(manualGoogleName, manualGoogleEmail)
-                                showGoogleEmailPrompt = false
-                            },
-                            onStartGoogleSignIn = {
-                                try {
-                                    googleAccountLauncher.launch(googleSignInClient.signInIntent)
-                                } catch (_: Exception) {
-                                    showGoogleEmailPrompt = true
-                                }
-                            }
                         )
                     }
 
