@@ -1,12 +1,12 @@
 <en-GB>
-• Apple Floating Glass Bar: Elegant 4-tab floating stadium capsule (Home, Practice with review counter, Stats, Settings) with specular edge highlights and smooth study dismissal.
+• Apple Floating Glass Bar: 4-tab stadium capsule (Home, Practice, Stats, Settings) with specular edge highlights and smooth study dismissal.
 • Smart Quick Practice: Direct return to in-progress decks and prioritized SRS reviews right from the bottom bar.
-• Apple HIG Dark Mode Polish: Native dark glass background for filter popovers and dialogs; balanced capsule contrast for Done button.
-• Modern Circular Badges: Clean, friendly circular icon badges across settings and stats inspired by Duolingo and Apple Fitness.
+• Apple HIG Dark Mode Polish: Dark glass surfaces for filter popovers; balanced capsule contrast for Done button.
+• Modern Circular Badges: Clean, friendly circular icon badges across settings and stats.
 </en-GB>
 <cs-CZ>
-• Plovoucí skleněná lišta Apple: 4-položková plovoucí lišta ve tvaru kapsle (Domů, Trénink s počtem opakování, Statistiky, Nastavení) se skleněným odleskem a plynulým mizení při studiu.
+• Plovoucí skleněná lišta Apple: 4-položková lišta ve tvaru kapsle (Domů, Trénink, Statistiky, Nastavení) se skleněným odleskem a plynulým mizení při studiu.
 • Chytrý rychlý trénink: Okamžitý návrat k rozpracovanému balíčku i prioritnímu opakování slovíček (SRS) přímo z lišty.
-• Vyladění tmavého režimu podle Apple HIG: Tmavý grafitový podklad horních rozbalovacích nabídek i dialogů; perfektně vyvážená pilulka tlačítka Hotovo.
-• Moderní kulaté odznaky: Sjednocení ikon v nastavení a statistikách na elegantní kruhy po vzoru Duolinga a Apple Fitness.
+• Vyladění tmavého režimu podle Apple HIG: Tmavý grafitový podklad horních nabídek i dialogů; vyvážená pilulka tlačítka Hotovo.
+• Moderní kulaté odznaky: Sjednocení ikon v nastavení a statistikách na elegantní kruhy.
 </cs-CZ>
