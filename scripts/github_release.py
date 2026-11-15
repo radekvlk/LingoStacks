@@ -5,22 +5,18 @@ import mimetypes
 
 TOKEN_PATH = r"C:\Users\radek.vlk\.gemini\antigravity\brain\43b0acd7-1097-4287-b01f-eedb0d465b28\scratch\github_token.txt"
 REPO = "radekvlk/LingoStacks"
-TAG = "v1.0.4"
-NAME = "LingoStacks v1.0.4"
+TAG = "v1.0.5"
+NAME = "LingoStacks v1.0.5"
 
 BODY = """[CS]
-• **Dynamic Island kapsle:** Denní cíl, streak a zbývající slova jsou sjednoceny v jedné elegantní Bento pilulce, která šetří místo a zpřehledňuje úvodní obrazovku.
-• **Trvalý progres v lekci:** V záhlaví studijní karty se nyní zobrazuje skutečný celkový stav zvládnutí balíčku (např. 10 / 80), nikoliv vynulované počítadlo relace.
-• **Organický světelný lem (Breathing Glow):** Studijní karta má při aktivním poslechu mikrofonu jemný pulzující modrý lem s ambientním stínem.
-• **Minimalistická ovládací pilulka:** Tři ikony v rohu karty (zobrazení slova, výslovnost, historie) jsou sjednoceny do čisté kapsle s tenkými vektorovými piktogramy.
-• **Opravená česká vlajka a synchronizace:** Opravena geometrie modrého trojúhelníkového klínu a nasazena podpora češtiny v Cloud Firestore pravidlech.
+• **Nový plovoucí popover filtrů:** Rozbalovací menu pro výběr jazyka, směru učení a úrovně CEFR jsou nyní plovoucí zaoblené karty s měkkými rohy (18 dp), vzdušným 8dp odstupem od lišty a přesným vycentrováním na střed zvolené pilulky.
+• **Zvýraznění aktivní volby:** Vybraná položka je zřetelně odlišena jemnou světle modrou kapslí s modrým textem a modrou fajfkou.
+• **Zarovnání na středovou osu:** Středová pilulka filtrů a pilulka denního cíle na domovské obrazovce jsou nově zarovnány na společnou vertikální osu.
 
 [EN]
-• **Dynamic Island Capsule:** Daily goal, streak, and word counters unified into a compact, space-saving Bento pill widget.
-• **Persistent Deck Progress:** Lesson header accurately reflects permanent deck mastery progress (e.g. 10 / 80) across sessions.
-• **Organic Breathing Glow:** Active voice listening wraps the flashcard in a soft, ambient pulsing blue light.
-• **Minimalist Toolbar Capsule:** Balanced, outline vector icons unified in a discreet corner capsule.
-• **Czech Flag & Cloud Fixes:** True triangular wedge geometry for Czech flag waving animation and Firestore security rules update.
+• **Modern Floating Filter Popovers:** Filter dropdown menus (language, study direction, CEFR level) are now floating cards with 18dp rounded corners, an 8dp breathing gap below the pill, and precise center alignment.
+• **Active Item Highlight:** Current active selection is clearly highlighted with a soft blue capsule, blue text, and blue checkmark.
+• **Center Alignment:** The middle filter pill and daily goal progress capsule are perfectly aligned on a shared vertical center axis.
 """
 
 def main():
@@ -63,7 +59,7 @@ def main():
 
     # 2. Upload APK assets
     apk_paths = [
-        ("LingoStacks_v1.0.4.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.4.apk"),
+        ("LingoStacks_v1.0.5.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.5.apk"),
         ("LingoStacks.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks.apk")
     ]
 

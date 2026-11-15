@@ -1,0 +1,10 @@
+<cs-CZ>
+• Nový plovoucí popover filtrů: Rozbalovací menu (jazyk, směr, úroveň) jsou nyní elegantní plovoucí karty s měkkým zaoblením 18 dp, vzdušným odstupem a přesným vycentrováním na střed pilulky.
+• Vizuální zvýraznění volby: Aktivní možnost má jemnou modrou kapsli a modré zatržítko.
+• Perfektní zarovnání na střed: Středová pilulka filtrů a pilulka denního cíle jsou nově zarovnány na společnou středovou osu.
+</cs-CZ>
+<en-GB>
+• Modern Floating Filter Popovers: Dropdown menus (language, study direction, CEFR level) are now elegant floating cards with smooth 18dp rounded corners, breathing room, and precise center alignment.
+• Highlighted Active Option: The current selection is distinguished by a soft blue capsule and checkmark.
+• Center Alignment: The center filter pill and daily goal progress capsule are perfectly aligned on a shared vertical center axis.
+</en-GB>
