@@ -4,6 +4,7 @@ import cz.slovickaspeak.app.BuildConfig
 
 import android.content.res.Configuration
 import android.os.SystemClock
+import kotlinx.coroutines.launch
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -17,7 +18,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -37,6 +40,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Flight
@@ -116,17 +120,32 @@ fun DeckSelectionScreen(
     val selectedLanguage = progressState.selectedLanguage
     val selectedLevel = progressState.selectedCefrLevel
     val studyDirection = progressState.studyDirection
+    var activeBottomTab by remember { mutableIntStateOf(0) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var settingsInitialTab by remember { mutableIntStateOf(0) }
     var showCompleteStatsDialog by remember { mutableStateOf(false) }
+    var isSearchActive by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    val portraitListState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
     val dailyGoalWords = progressState.dailyGoalWords
     val completedTodayWords = progressState.todayCompletedWords
 
-    val filteredDecks = remember(decks, selectedLanguage, selectedLevel) {
+    val filteredDecks = remember(decks, selectedLanguage, selectedLevel, searchQuery) {
         val byLang = decks
             .filter { it.language == selectedLanguage }
             .sortedBy { it.level.ordinal }
-        if (selectedLevel == null) byLang else byLang.filter { it.level == selectedLevel }
+        val byLevel = if (selectedLevel == null) byLang else byLang.filter { it.level == selectedLevel }
+        if (searchQuery.isBlank()) {
+            byLevel
+        } else {
+            val q = searchQuery.trim().lowercase()
+            byLevel.filter {
+                it.title.lowercase().contains(q) ||
+                it.subtitle.lowercase().contains(q) ||
+                it.words.any { w -> w.czech.lowercase().contains(q) || w.english.lowercase().contains(q) }
+            }
+        }
     }
 
     val remainingWords = (dailyGoalWords - completedTodayWords).coerceAtLeast(0)
@@ -141,7 +160,10 @@ fun DeckSelectionScreen(
         AppleFullSettingsDialog(
             progressState = progressState,
             initialTab = settingsInitialTab,
-            onDismiss = { showSettingsDialog = false }
+            onDismiss = {
+                showSettingsDialog = false
+                activeBottomTab = 0
+            }
         )
     }
 
@@ -152,7 +174,10 @@ fun DeckSelectionScreen(
                 settingsInitialTab = 1
                 showSettingsDialog = true
             },
-            onDismiss = { showCompleteStatsDialog = false }
+            onDismiss = {
+                showCompleteStatsDialog = false
+                activeBottomTab = 0
+            }
         )
     }
 
@@ -181,7 +206,10 @@ fun DeckSelectionScreen(
     Scaffold(
         containerColor = SurfaceBg
     ) { innerPadding ->
-        if (isLandscape) {
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            if (isLandscape) {
             // Fold / Tablet Landscape (na sirku): 2 sloupce vedle sebe (Plnohodnotny Dashboard vlevo, Balicky vpravo)
             val allLanguageStats = remember(progressState.srsRevision, studyDirection, progressState.nativeLanguage) {
                 LearningLanguage.entries.filter { it != progressState.nativeLanguage }.map { progressState.getLanguageCompleteStats(it) }
@@ -337,7 +365,6 @@ fun DeckSelectionScreen(
             }
         } else {
             // Portrait (na vysku): Nechano plne roztazene pres celou sirku podle zadani
-            val portraitListState = rememberLazyListState()
             val isPortraitHeaderVisible by remember {
                 derivedStateOf { portraitListState.firstVisibleItemIndex == 0 }
             }
@@ -348,7 +375,7 @@ fun DeckSelectionScreen(
                     start = 20.dp,
                     end = 20.dp,
                     top = innerPadding.calculateTopPadding() + 18.dp,
-                    bottom = innerPadding.calculateBottomPadding() + 18.dp
+                    bottom = innerPadding.calculateBottomPadding() + 115.dp
                 ),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -366,6 +393,21 @@ fun DeckSelectionScreen(
                             showSettingsDialog = true
                         }
                     )
+                }
+
+                if (isSearchActive) {
+                    item {
+                        AppleSearchBar(
+                            query = searchQuery,
+                            onQueryChange = { searchQuery = it },
+                            onClose = {
+                                isSearchActive = false
+                                searchQuery = ""
+                                activeBottomTab = 0
+                            },
+                            isCzech = strings.isCzech
+                        )
+                    }
                 }
 
                 val pendingOta = if (BuildConfig.ENABLE_OTA_UPDATES) progressState.availableOtaRelease else null
@@ -418,9 +460,46 @@ fun DeckSelectionScreen(
                         onClick = { onSelectDeck(deck) }
                     )
                 }
- }
- }
- }
+            }
+        }
+
+        // Apple Floating Glass Bar
+        AppleFloatingGlassBar(
+            selectedTab = activeBottomTab,
+            onSelectTab = { idx ->
+                activeBottomTab = idx
+                when (idx) {
+                    0 -> {
+                        isSearchActive = false
+                        coroutineScope.launch {
+                            portraitListState.animateScrollToItem(0)
+                        }
+                    }
+                    1 -> {
+                        isSearchActive = !isSearchActive
+                        if (!isSearchActive) {
+                            searchQuery = ""
+                            activeBottomTab = 0
+                        }
+                    }
+                    2 -> {
+                        settingsInitialTab = 1
+                        showSettingsDialog = true
+                    }
+                    3 -> {
+                        settingsInitialTab = 0
+                        showSettingsDialog = true
+                    }
+                }
+            },
+            isCzech = strings.isCzech,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(horizontal = 24.dp, vertical = 14.dp)
+        )
+    }
+}
 }
 
 @Composable
@@ -2657,6 +2736,206 @@ private fun LandscapeLanguagesCard(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun AppleFloatingGlassBar(
+    selectedTab: Int,
+    onSelectTab: (Int) -> Unit,
+    isCzech: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val isDark = cz.slovickaspeak.app.ui.theme.isDarkThemeActive
+    val tabs = remember(isCzech) {
+        listOf(
+            Triple(0, if (isCzech) "Domů" else "Home", Icons.Filled.Home),
+            Triple(1, if (isCzech) "Hledat" else "Search", Icons.Filled.Search),
+            Triple(2, if (isCzech) "Statistiky" else "Stats", Icons.Filled.EmojiEvents),
+            Triple(3, if (isCzech) "Nastavení" else "Settings", Icons.Filled.Settings)
+        )
+    }
+
+    // Specular light edge border (Apple Vision / iOS 18 glass rim highlight)
+    val glassBorderBrush = remember(isDark) {
+        if (isDark) {
+            Brush.verticalGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.42f),
+                    Color.White.copy(alpha = 0.14f),
+                    Color(0x05FFFFFF)
+                )
+            )
+        } else {
+            Brush.verticalGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.95f),
+                    Color.White.copy(alpha = 0.50f),
+                    Color(0x18000000)
+                )
+            )
+        }
+    }
+
+    // Frosted glass gradient body with high-grade translucency
+    val glassBgBrush = remember(isDark) {
+        if (isDark) {
+            Brush.verticalGradient(
+                colors = listOf(
+                    Color(0xF02A2A2E),
+                    Color(0xE41C1C1E),
+                    Color(0xD8141416)
+                )
+            )
+        } else {
+            Brush.verticalGradient(
+                colors = listOf(
+                    Color(0xF6FFFFFF),
+                    Color(0xEEF6F8FC),
+                    Color(0xE6EDF2F9)
+                )
+            )
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .widthIn(max = 400.dp)
+            .fillMaxWidth()
+            .shadow(
+                elevation = 20.dp,
+                shape = RoundedCornerShape(32.dp),
+                spotColor = if (isDark) Color(0x99000000) else Color(0x40001830),
+                ambientColor = Color(0x20000000)
+            )
+            .border(
+                width = 1.dp,
+                brush = glassBorderBrush,
+                shape = RoundedCornerShape(32.dp)
+            )
+            .clip(RoundedCornerShape(32.dp))
+            .background(brush = glassBgBrush)
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            tabs.forEach { (idx, title, icon) ->
+                val isSelected = selectedTab == idx
+                val iconTint by animateColorAsState(
+                    targetValue = if (isSelected) AppleBlue else if (isDark) Color(0xFF98989F) else Color(0xFF8E8E93),
+                    label = "tabTint_$idx"
+                )
+                val pillBg by animateColorAsState(
+                    targetValue = if (isSelected) AppleBlue.copy(alpha = if (isDark) 0.20f else 0.12f) else Color.Transparent,
+                    label = "tabPillBg_$idx"
+                )
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(pillBg)
+                        .clickable { onSelectTab(idx) }
+                        .padding(vertical = 5.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = title,
+                            tint = iconTint,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = title,
+                            fontSize = 10.5.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = iconTint
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AppleSearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onClose: () -> Unit,
+    isCzech: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val isDark = cz.slovickaspeak.app.ui.theme.isDarkThemeActive
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = if (isDark) Color(0xFF2C2C2E) else Color(0xFFE9E9EB),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Search,
+                contentDescription = null,
+                tint = if (isDark) Color(0xFF98989F) else Color(0xFF8E8E93),
+                modifier = Modifier.size(20.dp)
+            )
+            androidx.compose.foundation.text.BasicTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                singleLine = true,
+                textStyle = androidx.compose.ui.text.TextStyle(
+                    fontSize = 15.sp,
+                    color = if (isDark) Color.White else Color(0xFF1C1C1E)
+                ),
+                decorationBox = { innerTextField ->
+                    if (query.isEmpty()) {
+                        Text(
+                            text = if (isCzech) "Hledat balíčky a slovíčka..." else "Search decks and words...",
+                            fontSize = 15.sp,
+                            color = if (isDark) Color(0xFF8E8E93) else Color(0xFF98989F)
+                        )
+                    }
+                    innerTextField()
+                },
+                modifier = Modifier.weight(1f)
+            )
+            if (query.isNotEmpty()) {
+                IconButton(
+                    onClick = { onQueryChange("") },
+                    modifier = Modifier.size(20.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = "Clear",
+                        tint = if (isDark) Color(0xFF8E8E93) else Color(0xFF98989F),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+            Text(
+                text = if (isCzech) "Zrušit" else "Cancel",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = AppleBlue,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .clickable(onClick = onClose)
+                    .padding(horizontal = 4.dp, vertical = 2.dp)
+            )
         }
     }
 }
