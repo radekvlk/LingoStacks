@@ -58,9 +58,13 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -2195,32 +2199,184 @@ private fun Modifier.softRoundedShadow(
 }
 
 @Composable
-private fun CardCornerToggleIcon(
-    isEnabled: Boolean,
-    enabledIcon: androidx.compose.ui.graphics.vector.ImageVector,
-    disabledIcon: androidx.compose.ui.graphics.vector.ImageVector,
-    contentDescription: String,
-    onClick: () -> Unit
+private fun SimpleEyeIcon(
+    enabled: Boolean,
+    tint: Color,
+    modifier: Modifier = Modifier.size(15.dp)
+) {
+    Canvas(modifier = modifier) {
+        val stroke = Stroke(width = 1.3.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+        val w = size.width
+        val h = size.height
+
+        val eyePath = Path().apply {
+            moveTo(w * 0.12f, h * 0.50f)
+            quadraticTo(w * 0.50f, h * 0.18f, w * 0.88f, h * 0.50f)
+            quadraticTo(w * 0.50f, h * 0.82f, w * 0.12f, h * 0.50f)
+            close()
+        }
+        drawPath(eyePath, color = tint, style = stroke)
+        drawCircle(
+            color = tint,
+            radius = w * 0.13f,
+            center = Offset(w * 0.50f, h * 0.50f)
+        )
+        if (!enabled) {
+            drawLine(
+                color = tint,
+                start = Offset(w * 0.16f, h * 0.16f),
+                end = Offset(w * 0.84f, h * 0.84f),
+                strokeWidth = 1.3.dp.toPx(),
+                cap = StrokeCap.Round
+            )
+        }
+    }
+}
+
+@Composable
+private fun SimpleSpeakerIcon(
+    enabled: Boolean,
+    tint: Color,
+    modifier: Modifier = Modifier.size(15.dp)
+) {
+    Canvas(modifier = modifier) {
+        val stroke = Stroke(width = 1.3.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+        val w = size.width
+        val h = size.height
+
+        val hornPath = Path().apply {
+            moveTo(w * 0.16f, h * 0.36f)
+            lineTo(w * 0.36f, h * 0.36f)
+            lineTo(w * 0.60f, h * 0.18f)
+            lineTo(w * 0.60f, h * 0.82f)
+            lineTo(w * 0.36f, h * 0.64f)
+            lineTo(w * 0.16f, h * 0.64f)
+            close()
+        }
+        drawPath(hornPath, color = tint, style = stroke)
+
+        if (enabled) {
+            val wavePath = Path().apply {
+                moveTo(w * 0.74f, h * 0.34f)
+                quadraticTo(w * 0.86f, h * 0.50f, w * 0.74f, h * 0.66f)
+            }
+            drawPath(wavePath, color = tint, style = stroke)
+        } else {
+            drawLine(
+                color = tint,
+                start = Offset(w * 0.18f, h * 0.18f),
+                end = Offset(w * 0.82f, h * 0.82f),
+                strokeWidth = 1.3.dp.toPx(),
+                cap = StrokeCap.Round
+            )
+        }
+    }
+}
+
+@Composable
+private fun SimpleHistoryIcon(
+    enabled: Boolean,
+    tint: Color,
+    modifier: Modifier = Modifier.size(15.dp)
+) {
+    Canvas(modifier = modifier) {
+        val stroke = Stroke(width = 1.3.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+        val w = size.width
+        val h = size.height
+        val cx = w * 0.50f
+        val cy = h * 0.50f
+        val r = w * 0.36f
+
+        val arcRect = Rect(cx - r, cy - r, cx + r, cy + r)
+        val arcPath = Path().apply {
+            arcTo(arcRect, 30f, 300f, false)
+        }
+        drawPath(arcPath, color = tint, style = stroke)
+
+        val arrowTip = Offset(cx - r * 0.50f, cy - r * 0.86f)
+        val arrowPath = Path().apply {
+            moveTo(arrowTip.x - w * 0.10f, arrowTip.y + h * 0.08f)
+            lineTo(arrowTip.x, arrowTip.y)
+            lineTo(arrowTip.x + w * 0.08f, arrowTip.y + h * 0.10f)
+        }
+        drawPath(arrowPath, color = tint, style = stroke)
+
+        drawLine(
+            color = tint,
+            start = Offset(cx, cy),
+            end = Offset(cx, cy - r * 0.55f),
+            strokeWidth = 1.3.dp.toPx(),
+            cap = StrokeCap.Round
+        )
+        drawLine(
+            color = tint,
+            start = Offset(cx, cy),
+            end = Offset(cx + r * 0.45f, cy),
+            strokeWidth = 1.3.dp.toPx(),
+            cap = StrokeCap.Round
+        )
+    }
+}
+
+@Composable
+private fun CardCornerToolbarCapsule(
+    pauseWhileSpeaking: Boolean,
+    onTogglePauseWhileSpeaking: () -> Unit,
+    autoPronounceEnabled: Boolean,
+    onToggleAutoPronounce: () -> Unit,
+    showRecentWordsPanel: Boolean,
+    onToggleRecentWordsPanel: () -> Unit,
+    strings: UiStrings
 ) {
     Surface(
-        shape = CircleShape,
-        color = if (isEnabled) AppleBlue.copy(alpha = 0.14f) else SurfaceBg,
-        border = BorderStroke(
-            width = if (isEnabled) 1.2.dp else 0.5.dp,
-            color = if (isEnabled) AppleBlue else CardBorderGray.copy(alpha = 0.6f)
-        ),
-        modifier = Modifier
-            .size(34.dp)
-            .clip(CircleShape)
-            .clickable(onClick = onClick)
+        shape = RoundedCornerShape(50),
+        color = SurfaceBg,
+        border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.55f)),
+        modifier = Modifier.height(28.dp)
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = if (isEnabled) enabledIcon else disabledIcon,
-                contentDescription = contentDescription,
-                tint = if (isEnabled) AppleBlue else TextMuted,
-                modifier = Modifier.size(20.dp)
-            )
+        Row(
+            modifier = Modifier.padding(horizontal = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onTogglePauseWhileSpeaking),
+                contentAlignment = Alignment.Center
+            ) {
+                SimpleEyeIcon(
+                    enabled = pauseWhileSpeaking,
+                    tint = if (pauseWhileSpeaking) AppleBlue else TextMuted.copy(alpha = 0.45f)
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onToggleAutoPronounce),
+                contentAlignment = Alignment.Center
+            ) {
+                SimpleSpeakerIcon(
+                    enabled = autoPronounceEnabled,
+                    tint = if (autoPronounceEnabled) AppleBlue else TextMuted.copy(alpha = 0.45f)
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onToggleRecentWordsPanel),
+                contentAlignment = Alignment.Center
+            ) {
+                SimpleHistoryIcon(
+                    enabled = !showRecentWordsPanel,
+                    tint = if (!showRecentWordsPanel) AppleBlue else TextMuted.copy(alpha = 0.45f)
+                )
+            }
         }
     }
 }
@@ -2449,44 +2605,15 @@ private fun SwipeableVocabCard(
                         )
                     }
                 } else {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        CardCornerToggleIcon(
-                            isEnabled = pauseWhileSpeaking,
-                            enabledIcon = Icons.Default.Visibility,
-                            disabledIcon = Icons.Default.VisibilityOff,
-                            contentDescription = if (strings.isCzech) {
-                                "Zobrazit slovo mezi kartami"
-                            } else {
-                                "Show word readback between cards"
-                            },
-                            onClick = onTogglePauseWhileSpeaking
-                        )
-                        CardCornerToggleIcon(
-                            isEnabled = autoPronounceEnabled,
-                            enabledIcon = Icons.AutoMirrored.Filled.VolumeUp,
-                            disabledIcon = Icons.AutoMirrored.Filled.VolumeOff,
-                            contentDescription = if (strings.isCzech) {
-                                "Automaticky zopakovat výslovnost"
-                            } else {
-                                "Repeat pronunciation automatically"
-                            },
-                            onClick = onToggleAutoPronounce
-                        )
-                        CardCornerToggleIcon(
-                            isEnabled = !showRecentWordsPanel,
-                            enabledIcon = Icons.Default.History,
-                            disabledIcon = Icons.Default.History,
-                            contentDescription = if (strings.isCzech) {
-                                "Předchozí slova"
-                            } else {
-                                "Recent words"
-                            },
-                            onClick = onToggleRecentWordsPanel
-                        )
-                    }
+                    CardCornerToolbarCapsule(
+                        pauseWhileSpeaking = pauseWhileSpeaking,
+                        onTogglePauseWhileSpeaking = onTogglePauseWhileSpeaking,
+                        autoPronounceEnabled = autoPronounceEnabled,
+                        onToggleAutoPronounce = onToggleAutoPronounce,
+                        showRecentWordsPanel = showRecentWordsPanel,
+                        onToggleRecentWordsPanel = onToggleRecentWordsPanel,
+                        strings = strings
+                    )
                 }
             }
 
