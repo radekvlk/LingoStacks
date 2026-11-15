@@ -1,0 +1,10 @@
+<en-GB>
+• Clean Vector Flag Badges: Geometric vector flags in filter dropdowns and settings.
+• Session & Settings Refinements: Vector icons, iOS-style slider thumb, streamlined C2 Mastery badge, and pluralization fixes.
+• Layout Polish: Proper navigation bar spacing and unified typography.
+</en-GB>
+<cs-CZ>
+• Čisté vektorové ikony vlajek: Geometrické vektorové vlaječky ve filtrech a v nastavení.
+• Vyladění cvičení a nastavení: Vektorové ikony v záhlaví, zaoblený iOS jezdec cíle, odlehčený C2 odznak a oprava skloňování dní.
+• Začištění rozvržení: Bezpečné odsazení karet od systémové lišty a sjednocená typografie.
+</cs-CZ>

@@ -5,18 +5,18 @@ import mimetypes
 
 TOKEN_PATH = r"C:\Users\radek.vlk\.gemini\antigravity\brain\43b0acd7-1097-4287-b01f-eedb0d465b28\scratch\github_token.txt"
 REPO = "radekvlk/LingoStacks"
-TAG = "v1.0.5"
-NAME = "LingoStacks v1.0.5"
+TAG = "v1.0.6"
+NAME = "LingoStacks v1.0.6"
 
 BODY = """[CS]
-• **Nový plovoucí popover filtrů:** Rozbalovací menu pro výběr jazyka, směru učení a úrovně CEFR jsou nyní plovoucí zaoblené karty s měkkými rohy (18 dp), vzdušným 8dp odstupem od lišty a přesným vycentrováním na střed zvolené pilulky.
-• **Zvýraznění aktivní volby:** Vybraná položka je zřetelně odlišena jemnou světle modrou kapslí s modrým textem a modrou fajfkou.
-• **Zarovnání na středovou osu:** Středová pilulka filtrů a pilulka denního cíle na domovské obrazovce jsou nově zarovnány na společnou vertikální osu.
+• **Čisté vektorové ikony vlajek:** Geometrické vektorové ikony vlajek v rozbalovacích filtrech a v nastavení mateřského jazyka nahrazují dřívější emotikony a dokonale ladí s minimalistickým designovým systémem.
+• **Sjednocení Session & Nastavení:** Vektorové ikony v záhlaví cvičení, moderní zaoblený jezdec denního cíle ve stylu iOS, vyčištěný indikátor C2 Mastery a opravené české skloňování počtu dní série.
+• **Vylepšení rozvržení:** Bezpečné odsazení spodních karet od systémové navigační lišty a sjednocená typografie napříč kartami.
 
 [EN]
-• **Modern Floating Filter Popovers:** Filter dropdown menus (language, study direction, CEFR level) are now floating cards with 18dp rounded corners, an 8dp breathing gap below the pill, and precise center alignment.
-• **Active Item Highlight:** Current active selection is clearly highlighted with a soft blue capsule, blue text, and blue checkmark.
-• **Center Alignment:** The middle filter pill and daily goal progress capsule are perfectly aligned on a shared vertical center axis.
+• **Clean Vector Flag Badges:** Geometric flat vector flags in filter dropdowns and native language settings replace emojis for a cohesive, modern visual aesthetic.
+• **Session & Settings Refinements:** Vector deck icon in flashcard header, custom iOS-style slider thumb for daily goal, streamlined C2 Mastery indicator, and accurate streak day pluralization.
+• **Layout Polish:** Safe padding above system navigation bar and consistent typography across cards.
 """
 
 def main():
@@ -59,7 +59,7 @@ def main():
 
     # 2. Upload APK assets
     apk_paths = [
-        ("LingoStacks_v1.0.5.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.5.apk"),
+        ("LingoStacks_v1.0.6.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.6.apk"),
         ("LingoStacks.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks.apk")
     ]
 
