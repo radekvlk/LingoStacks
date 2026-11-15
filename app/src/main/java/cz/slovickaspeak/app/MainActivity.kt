@@ -8,6 +8,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.runtime.*
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -92,75 +94,114 @@ class MainActivity : ComponentActivity() {
 
                 var currentScreen by remember { mutableStateOf<AppScreen>(AppScreen.DeckList) }
 
-                when (val screen = currentScreen) {
-                    is AppScreen.DeckList -> {
-                        val activeDecks = remember(progressState.nativeLanguage, progressState.selectedLanguage) {
-                            cz.slovickaspeak.app.model.CrossLanguageBridge.decksFor(
-                                nativeLang = progressState.nativeLanguage,
-                                targetLang = progressState.selectedLanguage,
-                                context = this@MainActivity
-                            )
-                        }
-                        DeckSelectionScreen(
-                            decks = activeDecks,
-                            progressState = progressState,
-                            onSelectDeck = { selectedDeck ->
-                                if (!hasMicPermission) {
-                                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                                }
-                                currentScreen = AppScreen.ActiveSession(
-                                    deck = selectedDeck,
-                                    words = selectedDeck.words
+                AnimatedContent(
+                    targetState = currentScreen,
+                    transitionSpec = {
+                        when {
+                            targetState is AppScreen.ActiveSession -> {
+                                (slideInVertically(
+                                    initialOffsetY = { fullHeight -> fullHeight },
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                        stiffness = Spring.StiffnessMediumLow
+                                    )
+                                ) + fadeIn(animationSpec = tween(220))).togetherWith(
+                                    fadeOut(animationSpec = tween(180))
                                 )
                             }
-                        )
-                    }
-
-                    is AppScreen.ActiveSession -> {
-                        key(screen.sessionId) {
-                            FlashcardSessionScreen(
-                                deck = screen.deck,
-                                wordsToPractice = screen.words,
+                            initialState is AppScreen.ActiveSession && targetState is AppScreen.DeckList -> {
+                                fadeIn(animationSpec = tween(200)).togetherWith(
+                                    slideOutVertically(
+                                        targetOffsetY = { fullHeight -> fullHeight },
+                                        animationSpec = tween(260, easing = FastOutSlowInEasing)
+                                    ) + fadeOut(animationSpec = tween(200))
+                                )
+                            }
+                            initialState is AppScreen.Summary && targetState is AppScreen.DeckList -> {
+                                fadeIn(animationSpec = tween(200)).togetherWith(
+                                    slideOutVertically(
+                                        targetOffsetY = { fullHeight -> fullHeight },
+                                        animationSpec = tween(260, easing = FastOutSlowInEasing)
+                                    ) + fadeOut(animationSpec = tween(200))
+                                )
+                            }
+                            else -> {
+                                fadeIn(animationSpec = tween(220)).togetherWith(fadeOut(animationSpec = tween(220)))
+                            }
+                        }
+                    },
+                    label = "duolingoScreenTransition"
+                ) { screen ->
+                    when (screen) {
+                        is AppScreen.DeckList -> {
+                            val activeDecks = remember(progressState.nativeLanguage, progressState.selectedLanguage) {
+                                cz.slovickaspeak.app.model.CrossLanguageBridge.decksFor(
+                                    nativeLang = progressState.nativeLanguage,
+                                    targetLang = progressState.selectedLanguage,
+                                    context = this@MainActivity
+                                )
+                            }
+                            DeckSelectionScreen(
+                                decks = activeDecks,
                                 progressState = progressState,
-                                hasMicPermission = hasMicPermission,
-                                onRequestMicPermission = {
-                                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                                },
-                                onSessionFinished = { sessionResults ->
-                                    currentScreen = AppScreen.Summary(
+                                onSelectDeck = { selectedDeck ->
+                                    if (!hasMicPermission) {
+                                        permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                    }
+                                    currentScreen = AppScreen.ActiveSession(
+                                        deck = selectedDeck,
+                                        words = selectedDeck.words
+                                    )
+                                }
+                            )
+                        }
+
+                        is AppScreen.ActiveSession -> {
+                            key(screen.sessionId) {
+                                FlashcardSessionScreen(
+                                    deck = screen.deck,
+                                    wordsToPractice = screen.words,
+                                    progressState = progressState,
+                                    hasMicPermission = hasMicPermission,
+                                    onRequestMicPermission = {
+                                        permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                    },
+                                    onSessionFinished = { sessionResults ->
+                                        currentScreen = AppScreen.Summary(
+                                            deck = screen.deck,
+                                            results = sessionResults
+                                        )
+                                    },
+                                    onCloseSession = {
+                                        currentScreen = AppScreen.DeckList
+                                    }
+                                )
+                            }
+                        }
+
+                        is AppScreen.Summary -> {
+                            SessionSummaryScreen(
+                                deck = screen.deck,
+                                results = screen.results,
+                                nativeLanguage = progressState.nativeLanguage,
+                                onRetryMissed = { missedWords ->
+                                    progressState.updateDailyGoal(missedWords.size)
+                                    currentScreen = AppScreen.ActiveSession(
                                         deck = screen.deck,
-                                        results = sessionResults
+                                        words = missedWords
                                     )
                                 },
-                                onCloseSession = {
+                                onRestartAll = {
+                                    currentScreen = AppScreen.ActiveSession(
+                                        deck = screen.deck,
+                                        words = screen.deck.words
+                                    )
+                                },
+                                onBackToDecks = {
                                     currentScreen = AppScreen.DeckList
                                 }
                             )
                         }
-                    }
-
-                    is AppScreen.Summary -> {
-                        SessionSummaryScreen(
-                            deck = screen.deck,
-                            results = screen.results,
-                            nativeLanguage = progressState.nativeLanguage,
-                            onRetryMissed = { missedWords ->
-                                progressState.updateDailyGoal(missedWords.size)
-                                currentScreen = AppScreen.ActiveSession(
-                                    deck = screen.deck,
-                                    words = missedWords
-                                )
-                            },
-                            onRestartAll = {
-                                currentScreen = AppScreen.ActiveSession(
-                                    deck = screen.deck,
-                                    words = screen.deck.words
-                                )
-                            },
-                            onBackToDecks = {
-                                currentScreen = AppScreen.DeckList
-                            }
-                        )
                     }
                 }
             }

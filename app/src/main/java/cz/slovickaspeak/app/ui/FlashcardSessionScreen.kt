@@ -2,6 +2,7 @@ package cz.slovickaspeak.app.ui
 
 import android.content.res.Configuration
 import android.os.SystemClock
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -120,6 +121,10 @@ fun FlashcardSessionScreen(
     val strings = rememberAppStrings(progressState.nativeLanguage)
     val coroutineScope = rememberCoroutineScope()
     val dailyGoalWords = progressState.dailyGoalWords
+
+    BackHandler {
+        onCloseSession()
+    }
 
     // Spaced Repetition Queue:
     // - Prioritizes words previously not known, then new words, then mastered words.

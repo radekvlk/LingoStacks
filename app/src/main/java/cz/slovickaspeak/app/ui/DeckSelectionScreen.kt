@@ -124,28 +124,27 @@ fun DeckSelectionScreen(
     var showSettingsDialog by remember { mutableStateOf(false) }
     var settingsInitialTab by remember { mutableIntStateOf(0) }
     var showCompleteStatsDialog by remember { mutableStateOf(false) }
-    var isSearchActive by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
     val portraitListState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val dailyGoalWords = progressState.dailyGoalWords
     val completedTodayWords = progressState.todayCompletedWords
 
-    val filteredDecks = remember(decks, selectedLanguage, selectedLevel, searchQuery) {
+    val filteredDecks = remember(decks, selectedLanguage, selectedLevel) {
         val byLang = decks
             .filter { it.language == selectedLanguage }
             .sortedBy { it.level.ordinal }
-        val byLevel = if (selectedLevel == null) byLang else byLang.filter { it.level == selectedLevel }
-        if (searchQuery.isBlank()) {
-            byLevel
-        } else {
-            val q = searchQuery.trim().lowercase()
-            byLevel.filter {
-                it.title.lowercase().contains(q) ||
-                it.subtitle.lowercase().contains(q) ||
-                it.words.any { w -> w.czech.lowercase().contains(q) || w.english.lowercase().contains(q) }
-            }
-        }
+        if (selectedLevel == null) byLang else byLang.filter { it.level == selectedLevel }
+    }
+
+    val totalDueReview = remember(filteredDecks, progressState.srsRevision, studyDirection) {
+        filteredDecks.sumOf { progressState.getDeckNeedsReviewCount(it) }
+    }
+
+    val recommendedPair = remember(filteredDecks, progressState.srsRevision, studyDirection) {
+        val withSummaries = filteredDecks.map { it to progressState.getDeckMemorySummary(it) }
+        withSummaries.firstOrNull { it.second.needsReviewCount > 0 }
+            ?: withSummaries.firstOrNull { it.second.learnedAnyCount in 1 until it.second.totalCount }
+            ?: withSummaries.firstOrNull()
     }
 
     val remainingWords = (dailyGoalWords - completedTodayWords).coerceAtLeast(0)
@@ -216,12 +215,6 @@ fun DeckSelectionScreen(
             }
             val activeLangStats = allLanguageStats.firstOrNull { it.language == selectedLanguage }
                 ?: allLanguageStats.first()
-            val recommendedPair = remember(filteredDecks, progressState.srsRevision, studyDirection) {
-                val withSummaries = filteredDecks.map { it to progressState.getDeckMemorySummary(it) }
-                withSummaries.firstOrNull { it.second.needsReviewCount > 0 }
-                    ?: withSummaries.firstOrNull { it.second.learnedAnyCount in 1 until it.second.totalCount }
-                    ?: withSummaries.firstOrNull()
-            }
 
             Row(
                 modifier = Modifier
@@ -383,31 +376,8 @@ fun DeckSelectionScreen(
                     DeckHeaderRow(
                         selectedLanguage = selectedLanguage,
                         strings = strings,
-                        animateWave = isPortraitHeaderVisible,
-                        onOpenLeaderboard = {
-                            settingsInitialTab = 1
-                            showSettingsDialog = true
-                        },
-                        onOpenSettings = {
-                            settingsInitialTab = 0
-                            showSettingsDialog = true
-                        }
+                        animateWave = isPortraitHeaderVisible
                     )
-                }
-
-                if (isSearchActive) {
-                    item {
-                        AppleSearchBar(
-                            query = searchQuery,
-                            onQueryChange = { searchQuery = it },
-                            onClose = {
-                                isSearchActive = false
-                                searchQuery = ""
-                                activeBottomTab = 0
-                            },
-                            isCzech = strings.isCzech
-                        )
-                    }
                 }
 
                 val pendingOta = if (BuildConfig.ENABLE_OTA_UPDATES) progressState.availableOtaRelease else null
@@ -470,16 +440,15 @@ fun DeckSelectionScreen(
                 activeBottomTab = idx
                 when (idx) {
                     0 -> {
-                        isSearchActive = false
                         coroutineScope.launch {
                             portraitListState.animateScrollToItem(0)
                         }
                     }
                     1 -> {
-                        isSearchActive = !isSearchActive
-                        if (!isSearchActive) {
-                            searchQuery = ""
-                            activeBottomTab = 0
+                        // ⚡ Trénink: Rychlý start procvičování doporučeného balíčku / SRS opakování
+                        val targetDeck = recommendedPair?.first ?: filteredDecks.firstOrNull()
+                        if (targetDeck != null) {
+                            onSelectDeck(targetDeck)
                         }
                     }
                     2 -> {
@@ -493,6 +462,7 @@ fun DeckSelectionScreen(
                 }
             },
             isCzech = strings.isCzech,
+            reviewBadgeCount = totalDueReview,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
@@ -1099,8 +1069,8 @@ private fun DeckHeaderRow(
     selectedLanguage: LearningLanguage,
     strings: UiStrings,
     animateWave: Boolean = true,
-    onOpenLeaderboard: () -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenLeaderboard: () -> Unit = {},
+    onOpenSettings: () -> Unit = {}
 ) {
     Box(
         modifier = Modifier
@@ -1130,7 +1100,7 @@ private fun DeckHeaderRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 4.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.Start,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
@@ -1145,50 +1115,6 @@ private fun DeckHeaderRow(
                     color = TextDark,
                     letterSpacing = (-0.5).sp
                 )
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Leaderboard shortcut button (Denní žebříček)
-                Surface(
-                    shape = CircleShape,
-                    color = CardSurface,
-                    border = BorderStroke(0.5.dp, CardBorderGray),
-                    modifier = Modifier
-                        .size(42.dp)
-                        .shadow(4.dp, CircleShape, spotColor = Color.Black.copy(alpha = 0.08f))
-                        .clip(CircleShape)
-                        .clickable { onOpenLeaderboard() }
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Filled.EmojiEvents,
-                            contentDescription = strings.tabLeaderboardAndFriends,
-                            tint = Color(0xFFE5A100),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-
-                // Settings gear button (Nastavení)
-                Surface(
-                    shape = CircleShape,
-                    color = CardSurface,
-                    border = BorderStroke(0.5.dp, CardBorderGray),
-                    modifier = Modifier
-                        .size(42.dp)
-                        .shadow(4.dp, CircleShape, spotColor = Color.Black.copy(alpha = 0.08f))
-                        .clip(CircleShape)
-                        .clickable { onOpenSettings() }
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = strings.settingsAndLeaderboard,
-                            tint = TextDark,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
             }
         }
     }
@@ -2740,20 +2666,28 @@ private fun LandscapeLanguagesCard(
     }
 }
 
+data class AppleBottomTabItem(
+    val index: Int,
+    val title: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val badge: Int = 0
+)
+
 @Composable
 fun AppleFloatingGlassBar(
     selectedTab: Int,
     onSelectTab: (Int) -> Unit,
     isCzech: Boolean,
+    reviewBadgeCount: Int = 0,
     modifier: Modifier = Modifier
 ) {
     val isDark = cz.slovickaspeak.app.ui.theme.isDarkThemeActive
-    val tabs = remember(isCzech) {
+    val tabs = remember(isCzech, reviewBadgeCount) {
         listOf(
-            Triple(0, if (isCzech) "Domů" else "Home", Icons.Filled.Home),
-            Triple(1, if (isCzech) "Hledat" else "Search", Icons.Filled.Search),
-            Triple(2, if (isCzech) "Statistiky" else "Stats", Icons.Filled.EmojiEvents),
-            Triple(3, if (isCzech) "Nastavení" else "Settings", Icons.Filled.Settings)
+            AppleBottomTabItem(0, if (isCzech) "Domů" else "Home", Icons.Filled.Home),
+            AppleBottomTabItem(1, if (isCzech) "Trénink" else "Practice", Icons.Filled.Bolt, badge = reviewBadgeCount),
+            AppleBottomTabItem(2, if (isCzech) "Statistiky" else "Stats", Icons.Filled.EmojiEvents),
+            AppleBottomTabItem(3, if (isCzech) "Nastavení" else "Settings", Icons.Filled.Settings)
         )
     }
 
@@ -2824,15 +2758,15 @@ fun AppleFloatingGlassBar(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            tabs.forEach { (idx, title, icon) ->
-                val isSelected = selectedTab == idx
+            tabs.forEach { tab ->
+                val isSelected = selectedTab == tab.index
                 val iconTint by animateColorAsState(
                     targetValue = if (isSelected) AppleBlue else if (isDark) Color(0xFF98989F) else Color(0xFF8E8E93),
-                    label = "tabTint_$idx"
+                    label = "tabTint_${tab.index}"
                 )
                 val pillBg by animateColorAsState(
                     targetValue = if (isSelected) AppleBlue.copy(alpha = if (isDark) 0.20f else 0.12f) else Color.Transparent,
-                    label = "tabPillBg_$idx"
+                    label = "tabPillBg_${tab.index}"
                 )
 
                 Box(
@@ -2840,7 +2774,7 @@ fun AppleFloatingGlassBar(
                         .weight(1f)
                         .clip(RoundedCornerShape(20.dp))
                         .background(pillBg)
-                        .clickable { onSelectTab(idx) }
+                        .clickable { onSelectTab(tab.index) }
                         .padding(vertical = 5.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -2848,15 +2782,34 @@ fun AppleFloatingGlassBar(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = title,
-                            tint = iconTint,
-                            modifier = Modifier.size(22.dp)
-                        )
+                        Box {
+                            Icon(
+                                imageVector = tab.icon,
+                                contentDescription = tab.title,
+                                tint = iconTint,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            if (tab.badge > 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .offset(x = 8.dp, y = (-4).dp)
+                                        .clip(CircleShape)
+                                        .background(AppleRed)
+                                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                                ) {
+                                    Text(
+                                        text = if (tab.badge > 99) "99+" else tab.badge.toString(),
+                                        fontSize = 8.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                        }
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = title,
+                            text = tab.title,
                             fontSize = 10.5.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                             color = iconTint
@@ -2864,78 +2817,6 @@ fun AppleFloatingGlassBar(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun AppleSearchBar(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    onClose: () -> Unit,
-    isCzech: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val isDark = cz.slovickaspeak.app.ui.theme.isDarkThemeActive
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = if (isDark) Color(0xFF2C2C2E) else Color(0xFFE9E9EB),
-        modifier = modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Search,
-                contentDescription = null,
-                tint = if (isDark) Color(0xFF98989F) else Color(0xFF8E8E93),
-                modifier = Modifier.size(20.dp)
-            )
-            androidx.compose.foundation.text.BasicTextField(
-                value = query,
-                onValueChange = onQueryChange,
-                singleLine = true,
-                textStyle = androidx.compose.ui.text.TextStyle(
-                    fontSize = 15.sp,
-                    color = if (isDark) Color.White else Color(0xFF1C1C1E)
-                ),
-                decorationBox = { innerTextField ->
-                    if (query.isEmpty()) {
-                        Text(
-                            text = if (isCzech) "Hledat balíčky a slovíčka..." else "Search decks and words...",
-                            fontSize = 15.sp,
-                            color = if (isDark) Color(0xFF8E8E93) else Color(0xFF98989F)
-                        )
-                    }
-                    innerTextField()
-                },
-                modifier = Modifier.weight(1f)
-            )
-            if (query.isNotEmpty()) {
-                IconButton(
-                    onClick = { onQueryChange("") },
-                    modifier = Modifier.size(20.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Close,
-                        contentDescription = "Clear",
-                        tint = if (isDark) Color(0xFF8E8E93) else Color(0xFF98989F),
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
-            Text(
-                text = if (isCzech) "Zrušit" else "Cancel",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = AppleBlue,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .clickable(onClick = onClose)
-                    .padding(horizontal = 4.dp, vertical = 2.dp)
-            )
         }
     }
 }
