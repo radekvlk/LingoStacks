@@ -914,24 +914,54 @@ private fun WavingLanguageFlagBackdrop(
                 LearningLanguage.CZECH -> {
                     val czBlue = Color(0xFF11457E)
                     val czRed = Color(0xFFD7141A)
+                    val shift = sin(wavePhase) * 0.04f
+
+                    // Soft vertical base gradient reflecting Czech tricolor tones
                     drawRect(
-                        brush = Brush.linearGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = if (dark) 0.18f else 0.28f),
-                                czRed.copy(alpha = if (dark) 0.25f else 0.20f)
-                            ),
-                            start = Offset(0f, 0f),
-                            end = Offset(0f, h)
+                        brush = Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0.0f to Color.White.copy(alpha = if (dark) 0.24f else 0.30f),
+                                (0.42f + shift) to Color.White.copy(alpha = if (dark) 0.18f else 0.24f),
+                                (0.54f - shift) to czRed.copy(alpha = if (dark) 0.22f else 0.18f),
+                                1.0f to czRed.copy(alpha = if (dark) 0.28f else 0.24f)
+                            )
                         )
                     )
+
+                    // Top white ribbon waving smoothly
                     drawPath(
-                        path = Path().apply {
-                            moveTo(0f, 0f)
-                            lineTo(w * 0.48f, h * 0.5f)
-                            lineTo(0f, h)
-                            close()
-                        },
-                        color = czBlue.copy(alpha = if (dark) 0.32f else 0.24f)
+                        path = horizontalWaveRibbon(-0.08f, 0.52f, phaseShift = 0f),
+                        color = Color.White.copy(alpha = if (dark) 0.20f else 0.26f)
+                    )
+
+                    // Bottom red ribbon waving smoothly
+                    drawPath(
+                        path = horizontalWaveRibbon(0.48f, 1.08f, phaseShift = 0.35f),
+                        color = czRed.copy(alpha = ribbonGain + 0.10f)
+                    )
+
+                    // Dynamic waving blue wedge (klín) from left to center
+                    val tipX = w * (0.46f + sin(wavePhase * 0.9f) * 0.025f)
+                    reusableRibbonPath.reset()
+                    reusableRibbonPath.moveTo(0f, waveY(0f, -h * 0.04f, phaseShift = 0f))
+                    for (i in 0..steps) {
+                        val f = i / steps.toFloat()
+                        val x = tipX * f
+                        val baseY = h * (-0.04f + 0.54f * f)
+                        val y = waveY(f * 0.46f, baseY, phaseShift = 0.2f * f)
+                        reusableRibbonPath.lineTo(x, y)
+                    }
+                    for (i in steps downTo 0) {
+                        val f = i / steps.toFloat()
+                        val x = tipX * f
+                        val baseY = h * (1.04f - 0.54f * (1f - f))
+                        val y = waveY(f * 0.46f, baseY, phaseShift = 0.35f + 0.2f * f)
+                        reusableRibbonPath.lineTo(x, y)
+                    }
+                    reusableRibbonPath.close()
+                    drawPath(
+                        path = reusableRibbonPath,
+                        color = czBlue.copy(alpha = if (dark) 0.36f else 0.28f)
                     )
                 }
             }

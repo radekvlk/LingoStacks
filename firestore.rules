@@ -5,7 +5,7 @@ rules_version = '2';
 // ===============================================================
 //
 // Target Firebase Project: lingowords-88ed4 (Cloud Firestore Standard edition)
-// App: LingoWords (SlovickaSpeak Android)
+// App: LingoWords / LingoStacks (SlovickaSpeak Android)
 //
 // Collection: leaderboard
 // Document ID: {uid} (Firebase Auth UID, including Anonymous Auth)
@@ -19,7 +19,7 @@ rules_version = '2';
 //   - name: string (required, size 1..60)
 //   - date: string (required, size 10, matches '^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
 //   - lastActiveDate: string (required, size <= 10, '' or 'YYYY-MM-DD')
-//   - languageCode: string (required, size 2, in ['en', 'es', 'de', 'fr', 'it'])
+//   - languageCode: string (required, size 2, in ['en', 'es', 'de', 'fr', 'it', 'pt', 'cs'])
 //   - todayCompleted: int (required, 0..5000)
 //   - todayXp: int (required, 0..10000)
 //   - weeklyCompleted: int (required, 0..30000)
@@ -49,9 +49,9 @@ rules_version = '2';
 //   - studyReminderEnabled: bool (required)
 //   - studyReminderHour: int (required, 0..23)
 //   - studyReminderMinute: int (required, 0..59)
-//   - selectedLanguage: string (required, in ['ENGLISH', 'SPANISH', 'GERMAN', 'FRENCH', 'ITALIAN'])
+//   - selectedLanguage: string (required, size 5..10, in ['ENGLISH', 'SPANISH', 'GERMAN', 'FRENCH', 'ITALIAN', 'PORTUGUESE', 'CZECH'])
 //   - selectedCefrLevel: string (required, size 0..8)
-//   - studyDirection: string (required, in ['NATIVE_TO_FOREIGN', 'FOREIGN_TO_NATIVE', 'MIX'])
+//   - studyDirection: string (required, size 3..18, in ['NATIVE_TO_FOREIGN', 'FOREIGN_TO_NATIVE', 'MIX', 'MIXED'])
 //   - todayDate: string (required, size 10, matches '^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
 //   - todayCompleted: int (required, 0..5000)
 //   - todayBaseXp: int (required, 0..10000)
@@ -174,7 +174,7 @@ service cloud.firestore {
         validStringLength(data.lastActiveDate, 0, 10) &&
         (data.lastActiveDate == '' || data.lastActiveDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')) &&
         validStringLength(data.languageCode, 2, 2) &&
-        data.languageCode in ['en', 'es', 'de', 'fr', 'it'] &&
+        data.languageCode in ['en', 'es', 'de', 'fr', 'it', 'pt', 'cs'] &&
         isIntInRange(data.todayCompleted, 0, 5000) &&
         isIntInRange(data.todayXp, 0, 10000) &&
         isIntInRange(data.weeklyCompleted, 0, 30000) &&
@@ -234,11 +234,11 @@ service cloud.firestore {
         data.studyReminderEnabled is bool &&
         isIntInRange(data.studyReminderHour, 0, 23) &&
         isIntInRange(data.studyReminderMinute, 0, 59) &&
-        validStringLength(data.selectedLanguage, 6, 7) &&
-        data.selectedLanguage in ['ENGLISH', 'SPANISH', 'GERMAN', 'FRENCH', 'ITALIAN'] &&
+        validStringLength(data.selectedLanguage, 5, 10) &&
+        data.selectedLanguage in ['ENGLISH', 'SPANISH', 'GERMAN', 'FRENCH', 'ITALIAN', 'PORTUGUESE', 'CZECH'] &&
         validStringLength(data.selectedCefrLevel, 0, 8) &&
-        validStringLength(data.studyDirection, 3, 17) &&
-        data.studyDirection in ['NATIVE_TO_FOREIGN', 'FOREIGN_TO_NATIVE', 'MIX'] &&
+        validStringLength(data.studyDirection, 3, 18) &&
+        data.studyDirection in ['NATIVE_TO_FOREIGN', 'FOREIGN_TO_NATIVE', 'MIX', 'MIXED'] &&
         validStringLength(data.todayDate, 10, 10) &&
         data.todayDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
         isIntInRange(data.todayCompleted, 0, 5000) &&
