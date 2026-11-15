@@ -210,7 +210,7 @@ fun AppleFullSettingsDialog(
                             .align(Alignment.CenterHorizontally)
                     )
 
-                    // Top Modal Header
+                    // Top Modal Header (Authentic Apple iOS Navigation Bar)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -219,7 +219,7 @@ fun AppleFullSettingsDialog(
                         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                             Text(
                                 text = strings.settingsAndLeaderboard,
-                                fontSize = 22.sp,
+                                fontSize = 21.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = TextDark
                             )
@@ -246,19 +246,20 @@ fun AppleFullSettingsDialog(
                                 )
                             }
                         }
-                        Box(
+                        // Apple iOS "Hotovo" (Done) button
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = AppleBlueTint,
                             modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(CardSurface)
-                                .clickable(onClick = onDismiss),
-                            contentAlignment = Alignment.Center
+                                .clip(RoundedCornerShape(50))
+                                .clickable(onClick = onDismiss)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = null,
-                                tint = TextMuted,
-                                modifier = Modifier.size(18.dp)
+                            Text(
+                                text = if (strings.isCzech) "Hotovo" else "Done",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = AppleBlue,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
                             )
                         }
                     }
@@ -320,9 +321,11 @@ fun AppleFullSettingsDialog(
                     modifier = Modifier
                         .weight(1f)
                         .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     if (selectedTab == 0) {
+                        // Section 1: Learning Preferences
+                        AppleSectionHeader(if (strings.isCzech) "Předvolby učení" else "Learning Preferences")
                         DailyGoalSectionCard(
                             strings = strings,
                             currentGoal = progressState.dailyGoalWords,
@@ -335,24 +338,57 @@ fun AppleFullSettingsDialog(
                             onSelectNativeLanguage = { progressState.updateNativeLanguage(it) }
                         )
 
-                        AppearanceSectionCard(
-                            strings = strings,
-                            isDarkMode = progressState.isDarkMode,
-                            onSelectDarkMode = { progressState.updateDarkMode(it) }
-                        )
+                        // Section 2: Appearance & Behavior (Unified Apple Inset Card)
+                        AppleSectionHeader(if (strings.isCzech) "Vzhled a chování karet" else "Appearance & Audio")
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = CardSurface,
+                            border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.55f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column {
+                                AppleInsetToggleRow(
+                                    title = if (strings.isCzech) "Tmavý režim" else "Dark Mode",
+                                    subtitle = if (strings.isCzech) "Přepne vzhled aplikace mezi světlým a tmavým." else "Switches appearance between Light and Dark.",
+                                    checked = progressState.isDarkMode,
+                                    onCheckedChange = { progressState.updateDarkMode(it) },
+                                    vectorIcon = Icons.Filled.DarkMode,
+                                    iconTint = Color(0xFF5E5CE6),
+                                    iconBg = Color(0xFF5E5CE6).copy(alpha = 0.14f)
+                                )
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(start = 58.dp),
+                                    thickness = 0.5.dp,
+                                    color = CardBorderGray.copy(alpha = 0.45f)
+                                )
+                                AppleInsetToggleRow(
+                                    title = if (strings.isCzech) "Zobrazení slova po odpovědi" else "Word Display After Answer",
+                                    subtitle = if (strings.isCzech) "Po odjezdu karty ukáže bounce okno se slovem." else "Shows a bounce bubble with the word between cards.",
+                                    checked = progressState.pauseCardWhileSpeaking,
+                                    onCheckedChange = { progressState.updatePauseCardWhileSpeaking(it) },
+                                    vectorIcon = Icons.Filled.Visibility,
+                                    iconTint = ApplePurple,
+                                    iconBg = ApplePurple.copy(alpha = 0.14f)
+                                )
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(start = 58.dp),
+                                    thickness = 0.5.dp,
+                                    color = CardBorderGray.copy(alpha = 0.45f)
+                                )
+                                AppleInsetToggleRow(
+                                    title = if (strings.isCzech) "Zopakovat výslovnost" else "Repeat Pronunciation",
+                                    subtitle = if (strings.isCzech) "Po vyřešení nahlas zopakuje správnou výslovnost." else "Repeats correct pronunciation out loud after each card.",
+                                    checked = progressState.autoPronounceEnabled,
+                                    onCheckedChange = { progressState.setAutoPronounce(it) },
+                                    vectorIcon = Icons.Filled.VolumeUp,
+                                    iconTint = AppleBlue,
+                                    iconBg = AppleBlueTint
+                                )
+                            }
+                        }
 
-                        CardExitSpeedSectionCard(
-                            strings = strings,
-                            pauseWhileSpeaking = progressState.pauseCardWhileSpeaking,
-                            onSelectPauseWhileSpeaking = { progressState.updatePauseCardWhileSpeaking(it) }
-                        )
-
-                        AutoPronounceSectionCard(
-                            strings = strings,
-                            autoPronounceEnabled = progressState.autoPronounceEnabled,
-                            onToggleAutoPronounce = { progressState.setAutoPronounce(it) }
-                        )
-
+                        // Section 3: Study Reminder
+                        AppleSectionHeader(if (strings.isCzech) "Notifikace" else "Notifications")
                         StudyReminderSectionCard(
                             strings = strings,
                             reminderEnabled = progressState.studyReminderEnabled,
@@ -363,6 +399,8 @@ fun AppleFullSettingsDialog(
                             }
                         )
 
+                        // Section 4: System & Version
+                        AppleSectionHeader(if (strings.isCzech) "O aplikaci" else "About")
                         AppVersionSectionCard(
                             strings = strings,
                             progressState = progressState
@@ -833,6 +871,88 @@ fun DailyLeaderboardSectionCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun AppleSectionHeader(title: String) {
+    Text(
+        text = title.uppercase(),
+        fontSize = 12.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = TextMuted,
+        letterSpacing = 0.6.sp,
+        modifier = Modifier.padding(start = 14.dp, top = 6.dp, bottom = 2.dp)
+    )
+}
+
+@Composable
+private fun AppleInsetToggleRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    vectorIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconTint: Color,
+    iconBg: Color
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) }
+            .padding(horizontal = 14.dp, vertical = 11.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(iconBg),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = vectorIcon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(1.dp)
+            ) {
+                Text(
+                    text = title,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = TextDark
+                )
+                Text(
+                    text = subtitle,
+                    fontSize = 11.5.sp,
+                    color = TextMuted,
+                    lineHeight = 15.sp
+                )
+            }
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = AppleBlue,
+                uncheckedThumbColor = Color.White,
+                uncheckedTrackColor = CardBorderGray
+            )
+        )
     }
 }
 
