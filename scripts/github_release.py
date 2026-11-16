@@ -6,19 +6,21 @@ import mimetypes
 TOKEN_PATH = r"C:\Users\radek.vlk\.gemini\antigravity\brain\43b0acd7-1097-4287-b01f-eedb0d465b28\scratch\github_token.txt"
 REPO = "radekvlk/LingoStacks"
 TAG = "v1.0.9"
-NAME = "LingoStacks v1.0.9 (Build 111)"
+NAME = "LingoStacks v1.0.9 (Build 112)"
 
-BODY = """versionCode: 111
+BODY = """versionCode: 112
 
 [CS]
-• **Multi-segmentový retention bar paměti:** Spodní lišta a indikátory na kartách lekcí nově zobrazují skutečný stav paměti (zelená = zvládnuto Box 4-5, oranžová = v tréninku Box 1-3, červená = k opakování).
-• **Inteligentní posun lekcí:** Tlačítko Trénink si pamatuje postup a po projití všech slov lekce automaticky plynule posune na navazující lekci / úroveň.
-• **Čisté vektorové ikony:** V záhlaví cvičení nahrazena stará emoji vektorovými ikonami a indikátorem „Projito X / Y • Trénink paměti“.
+• **Rychlé rozpoznávání hlasu:** V Nastavení přidán nový průvodce a přímé otevření systémového nastavení Androidu pro stažení offline hlasových balíčků (např. English US) pro bleskovou odezvu bez čekání.
+• **Multi-segmentový retention bar paměti:** Spodní lišta a indikátory na kartách lekcí zobrazují skutečný stav paměti (zelená = zvládnuto Box 4-5, oranžová = v tréninku Box 1-3, červená = k opakování).
+• **Inteligentní posun lekcí:** Tlačítko Trénink si pamatuje postup a po projití slov lekce automaticky plynule posune na navazující lekci.
+• **Čisté vektorové ikony:** V záhlaví cvičení vektorové ikony a indikátor „Projito X / Y • Trénink paměti“.
 
 [EN]
+• **Fast Voice Recognition Guide:** New guide and shortcut in Settings to easily open Android settings and download offline speech packs (e.g. English US) for instant response.
 • **Multi-segmented Memory Retention Bar:** Visual representation of actual mastery state across Leitner boxes (green = mastered, orange = learning, red = review).
-• **Smart Lesson Auto-Advance:** Practice button remembers progress and automatically continues to the next lesson or level upon completion.
-• **Clean Vector Icons:** Replaced old emoji with crisp vector icons and accurate Memory Training indicator.
+• **Smart Lesson Auto-Advance:** Practice button remembers progress and automatically continues to the next lesson upon completion.
+• **Clean Vector Icons:** Vector icons and crisp Memory Training indicators in session.
 """
 
 def main():

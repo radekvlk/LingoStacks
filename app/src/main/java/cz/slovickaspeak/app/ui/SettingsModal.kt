@@ -107,6 +107,7 @@ fun AppleFullSettingsDialog(
     var selectedTab by remember { mutableIntStateOf(initialTab) } // 0 = Leaderboard & Stats, 1 = Goal & Settings
     var showCompleteStatsInModal by remember { mutableStateOf(false) }
     var showGoogleEmailPrompt by remember { mutableStateOf(false) }
+    var showVoiceGuideDialog by remember { mutableStateOf(false) }
     var manualGoogleEmail by remember { mutableStateOf("") }
     var manualGoogleName by remember { mutableStateOf("") }
 
@@ -169,6 +170,17 @@ fun AppleFullSettingsDialog(
                 selectedTab = 0
             },
             onDismiss = { showCompleteStatsInModal = false }
+        )
+    }
+
+    if (showVoiceGuideDialog) {
+        VoiceRecognitionGuideDialog(
+            isCzech = strings.isCzech,
+            onDismiss = { showVoiceGuideDialog = false },
+            onOpenSettings = {
+                showVoiceGuideDialog = false
+                openVoiceRecognitionSettings(context)
+            }
         )
     }
 
@@ -474,6 +486,19 @@ fun AppleFullSettingsDialog(
                                     vectorIcon = Icons.Filled.VolumeUp,
                                     iconTint = Color.White,
                                     iconBg = AppleBlue
+                                )
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(start = 56.dp),
+                                    thickness = 0.5.dp,
+                                    color = CardBorderGray.copy(alpha = 0.45f)
+                                )
+                                AppleInsetActionRow(
+                                    title = if (strings.isCzech) "Rychlé rozpoznávání hlasu" else "Fast Voice Recognition",
+                                    subtitle = if (strings.isCzech) "Návod na stažení offline balíčku pro bleskovou odezvu." else "Guide to offline speech pack for instant response.",
+                                    onClick = { showVoiceGuideDialog = true },
+                                    vectorIcon = Icons.Filled.Mic,
+                                    iconTint = Color.White,
+                                    iconBg = AppleGreen
                                 )
                             }
                         }
@@ -1004,6 +1029,286 @@ private fun AppleInsetToggleRow(
                 uncheckedTrackColor = CardBorderGray
             )
         )
+    }
+}
+
+@Composable
+private fun AppleInsetActionRow(
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    vectorIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconTint: Color,
+    iconBg: Color
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 11.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(iconBg),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = vectorIcon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(1.dp)
+            ) {
+                Text(
+                    text = title,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = TextDark
+                )
+                Text(
+                    text = subtitle,
+                    fontSize = 11.5.sp,
+                    color = TextMuted,
+                    lineHeight = 15.sp
+                )
+            }
+        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = TextMuted,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Composable
+private fun GuideStepRow(
+    stepNumber: String,
+    text: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Box(
+            modifier = Modifier
+                .size(20.dp)
+                .clip(CircleShape)
+                .background(AppleBlueTint),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = stepNumber,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = AppleBlue
+            )
+        }
+        Text(
+            text = text,
+            fontSize = 12.5.sp,
+            color = TextDark,
+            lineHeight = 16.5.sp,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+fun VoiceRecognitionGuideDialog(
+    isCzech: Boolean,
+    onDismiss: () -> Unit,
+    onOpenSettings: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(26.dp),
+            color = CardSurface,
+            border = BorderStroke(0.8.dp, AppleBlue.copy(alpha = 0.35f)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(22.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .background(AppleBlueTint),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Mic,
+                        contentDescription = null,
+                        tint = AppleBlue,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+
+                Text(
+                    text = if (isCzech) "Bleskové rozpoznávání hlasu" else "Fast Voice Recognition",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextDark,
+                    textAlign = TextAlign.Center
+                )
+
+                Text(
+                    text = if (isCzech) {
+                        "Pokud nemáte v telefonu stažen offline balíček jazyka, rozpoznávání probíhá přes internet s mírným zpožděním. Stažením offline balíčku získáte okamžitou odezvu bez čekání."
+                    } else {
+                        "If you do not have an offline speech pack downloaded, recognition runs via the internet with slight delay. Downloading the offline pack enables instant response."
+                    },
+                    fontSize = 13.sp,
+                    color = TextMuted,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 17.5.sp
+                )
+
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = SurfaceBg,
+                    border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.5f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(13.dp),
+                        verticalArrangement = Arrangement.spacedBy(9.dp)
+                    ) {
+                        Text(
+                            text = if (isCzech) "Postup nastavení v telefonu:" else "How to set up in Android:",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextDark
+                        )
+                        GuideStepRow(
+                            stepNumber = "1",
+                            text = if (isCzech) "Otevřete nastavení tlačítkem níže." else "Open settings using the button below."
+                        )
+                        GuideStepRow(
+                            stepNumber = "2",
+                            text = if (isCzech) "Klepněte na Hlasové zadávání Google (nebo ikonu ozubeného kola vedle něj)." else "Tap Google Voice Typing (or the gear icon next to it)."
+                        )
+                        GuideStepRow(
+                            stepNumber = "3",
+                            text = if (isCzech) "Zvolte Offline rozpoznávání řeči a stáhněte balíček pro jazyk, který se učíte (např. English US)." else "Select Offline speech recognition and download your language (e.g. English US)."
+                        )
+                    }
+                }
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Button(
+                        onClick = onOpenSettings,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = AppleBlue,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = if (isCzech) "Otevřít nastavení systému" else "Open System Settings",
+                                fontSize = 14.5.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(42.dp)
+                    ) {
+                        Text(
+                            text = if (isCzech) "Rozumím / Zavřít" else "Got It / Close",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextMuted
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+fun openVoiceRecognitionSettings(context: android.content.Context) {
+    val intents = mutableListOf<Intent>()
+
+    // Intent 1: Android Voice Input settings
+    try {
+        intents.add(Intent(android.provider.Settings.ACTION_VOICE_INPUT_SETTINGS).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        })
+    } catch (_: Throwable) {}
+
+    // Intent 2: Android standard speech recognition management action string
+    try {
+        intents.add(Intent("android.speech.action.MANAGE_SPEECH_RECOGNITION").apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        })
+    } catch (_: Throwable) {}
+
+    // Intent 3: Input method / keyboard settings (which has Voice typing)
+    try {
+        intents.add(Intent(android.provider.Settings.ACTION_INPUT_METHOD_SETTINGS).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        })
+    } catch (_: Throwable) {}
+
+    // Intent 4: General system settings
+    try {
+        intents.add(Intent(android.provider.Settings.ACTION_SETTINGS).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        })
+    } catch (_: Throwable) {}
+
+    for (intent in intents) {
+        try {
+            context.startActivity(intent)
+            return
+        } catch (_: Throwable) {
+        }
     }
 }
 

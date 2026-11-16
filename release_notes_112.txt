@@ -1,0 +1,10 @@
+<cs-CZ>
+• Nový průvodce a odkaz na stažení offline balíčků pro bleskové rozpoznávání hlasu v Nastavení
+• Multi-segmentový bar retence paměti a automatický posun na další lekci v Tréninku
+• Drobné optimalizace výkonu a stability
+</cs-CZ>
+<en-GB>
+• New guide & shortcut in Settings to download offline speech packs for instant voice recognition
+• Multi-segmented memory retention bar & auto-advance to next lesson in Practice
+• Minor performance & stability improvements
+</en-GB>
