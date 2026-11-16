@@ -77,10 +77,16 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.TextUnit
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
+import kotlin.math.roundToInt
 import cz.slovickaspeak.app.data.FriendProgress
 import cz.slovickaspeak.app.data.LanguageCompleteStats
 import cz.slovickaspeak.app.data.LeaderboardPeriod
@@ -166,53 +172,95 @@ fun AppleFullSettingsDialog(
         )
     }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+    BackHandler(onBack = onDismiss)
+
+    var dragOffsetY by remember { mutableFloatStateOf(0f) }
+    val animatedOffsetY by animateFloatAsState(
+        targetValue = dragOffsetY,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "sheetDragOffset"
+    )
+    val density = LocalDensity.current
+    val dismissThresholdPx = with(density) { 75.dp.toPx() }
+
+    val dragModifier = Modifier.pointerInput(Unit) {
+        detectVerticalDragGestures(
+            onVerticalDrag = { change, dragAmount ->
+                change.consume()
+                dragOffsetY = (dragOffsetY + dragAmount).coerceAtLeast(0f)
+            },
+            onDragEnd = {
+                if (dragOffsetY > dismissThresholdPx) {
+                    onDismiss()
+                } else {
+                    dragOffsetY = 0f
+                }
+            },
+            onDragCancel = {
+                dragOffsetY = 0f
+            }
+        )
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.50f))
+            .clickable(
+                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                indication = null,
+                onClick = onDismiss
+            ),
+        contentAlignment = Alignment.BottomCenter
     ) {
-        Box(
+        Surface(
+            shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
+            color = SurfaceBg,
+            border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.5f)),
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
+                .fillMaxHeight(0.90f)
+                .offset { IntOffset(0, animatedOffsetY.roundToInt()) }
                 .clickable(
                     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                     indication = null,
-                    onClick = onDismiss
-                ),
-            contentAlignment = Alignment.BottomCenter
+                    onClick = {} // Consume click inside sheet
+                )
+                .shadow(32.dp, RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp), spotColor = Color.Black.copy(alpha = 0.22f))
         ) {
-            Surface(
-                shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
-                color = SurfaceBg,
-                border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.5f)),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.88f)
-                    .clickable(
-                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                        indication = null,
-                        onClick = {} // Consume click inside sheet
-                    )
-                    .shadow(32.dp, RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp), spotColor = Color.Black.copy(alpha = 0.22f))
-            ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                        .padding(horizontal = 20.dp)
+                        .padding(top = 8.dp, bottom = 12.dp)
+                        .navigationBarsPadding(),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    // Sleek iOS Drag Handle
+                    // Sleek iOS Drag Handle with generous touch & swipe area
                     Box(
                         modifier = Modifier
-                            .width(36.dp)
-                            .height(4.5.dp)
-                            .clip(CircleShape)
-                            .background(TextMuted.copy(alpha = 0.35f))
-                            .align(Alignment.CenterHorizontally)
-                    )
+                            .fillMaxWidth()
+                            .height(28.dp)
+                            .then(dragModifier),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(38.dp)
+                                .height(5.dp)
+                                .clip(CircleShape)
+                                .background(TextMuted.copy(alpha = 0.40f))
+                        )
+                    }
 
                     // Top Modal Header (Authentic Apple iOS Navigation Bar)
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(dragModifier),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -456,7 +504,6 @@ fun AppleFullSettingsDialog(
             }
         }
     }
-}
 }
 
 @Composable
@@ -1485,7 +1532,7 @@ private fun <T> AppleSegmentedControl(
     fontSize: TextUnit = 13.sp
 ) {
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = CircleShape,
         color = AppleSecondaryFill,
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -1498,7 +1545,7 @@ private fun <T> AppleSegmentedControl(
             options.forEach { (value, label) ->
                 val selected = selectedValue == value
                 Surface(
-                    shape = RoundedCornerShape(9.dp),
+                    shape = CircleShape,
                     color = if (selected) CardElevatedSurface else Color.Transparent,
                     border = if (selected) {
                         BorderStroke(
@@ -1506,21 +1553,21 @@ private fun <T> AppleSegmentedControl(
                             if (isDarkThemeActive) AppleBlue.copy(alpha = 0.65f) else Color.Black.copy(alpha = 0.08f)
                         )
                     } else null,
-                    shadowElevation = if (selected) 3.dp else 0.dp,
+                    shadowElevation = if (selected) 2.dp else 0.dp,
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(9.dp))
+                        .clip(CircleShape)
                         .clickable { onSelect(value) }
                 ) {
                     Text(
                         text = label,
-                        color = if (selected) AppleBlue else TextMuted,
+                        color = if (selected) (if (isDarkThemeActive) Color.White else AppleBlue) else TextMuted,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                         fontSize = fontSize,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
-                            .padding(vertical = 9.dp, horizontal = 6.dp)
+                            .padding(vertical = 8.dp, horizontal = 6.dp)
                             .wrapContentWidth(Alignment.CenterHorizontally)
                     )
                 }
@@ -2926,9 +2973,18 @@ fun AppleCompleteStatsDialog(
         ?: allLanguageStats.firstOrNull()
         ?: progressState.getLanguageCompleteStats(progressState.selectedLanguage)
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+    BackHandler(onBack = onDismiss)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.50f))
+            .clickable(
+                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                indication = null,
+                onClick = onDismiss
+            ),
+        contentAlignment = Alignment.Center
     ) {
         Surface(
             shape = RoundedCornerShape(28.dp),
@@ -2937,6 +2993,12 @@ fun AppleCompleteStatsDialog(
             modifier = Modifier
                 .fillMaxWidth(0.94f)
                 .fillMaxHeight(0.88f)
+                .navigationBarsPadding()
+                .clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    indication = null,
+                    onClick = {}
+                )
                 .shadow(24.dp, RoundedCornerShape(28.dp), spotColor = Color.Black.copy(alpha = 0.18f))
         ) {
             Column(

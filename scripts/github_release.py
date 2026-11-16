@@ -5,20 +5,20 @@ import mimetypes
 
 TOKEN_PATH = r"C:\Users\radek.vlk\.gemini\antigravity\brain\43b0acd7-1097-4287-b01f-eedb0d465b28\scratch\github_token.txt"
 REPO = "radekvlk/LingoStacks"
-TAG = "v1.0.7"
-NAME = "LingoStacks v1.0.7"
+TAG = "v1.0.8"
+NAME = "LingoStacks v1.0.8"
 
 BODY = """[CS]
-• **Plovoucí skleněná lišta Apple (Floating Glass Bar):** Elegantní 4-položková plovoucí lišta ve tvaru zaoblené kapsle (Domů, Trénink, Statistiky, Nastavení) se skleněným odleskem hrany a plynulým mizení při studiu pro maximální plochu karet.
-• **Chytrý rychlý trénink:** Okamžitý návrat k rozpracovanému balíčku i prioritnímu opakování slovíček podle paměťové křivky (SRS) přímo ze spodní lišty.
-• **Konzistentní tmavý režim (Apple HIG):** Horní rozbalovací nabídky (jazyk, směr, úroveň) i dialogy mají tmavé grafitové sklo (#242428) místo bílého pozadí; tlačítko Hotovo má vyvážený kapslový podklad.
-• **Moderní kulaté ikony:** Všechny ikony přepínačů, notifikací i statistik sjednoceny na elegantní kruhy s bílými glyfy po vzoru Duolinga a Apple Fitness.
+• **Oprava odznaku tréninku:** Počet slov k opakování (SRS) na plovoucí liště je ukotven na vnějším rohu ikony a nezakrývá symbol blesku.
+• **Sjednocený design pilulek:** Přepínač období žebříčku v nastavení [ Dnes | Tento týden ] sjednocen na autentický zaoblený tvar pilulky podle Apple HIG.
+• **Plná viditelnost navigace Androidu:** Spodní systémová 3tlačítková navigační lišta (Zpět, Domů, Poslední) zůstává trvale zřetelná a čitelná ve všech modálních oknech.
+• **Plynulé stažení prstem dolů:** Modální okno nastavení a statistik lze přirozeně a plynule zavřít tažením prstu za horní madlo či hlavičku.
 
 [EN]
-• **Apple Floating Glass Bar:** Elegant 4-tab floating stadium capsule (Home, Practice, Stats, Settings) with specular edge highlights and smooth study dismissal.
-• **Smart Quick Practice:** Immediate return to in-progress decks and prioritized SRS reviews right from the bottom bar.
-• **Consistent Dark Mode (Apple HIG):** Filter dropdown popovers (language, study direction, CEFR level) and dialogs feature native dark glass surfaces (#242428); balanced capsule contrast for Done button.
-• **Modern Circular Badges:** Clean, friendly circular icon badges with white glyphs across settings and stats inspired by Duolingo and Apple Fitness.
+• **Fixed Practice Badge:** Review counter on the floating navigation bar is cleanly anchored to the outer shoulder, never obscuring the lightning icon.
+• **Unified Pill Controls:** Time period switcher in settings [ Today | This week ] matches authentic Apple pill design language.
+• **Android 3-Button Navigation Polish:** Bottom system navigation bar (Back, Home, Recents) remains fully visible with high contrast across all modal overlays.
+• **Swipe Down to Dismiss:** Settings & stats modal sheet supports smooth vertical drag gestures to close naturally.
 """
 
 def main():
@@ -61,7 +61,7 @@ def main():
 
     # 2. Upload APK assets
     apk_paths = [
-        ("LingoStacks_v1.0.7.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.7.apk"),
+        ("LingoStacks_v1.0.8.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.8.apk"),
         ("LingoStacks.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks.apk")
     ]
 

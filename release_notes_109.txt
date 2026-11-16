@@ -1,0 +1,12 @@
+<en-GB>
+• Fixed practice badge: Practice tab badge repositioned cleanly so high review counts never overlap the icon.
+• Unified pill controls: Time period switcher in settings matches authentic iOS pill design language.
+• Android 3-button navigation: Bottom navigation bar remains fully visible and high-contrast across all dialogs.
+• Swipe down to dismiss: Settings modal supports smooth vertical drag gestures to close naturally.
+</en-GB>
+<cs-CZ>
+• Oprava odznaku tréninku: Počet slov k opakování na liště je ukotven na vnějším rohu a nezakrývá ikonu blesku.
+• Sjednocený design pilulek: Přepínač období žebříčku v nastavení má autentický zaoblený tvar pilulky.
+• Plná viditelnost navigace Androidu: 3tlačítková spodní lišta (Zpět, Domů, Poslední) zůstává trvale zřetelná a čitelná.
+• Stažení prstem dolů: Modální okno nastavení lze přirozeně a plynule zavřít tažením prstu za horní madlo.
+</cs-CZ>

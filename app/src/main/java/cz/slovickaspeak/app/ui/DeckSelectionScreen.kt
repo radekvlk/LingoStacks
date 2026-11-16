@@ -155,31 +155,6 @@ fun DeckSelectionScreen(
         label = "homeGoalProgressBar"
     )
 
-    if (showSettingsDialog) {
-        AppleFullSettingsDialog(
-            progressState = progressState,
-            initialTab = settingsInitialTab,
-            onDismiss = {
-                showSettingsDialog = false
-                activeBottomTab = 0
-            }
-        )
-    }
-
-    if (showCompleteStatsDialog) {
-        AppleCompleteStatsDialog(
-            progressState = progressState,
-            onOpenLeaderboard = {
-                settingsInitialTab = 0
-                showSettingsDialog = true
-            },
-            onDismiss = {
-                showCompleteStatsDialog = false
-                activeBottomTab = 0
-            }
-        )
-    }
-
     if (!progressState.hasSelectedNativeLanguage) {
         NativeLanguageOnboardingDialog(
             strings = strings,
@@ -468,6 +443,31 @@ fun DeckSelectionScreen(
                 .navigationBarsPadding()
                 .padding(horizontal = 24.dp, vertical = 14.dp)
         )
+
+        if (showSettingsDialog) {
+            AppleFullSettingsDialog(
+                progressState = progressState,
+                initialTab = settingsInitialTab,
+                onDismiss = {
+                    showSettingsDialog = false
+                    activeBottomTab = 0
+                }
+            )
+        }
+
+        if (showCompleteStatsDialog) {
+            AppleCompleteStatsDialog(
+                progressState = progressState,
+                onOpenLeaderboard = {
+                    settingsInitialTab = 0
+                    showSettingsDialog = true
+                },
+                onDismiss = {
+                    showCompleteStatsDialog = false
+                    activeBottomTab = 0
+                }
+            )
+        }
     }
 }
 }
@@ -2845,30 +2845,29 @@ fun AppleFloatingGlassBar(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        Box {
+                        BadgedBox(
+                            badge = {
+                                if (tab.badge > 0) {
+                                    Badge(
+                                        containerColor = AppleRed,
+                                        contentColor = Color.White,
+                                        modifier = Modifier.offset(x = 6.dp, y = (-2).dp)
+                                    ) {
+                                        Text(
+                                            text = if (tab.badge > 99) "99+" else tab.badge.toString(),
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        ) {
                             Icon(
                                 imageVector = tab.icon,
                                 contentDescription = tab.title,
                                 tint = contentColor,
                                 modifier = Modifier.size(21.dp)
                             )
-                            if (tab.badge > 0) {
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .offset(x = 8.dp, y = (-4).dp)
-                                        .clip(CircleShape)
-                                        .background(AppleRed)
-                                        .padding(horizontal = 4.dp, vertical = 1.dp)
-                                ) {
-                                    Text(
-                                        text = if (tab.badge > 99) "99+" else tab.badge.toString(),
-                                        fontSize = 8.5.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White
-                                    )
-                                }
-                            }
                         }
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
