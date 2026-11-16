@@ -129,22 +129,90 @@ fun DeckSelectionScreen(
     val dailyGoalWords = progressState.dailyGoalWords
     val completedTodayWords = progressState.todayCompletedWords
 
-    val filteredDecks = remember(decks, selectedLanguage, selectedLevel) {
-        val byLang = decks
+    val allLanguageDecks = remember(decks, selectedLanguage) {
+        decks
             .filter { it.language == selectedLanguage }
             .sortedBy { it.level.ordinal }
-        if (selectedLevel == null) byLang else byLang.filter { it.level == selectedLevel }
+    }
+
+    val filteredDecks = remember(allLanguageDecks, selectedLevel) {
+        if (selectedLevel == null) allLanguageDecks else allLanguageDecks.filter { it.level == selectedLevel }
     }
 
     val totalDueReview = remember(filteredDecks, progressState.srsRevision, studyDirection) {
         filteredDecks.sumOf { progressState.getDeckNeedsReviewCount(it) }
     }
 
-    val recommendedPair = remember(filteredDecks, progressState.srsRevision, studyDirection) {
-        val withSummaries = filteredDecks.map { it to progressState.getDeckMemorySummary(it) }
-        withSummaries.firstOrNull { it.second.needsReviewCount > 0 }
-            ?: withSummaries.firstOrNull { it.second.learnedAnyCount in 1 until it.second.totalCount }
-            ?: withSummaries.firstOrNull()
+    val recommendedPair = remember(filteredDecks, allLanguageDecks, progressState.srsRevision, studyDirection, progressState.lastStudiedDeckId) {
+        val targetDeckList = if (filteredDecks.isNotEmpty()) filteredDecks else allLanguageDecks
+        if (targetDeckList.isEmpty()) return@remember null
+
+        val withSummaries = targetDeckList.map { it to progressState.getDeckMemorySummary(it) }
+        val lastId = progressState.lastStudiedDeckId
+
+        // 1. If user previously studied a deck, check its progress
+        if (!lastId.isNullOrBlank()) {
+            val lastIdx = withSummaries.indexOfFirst { it.first.id == lastId }
+            if (lastIdx != -1) {
+                val (lastDeck, lastSummary) = withSummaries[lastIdx]
+                // 1A. If the last studied deck still has unlearned words, continue it!
+                if (lastSummary.learnedAnyCount < lastSummary.totalCount) {
+                    return@remember lastDeck to lastSummary
+                }
+                // 1B. The last studied deck was completed by word count!
+                // Advance forward to the next incomplete deck in targetDeckList (from lastIdx + 1 onward)
+                for (i in (lastIdx + 1) until withSummaries.size) {
+                    val candidate = withSummaries[i]
+                    if (candidate.second.learnedAnyCount < candidate.second.totalCount) {
+                        return@remember candidate
+                    }
+                }
+                // If not found in filteredDecks (e.g. reached end of current level), check allLanguageDecks!
+                val allWithSummaries = allLanguageDecks.map { it to progressState.getDeckMemorySummary(it) }
+                val allLastIdx = allWithSummaries.indexOfFirst { it.first.id == lastId }
+                if (allLastIdx != -1) {
+                    for (i in (allLastIdx + 1) until allWithSummaries.size) {
+                        val candidate = allWithSummaries[i]
+                        if (candidate.second.learnedAnyCount < candidate.second.totalCount) {
+                            return@remember candidate
+                        }
+                    }
+                }
+                // If still not found after, search earlier decks in current list that might have been skipped
+                for (i in 0 until lastIdx) {
+                    val candidate = withSummaries[i]
+                    if (candidate.second.learnedAnyCount < candidate.second.totalCount) {
+                        return@remember candidate
+                    }
+                }
+            }
+        }
+
+        // 2. Fallbacks:
+        // 2A. Any deck partially in progress (1 until totalCount)
+        val inProgress = withSummaries.firstOrNull { it.second.learnedAnyCount in 1 until it.second.totalCount }
+        if (inProgress != null) return@remember inProgress
+
+        // 2B. First unstarted deck (learnedAnyCount < totalCount)
+        val firstIncomplete = withSummaries.firstOrNull { it.second.learnedAnyCount < it.second.totalCount }
+        if (firstIncomplete != null) return@remember firstIncomplete
+
+        // 2C. In allLanguageDecks, find next uncompleted level/deck
+        val allWithSummaries = allLanguageDecks.map { it to progressState.getDeckMemorySummary(it) }
+        val nextInAll = allWithSummaries.firstOrNull { it.second.learnedAnyCount < it.second.totalCount }
+        if (nextInAll != null) return@remember nextInAll
+
+        // 2D. If all decks completed: check for reviews due
+        val needsReview = withSummaries.firstOrNull { it.second.needsReviewCount > 0 }
+            ?: allWithSummaries.firstOrNull { it.second.needsReviewCount > 0 }
+        if (needsReview != null) return@remember needsReview
+
+        // 2E. Deck with lowest retention score (not yet fully mastered Box 4-5)
+        val lowestRetention = withSummaries.filter { !it.second.isFullyMastered }.minByOrNull { it.second.retentionPercent }
+        if (lowestRetention != null) return@remember lowestRetention
+
+        // 2F. Final fallback
+        withSummaries.firstOrNull()
     }
 
     val remainingWords = (dailyGoalWords - completedTodayWords).coerceAtLeast(0)
@@ -420,9 +488,13 @@ fun DeckSelectionScreen(
                         }
                     }
                     1 -> {
-                        // ⚡ Trénink: Rychlý start procvičování doporučeného balíčku / SRS opakování
+                        // ⚡ Trénink: Rychlý start procvičování doporučeného balíčku / posun na další lekci
                         val targetDeck = recommendedPair?.first ?: filteredDecks.firstOrNull()
                         if (targetDeck != null) {
+                            if (selectedLevel != null && targetDeck.level != selectedLevel) {
+                                progressState.updateSelectedCefrLevel(targetDeck.level)
+                            }
+                            progressState.updateLastStudiedDeck(targetDeck.id)
                             onSelectDeck(targetDeck)
                         }
                     }
@@ -1752,10 +1824,8 @@ private fun DeckCard(
     val levelColor = Color(deck.level.colorHex)
     val learnedAnyCount = memorySummary.learnedAnyCount
     val needsReviewCount = memorySummary.needsReviewCount
-    val progressFraction = if (deck.words.isNotEmpty()) {
-        (learnedAnyCount.toFloat() / deck.words.size.toFloat()).coerceIn(0f, 1f)
-    } else 0f
-    val percentInt = (progressFraction * 100f).toInt()
+    val isMastered = memorySummary.isFullyMastered
+    val retentionScore = memorySummary.retentionPercent
 
     Surface(
         shape = RoundedCornerShape(24.dp),
@@ -1814,16 +1884,37 @@ private fun DeckCard(
                             color = TextMuted
                         )
 
-                        Text(
-                            text = if (learnedAnyCount > 0) {
-                                if (strings.isCzech) "$learnedAnyCount ze ${deck.words.size} slov" else "$learnedAnyCount of ${deck.words.size} words"
+                        if (learnedAnyCount == 0) {
+                            Text(
+                                text = strings.wordsInDeck(deck.words.size),
+                                fontSize = 12.sp,
+                                color = TextMuted,
+                                fontWeight = FontWeight.Medium
+                            )
+                        } else if (isMastered) {
+                            Text(
+                                text = if (strings.isCzech) "${deck.words.size} zvládnuto" else "${deck.words.size} mastered",
+                                fontSize = 12.sp,
+                                color = AppleGreen,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        } else {
+                            val statusText = if (strings.isCzech) {
+                                if (memorySummary.masteredCount > 0) "${memorySummary.masteredCount} zvládnuto • ${memorySummary.learningCount} v tréninku"
+                                else "$learnedAnyCount ze ${deck.words.size} v tréninku"
                             } else {
-                                strings.wordsInDeck(deck.words.size)
-                            },
-                            fontSize = 12.sp,
-                            color = if (learnedAnyCount > 0) AppleGreen else TextMuted,
-                            fontWeight = FontWeight.Medium
-                        )
+                                if (memorySummary.masteredCount > 0) "${memorySummary.masteredCount} mastered • ${memorySummary.learningCount} learning"
+                                else "$learnedAnyCount of ${deck.words.size} in training"
+                            }
+                            Text(
+                                text = statusText,
+                                fontSize = 12.sp,
+                                color = if (memorySummary.masteredCount > 0) AppleGreen else AppleOrange,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
 
                         if (needsReviewCount > 0) {
                             Text(
@@ -1864,10 +1955,15 @@ private fun DeckCard(
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         Text(
-                            text = "$percentInt%",
+                            text = "$retentionScore%",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (percentInt >= 100) AppleGreen else AppleBlue
+                            color = when {
+                                isMastered -> AppleGreen
+                                memorySummary.needsReviewCount > 0 && memorySummary.masteredCount == 0 && memorySummary.learningCount == 0 -> AppleRed
+                                memorySummary.masteredCount > 0 -> AppleGreen
+                                else -> AppleOrange
+                            }
                         )
                         Icon(
                             imageVector = Icons.Default.ChevronRight,
@@ -1894,30 +1990,49 @@ private fun DeckCard(
                 }
             }
 
-            // Sleek docked bottom progress line
+            // Sleek multi-segmented docked memory retention bar
             if (learnedAnyCount > 0) {
-                Box(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 6.dp)
                         .height(3.5.dp)
                         .clip(CircleShape)
-                        .background(SurfaceBg)
+                        .background(SurfaceBg),
+                    horizontalArrangement = Arrangement.spacedBy(1.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(progressFraction)
-                            .fillMaxHeight()
-                            .clip(CircleShape)
-                            .background(
-                                Brush.horizontalGradient(
-                                    colors = listOf(
-                                        levelColor.copy(alpha = 0.8f),
-                                        if (progressFraction >= 1f) AppleGreen else AppleBlue
-                                    )
-                                )
-                            )
-                    )
+                    if (memorySummary.masteredCount > 0) {
+                        Box(
+                            modifier = Modifier
+                                .weight(memorySummary.masteredCount.toFloat())
+                                .fillMaxHeight()
+                                .background(AppleGreen)
+                        )
+                    }
+                    if (memorySummary.learningCount > 0) {
+                        Box(
+                            modifier = Modifier
+                                .weight(memorySummary.learningCount.toFloat())
+                                .fillMaxHeight()
+                                .background(AppleOrange)
+                        )
+                    }
+                    if (memorySummary.needsReviewCount > 0) {
+                        Box(
+                            modifier = Modifier
+                                .weight(memorySummary.needsReviewCount.toFloat())
+                                .fillMaxHeight()
+                                .background(AppleRed)
+                        )
+                    }
+                    if (memorySummary.unseenCount > 0) {
+                        Box(
+                            modifier = Modifier
+                                .weight(memorySummary.unseenCount.toFloat())
+                                .fillMaxHeight()
+                                .background(SurfaceBg)
+                        )
+                    }
                 }
             }
         }
@@ -2848,31 +2963,44 @@ fun AppleFloatingGlassBar(
                         BadgedBox(
                             badge = {
                                 if (tab.badge > 0) {
-                                    val badgeText = if (tab.badge > 99) "99+" else tab.badge.toString()
-                                    Box(
+                                    val badgeText = if (tab.badge > 999) "999+" else tab.badge.toString()
+                                    val isSingleDigit = badgeText.length == 1
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = if (isDark) Color(0xFF2C2C2E) else Color.White,
+                                        border = BorderStroke(
+                                            width = 1.3.dp,
+                                            color = if (isDark) Color.White.copy(alpha = 0.40f) else Color.Black.copy(alpha = 0.22f)
+                                        ),
+                                        shadowElevation = 2.dp,
                                         modifier = Modifier
-                                            .offset(x = 6.dp, y = 1.dp)
-                                            .defaultMinSize(minWidth = 17.dp, minHeight = 17.dp)
-                                            .clip(CircleShape)
-                                            .background(
-                                                if (isDark) Color.White.copy(alpha = 0.20f)
-                                                else Color.Black.copy(alpha = 0.08f)
+                                            .offset(x = 6.dp, y = 2.dp)
+                                            .then(
+                                                if (isSingleDigit) Modifier.size(19.dp)
+                                                else Modifier
+                                                    .height(19.dp)
+                                                    .widthIn(min = 19.dp)
                                             )
-                                            .border(
-                                                width = 0.5.dp,
-                                                color = if (isDark) Color.White.copy(alpha = 0.30f) else Color.Black.copy(alpha = 0.14f),
-                                                shape = CircleShape
-                                            )
-                                            .padding(horizontal = if (badgeText.length > 1) 4.5.dp else 1.dp, vertical = 0.5.dp),
-                                        contentAlignment = Alignment.Center
                                     ) {
-                                        Text(
-                                            text = badgeText,
-                                            fontSize = 8.5.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (isDark) Color.White else Color(0xFF2C2C2E),
-                                            textAlign = TextAlign.Center
-                                        )
+                                        Box(
+                                            modifier = if (isSingleDigit) {
+                                                Modifier.fillMaxSize()
+                                            } else {
+                                                Modifier
+                                                    .fillMaxHeight()
+                                                    .padding(horizontal = 5.dp)
+                                            },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = badgeText,
+                                                fontSize = if (isSingleDigit) 9.5.sp else 8.5.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                lineHeight = 9.sp,
+                                                color = if (isDark) Color.White else Color(0xFF1C1C1E),
+                                                textAlign = TextAlign.Center
+                                            )
+                                        }
                                     }
                                 }
                             }

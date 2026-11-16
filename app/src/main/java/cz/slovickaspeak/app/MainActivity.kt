@@ -145,6 +145,7 @@ class MainActivity : ComponentActivity() {
                                 decks = activeDecks,
                                 progressState = progressState,
                                 onSelectDeck = { selectedDeck ->
+                                    progressState.updateLastStudiedDeck(selectedDeck.id)
                                     if (!hasMicPermission) {
                                         permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                                     }

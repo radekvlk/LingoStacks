@@ -1,0 +1,10 @@
+<cs-CZ>
+• Multi-segmentový bar retence paměti a přesné zobrazení stavu učení
+• Automatický posun: tlačítko Trénink po dokončení plynule naváže další lekcí
+• Čisté vektorové ikony v relaci a text Trénink paměti
+</cs-CZ>
+<en-GB>
+• Multi-segmented memory retention bar & accurate learning status
+• Auto-advance: Practice button smoothly continues to the next lesson
+• Clean vector icons in session and Memory training indicator
+</en-GB>

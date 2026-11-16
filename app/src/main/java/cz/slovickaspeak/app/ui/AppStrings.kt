@@ -105,13 +105,13 @@ val czechStrings = UiStrings(
     remainingOfGoal = { rem, total -> "Zbývá $rem z $total" },
     remainingWordsOfGoal = { rem, total -> "Zbývá $rem z $total slovíček" },
     dailyGoalProgress = { done, goal ->
-        if (done >= goal) "Dnes: $done / $goal slov (Cíl splněn! 🎉)" else "Dnes: $done / $goal slov (zbývá ${goal - done})"
+        if (done >= goal) "Dnes: $done / $goal slov (Cíl splněn!)" else "Dnes: $done / $goal slov (zbývá ${goal - done})"
     },
     sessionCardProgress = { current, total, todayDone ->
         "Karta $current z $total • Dnes $todayDone slov"
     },
     sessionMasteryProgress = { mastered, total, remaining ->
-        if (remaining <= 0) "Zvládnuto: $mastered / $total slov • Dokončeno! 🎉"
+        if (remaining <= 0) "Zvládnuto: $mastered / $total slov • Dokončeno!"
         else "Zvládnuto: $mastered / $total slov (zbývá $remaining)"
     },
     wordsInDeck = { count -> "$count slovíček v sadě" },
@@ -246,13 +246,13 @@ val englishStrings = UiStrings(
     remainingOfGoal = { rem, total -> "$rem of $total left" },
     remainingWordsOfGoal = { rem, total -> "$rem of $total words left" },
     dailyGoalProgress = { done, goal ->
-        if (done >= goal) "Today: $done / $goal words (Goal reached! 🎉)" else "Today: $done / $goal words (${goal - done} left)"
+        if (done >= goal) "Today: $done / $goal words (Goal reached!)" else "Today: $done / $goal words (${goal - done} left)"
     },
     sessionCardProgress = { current, total, todayDone ->
         "Card $current of $total • Today $todayDone words"
     },
     sessionMasteryProgress = { mastered, total, remaining ->
-        if (remaining <= 0) "Mastered: $mastered / $total words • Completed! 🎉"
+        if (remaining <= 0) "Mastered: $mastered / $total words • Completed!"
         else "Mastered: $mastered / $total words ($remaining left)"
     },
     wordsInDeck = { count -> "$count words in deck" },
@@ -377,13 +377,13 @@ val spanishStrings = UiStrings(
     remainingOfGoal = { rem, total -> "Quedan $rem de $total" },
     remainingWordsOfGoal = { rem, total -> "Quedan $rem de $total palabras" },
     dailyGoalProgress = { done, goal ->
-        if (done >= goal) "Hoy: $done / $goal palabras (¡Meta cumplida! 🎉)" else "Hoy: $done / $goal palabras (quedan ${goal - done})"
+        if (done >= goal) "Hoy: $done / $goal palabras (¡Meta cumplida!)" else "Hoy: $done / $goal palabras (quedan ${goal - done})"
     },
     sessionCardProgress = { current, total, todayDone ->
         "Tarjeta $current de $total • Hoy $todayDone palabras"
     },
     sessionMasteryProgress = { mastered, total, remaining ->
-        if (remaining <= 0) "Dominadas: $mastered / $total palabras • ¡Completado! 🎉"
+        if (remaining <= 0) "Dominadas: $mastered / $total palabras • ¡Completado!"
         else "Dominadas: $mastered / $total palabras (quedan $remaining)"
     },
     wordsInDeck = { count -> "$count palabras en el mazo" },
@@ -478,13 +478,13 @@ val germanStrings = UiStrings(
     remainingOfGoal = { rem, total -> "Noch $rem von $total" },
     remainingWordsOfGoal = { rem, total -> "Noch $rem von $total Wörtern" },
     dailyGoalProgress = { done, goal ->
-        if (done >= goal) "Heute: $done / $goal Wörter (Ziel erreicht! 🎉)" else "Heute: $done / $goal Wörter (noch ${goal - done})"
+        if (done >= goal) "Heute: $done / $goal Wörter (Ziel erreicht!)" else "Heute: $done / $goal Wörter (noch ${goal - done})"
     },
     sessionCardProgress = { current, total, todayDone ->
         "Karte $current von $total • Heute $todayDone Wörter"
     },
     sessionMasteryProgress = { mastered, total, remaining ->
-        if (remaining <= 0) "Gemeistert: $mastered / $total Wörter • Abgeschlossen! 🎉"
+        if (remaining <= 0) "Gemeistert: $mastered / $total Wörter • Abgeschlossen!"
         else "Gemeistert: $mastered / $total Wörter (noch $remaining)"
     },
     wordsInDeck = { count -> "$count Wörter im Stapel" },
@@ -579,13 +579,13 @@ val frenchStrings = UiStrings(
     remainingOfGoal = { rem, total -> "Reste $rem sur $total" },
     remainingWordsOfGoal = { rem, total -> "Reste $rem sur $total mots" },
     dailyGoalProgress = { done, goal ->
-        if (done >= goal) "Aujourd'hui: $done / $goal mots (Objectif atteint! 🎉)" else "Aujourd'hui: $done / $goal mots (reste ${goal - done})"
+        if (done >= goal) "Aujourd'hui: $done / $goal mots (Objectif atteint!)" else "Aujourd'hui: $done / $goal mots (reste ${goal - done})"
     },
     sessionCardProgress = { current, total, todayDone ->
         "Carte $current sur $total • Aujourd'hui $todayDone mots"
     },
     sessionMasteryProgress = { mastered, total, remaining ->
-        if (remaining <= 0) "Maîtrisés: $mastered / $total mots • Terminé! 🎉"
+        if (remaining <= 0) "Maîtrisés: $mastered / $total mots • Terminé!"
         else "Maîtrisés: $mastered / $total mots (reste $remaining)"
     },
     wordsInDeck = { count -> "$count mots dans le paquet" },
@@ -680,13 +680,13 @@ val italianStrings = UiStrings(
     remainingOfGoal = { rem, total -> "Mancano $rem di $total" },
     remainingWordsOfGoal = { rem, total -> "Mancano $rem di $total parole" },
     dailyGoalProgress = { done, goal ->
-        if (done >= goal) "Oggi: $done / $goal parole (Obiettivo raggiunto! 🎉)" else "Oggi: $done / $goal parole (mancano ${goal - done})"
+        if (done >= goal) "Oggi: $done / $goal parole (Obiettivo raggiunto!)" else "Oggi: $done / $goal parole (mancano ${goal - done})"
     },
     sessionCardProgress = { current, total, todayDone ->
         "Carta $current di $total • Oggi $todayDone parole"
     },
     sessionMasteryProgress = { mastered, total, remaining ->
-        if (remaining <= 0) "Padroneggiate: $mastered / $total parole • Completato! 🎉"
+        if (remaining <= 0) "Padroneggiate: $mastered / $total parole • Completato!"
         else "Padroneggiate: $mastered / $total parole (mancano $remaining)"
     },
     wordsInDeck = { count -> "$count parole nel mazzo" },
@@ -781,13 +781,13 @@ val portugueseStrings = UiStrings(
     remainingOfGoal = { rem, total -> "Faltam $rem de $total palavras hoje" },
     remainingWordsOfGoal = { rem, total -> "Faltam $rem de $total palavras" },
     dailyGoalProgress = { done, goal ->
-        if (done >= goal) "Hoje: $done / $goal palavras (Meta alcançada! 🎉)" else "Hoje: $done / $goal palavras (faltam ${goal - done})"
+        if (done >= goal) "Hoje: $done / $goal palavras (Meta alcançada!)" else "Hoje: $done / $goal palavras (faltam ${goal - done})"
     },
     sessionCardProgress = { current, total, todayDone ->
         "Cartão $current de $total • Hoje $todayDone palavras"
     },
     sessionMasteryProgress = { mastered, total, remaining ->
-        if (remaining <= 0) "Dominadas: $mastered / $total palavras • Concluído! 🎉"
+        if (remaining <= 0) "Dominadas: $mastered / $total palavras • Concluído!"
         else "Dominadas: $mastered / $total palavras (faltam $remaining)"
     },
     wordsInDeck = { count -> "$count palavras no baralho" },

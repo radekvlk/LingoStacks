@@ -40,6 +40,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LocalFireDepartment
@@ -1628,6 +1629,10 @@ private fun AppleSessionTopBar(
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             val levelColor = Color(deck.level.colorHex)
+            val memorySummary = remember(deck.id, progressState.srsRevision, progressState.studyDirection) {
+                progressState.getDeckMemorySummary(deck)
+            }
+            val isDeckFullyMastered = memorySummary.isFullyMastered
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -1693,18 +1698,35 @@ private fun AppleSessionTopBar(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = if (strings.isCzech) {
-                        if (remainingCount <= 0) "Lekce: $masteredCount / $sessionTargetCount • Dokončeno! 🎉"
-                        else "Lekce: $masteredCount / $sessionTargetCount (zbývá $remainingCount)"
-                    } else {
-                        if (remainingCount <= 0) "Lesson: $masteredCount / $sessionTargetCount • Done! 🎉"
-                        else "Lesson: $masteredCount / $sessionTargetCount ($remainingCount left)"
-                    },
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 11.5.sp,
-                    color = if (remainingCount <= 0) AppleGreen else TextDark
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = if (strings.isCzech) {
+                            if (remainingCount <= 0) {
+                                if (isDeckFullyMastered) "Lekce: $masteredCount / $sessionTargetCount • Dokončeno!"
+                                else "Projito $masteredCount / $sessionTargetCount • Trénink paměti"
+                            } else "Lekce: $masteredCount / $sessionTargetCount (zbývá $remainingCount)"
+                        } else {
+                            if (remainingCount <= 0) {
+                                if (isDeckFullyMastered) "Lesson: $masteredCount / $sessionTargetCount • Done!"
+                                else "Completed $masteredCount / $sessionTargetCount • Memory training"
+                            } else "Lesson: $masteredCount / $sessionTargetCount ($remainingCount left)"
+                        },
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 11.5.sp,
+                        color = if (remainingCount <= 0) (if (isDeckFullyMastered) AppleGreen else AppleBlue) else TextDark
+                    )
+                    if (remainingCount <= 0) {
+                        Icon(
+                            imageVector = Icons.Filled.CheckCircle,
+                            contentDescription = null,
+                            tint = if (isDeckFullyMastered) AppleGreen else AppleBlue,
+                            modifier = Modifier.size(13.dp)
+                        )
+                    }
+                }
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -1746,8 +1768,11 @@ private fun AppleSessionTopBar(
                         .clip(RoundedCornerShape(50))
                         .background(
                             Brush.horizontalGradient(
-                                colors = if (remainingCount <= 0) listOf(AppleGreen, AppleGreenDark)
-                                else listOf(AppleBlue, AppleIndigo)
+                                colors = if (remainingCount <= 0 && isDeckFullyMastered) {
+                                    listOf(AppleGreen, AppleGreenDark)
+                                } else {
+                                    listOf(AppleBlue, AppleIndigo)
+                                }
                             )
                         )
                 )

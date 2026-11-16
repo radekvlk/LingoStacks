@@ -86,14 +86,17 @@ data class DeckMemorySummary(
     val totalCount: Int,
     val masteredCount: Int,
     val learningCount: Int,
-    val needsReviewCount: Int
+    val needsReviewCount: Int,
+    val retentionPercent: Int = 0
 ) {
     val unseenCount: Int
         get() = (totalCount - masteredCount - learningCount - needsReviewCount).coerceAtLeast(0)
     val learnedAnyCount: Int
-        get() = masteredCount + learningCount
+        get() = (masteredCount + learningCount + needsReviewCount).coerceAtMost(totalCount)
+    val isFullyMastered: Boolean
+        get() = totalCount > 0 && masteredCount == totalCount
     val progressPercent: Int
-        get() = if (totalCount == 0) 0 else ((learnedAnyCount.toFloat() / totalCount) * 100f).roundToInt()
+        get() = retentionPercent
 }
 
 class ProgressStateHolder(context: Context) {
@@ -239,6 +242,18 @@ class ProgressStateHolder(context: Context) {
         } ?: cz.slovickaspeak.app.model.LearningLanguage.ENGLISH
     )
         private set
+
+    var lastStudiedDeckId by mutableStateOf(
+        prefs.getString("last_studied_deck_id_${selectedLanguage.name}", null)
+    )
+        private set
+
+    fun updateLastStudiedDeck(deckId: String) {
+        lastStudiedDeckId = deckId
+        prefs.edit()
+            .putString("last_studied_deck_id_${selectedLanguage.name}", deckId)
+            .apply()
+    }
 
     var hasSelectedInitialLanguage by mutableStateOf(
         prefs.getBoolean("has_selected_initial_language", false)
@@ -407,21 +422,45 @@ class ProgressStateHolder(context: Context) {
         var mastered = 0
         var learning = 0
         var needsReview = 0
+        var totalScore = 0f
 
         for (word in deck.words) {
             val key = srsKey(word.id, useReversed)
             val stat = wordSrsMap[key]
             when {
-                isWordNeedsReview(word.id, useReversed, now) -> needsReview++
-                stat != null && stat.box >= 4 -> mastered++
-                (stat != null && stat.box in 1..3) || (!useReversed && stat == null && word.id in masteredWordIds) -> learning++
+                isWordNeedsReview(word.id, useReversed, now) -> {
+                    needsReview++
+                    totalScore += 0.20f
+                }
+                stat != null && stat.box >= 4 -> {
+                    mastered++
+                    totalScore += 1.0f
+                }
+                (stat != null && stat.box in 1..3) -> {
+                    learning++
+                    totalScore += when (stat.box) {
+                        1 -> 0.35f
+                        2 -> 0.55f
+                        else -> 0.75f
+                    }
+                }
+                (!useReversed && stat == null && word.id in masteredWordIds) -> {
+                    learning++
+                    totalScore += 0.50f
+                }
             }
         }
+        val total = deck.words.size
+        val retention = if (total == 0) 0 else {
+            if (mastered == total) 100
+            else ((totalScore / total.toFloat()) * 100f).roundToInt().coerceIn(0, 99)
+        }
         return DeckMemorySummary(
-            totalCount = deck.words.size,
+            totalCount = total,
             masteredCount = mastered,
             learningCount = learning,
-            needsReviewCount = needsReview
+            needsReviewCount = needsReview,
+            retentionPercent = retention
         )
     }
 
@@ -880,6 +919,7 @@ class ProgressStateHolder(context: Context) {
 
     fun updateSelectedLanguage(language: cz.slovickaspeak.app.model.LearningLanguage) {
         selectedLanguage = language
+        lastStudiedDeckId = prefs.getString("last_studied_deck_id_${language.name}", null)
         hasSelectedInitialLanguage = true
         prefs.edit()
             .putString("selected_learning_language", language.name)

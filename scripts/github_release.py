@@ -6,17 +6,19 @@ import mimetypes
 TOKEN_PATH = r"C:\Users\radek.vlk\.gemini\antigravity\brain\43b0acd7-1097-4287-b01f-eedb0d465b28\scratch\github_token.txt"
 REPO = "radekvlk/LingoStacks"
 TAG = "v1.0.9"
-NAME = "LingoStacks v1.0.9"
+NAME = "LingoStacks v1.0.9 (Build 111)"
 
-BODY = """[CS]
-• **Odpočet denního cíle:** Odznak na záložce Trénink nově ukazuje přesný počet zbývajících slov do splnění denního cíle a po jeho dosažení sám čistě zmizí.
-• **Kulatý skleněný odznak:** Křiklavě červená barva nahrazena decentním kouřovým / mléčným sklem v přesném odstínu lišty s bezpečným odsazením bez jakéhokoliv ořezu o okraj.
-• **Vyladění prostoru lišty:** Zvýšení svislého prostoru plovoucí skleněné lišty pro ještě čistší a luxusnější vzhled na displeji.
+BODY = """versionCode: 111
+
+[CS]
+• **Multi-segmentový retention bar paměti:** Spodní lišta a indikátory na kartách lekcí nově zobrazují skutečný stav paměti (zelená = zvládnuto Box 4-5, oranžová = v tréninku Box 1-3, červená = k opakování).
+• **Inteligentní posun lekcí:** Tlačítko Trénink si pamatuje postup a po projití všech slov lekce automaticky plynule posune na navazující lekci / úroveň.
+• **Čisté vektorové ikony:** V záhlaví cvičení nahrazena stará emoji vektorovými ikonami a indikátorem „Projito X / Y • Trénink paměti“.
 
 [EN]
-• **Daily Goal Countdown:** Practice tab badge now displays the exact number of words left to reach your daily goal and cleanly hides once achieved.
-• **Frosted Glass Badge:** Replaced aggressive red badge with a subtle frosted glass circle matching the navigation bar tone, safe from any edge clipping.
-• **Refined Bar Spacing:** Added vertical breathing room to the floating glass capsule for a premium iOS aesthetic.
+• **Multi-segmented Memory Retention Bar:** Visual representation of actual mastery state across Leitner boxes (green = mastered, orange = learning, red = review).
+• **Smart Lesson Auto-Advance:** Practice button remembers progress and automatically continues to the next lesson or level upon completion.
+• **Clean Vector Icons:** Replaced old emoji with crisp vector icons and accurate Memory Training indicator.
 """
 
 def main():
@@ -30,7 +32,7 @@ def main():
         "Content-Type": "application/json"
     }
 
-    # 1. Create release
+    # 1. Create or fetch release
     payload = json.dumps({
         "tag_name": TAG,
         "name": NAME,
@@ -44,24 +46,45 @@ def main():
         with urllib.request.urlopen(req) as resp:
             rel = json.loads(resp.read().decode("utf-8"))
             print(f"Created release ID: {rel['id']} ({rel['html_url']})")
-            upload_url_template = rel["upload_url"] # e.g. https://uploads.github.com/.../assets{?name,label}
+            upload_url_template = rel["upload_url"]
     except urllib.error.HTTPError as e:
-        err_msg = e.read().decode("utf-8")
-        print(f"HTTPError: {e.code} - {err_msg}")
-        # If release for tag already exists, fetch it
+        print(f"HTTPError: {e.code}")
+        # If release for tag already exists, fetch it and update body & title
         req_get = urllib.request.Request(f"https://api.github.com/repos/{REPO}/releases/tags/{TAG}", headers=headers)
         with urllib.request.urlopen(req_get) as resp:
             rel = json.loads(resp.read().decode("utf-8"))
             print(f"Found existing release ID: {rel['id']}")
             upload_url_template = rel["upload_url"]
 
+        patch_req = urllib.request.Request(
+            f"https://api.github.com/repos/{REPO}/releases/{rel['id']}",
+            data=json.dumps({"name": NAME, "body": BODY}).encode("utf-8"),
+            headers=headers,
+            method="PATCH"
+        )
+        try:
+            with urllib.request.urlopen(patch_req) as resp:
+                print("Updated release metadata successfully")
+        except Exception as pe:
+            print(f"Could not patch release: {pe}")
+
     upload_base = upload_url_template.split("{")[0]
 
     # 2. Upload APK assets
     apk_paths = [
         ("LingoStacks_v1.0.9.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.9.apk"),
-        ("LingoStacks.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks.apk")
+        ("LingoStacks.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.9.apk")
     ]
+
+    # Delete existing asset with same name if any
+    for asset in rel.get("assets", []):
+        if asset["name"] in [a[0] for a in apk_paths]:
+            del_req = urllib.request.Request(asset["url"], headers=headers, method="DELETE")
+            try:
+                urllib.request.urlopen(del_req)
+                print(f"Deleted old asset {asset['name']}")
+            except Exception as de:
+                print(f"Could not delete old asset {asset['name']}: {de}")
 
     for asset_name, path in apk_paths:
         if not os.path.exists(path):
