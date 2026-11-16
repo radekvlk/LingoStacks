@@ -437,7 +437,7 @@ fun DeckSelectionScreen(
                 }
             },
             isCzech = strings.isCzech,
-            reviewBadgeCount = totalDueReview,
+            reviewBadgeCount = if (isGoalReached) 0 else remainingWords,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
@@ -2769,7 +2769,7 @@ fun AppleFloatingGlassBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp),
+                .height(58.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -2848,15 +2848,30 @@ fun AppleFloatingGlassBar(
                         BadgedBox(
                             badge = {
                                 if (tab.badge > 0) {
-                                    Badge(
-                                        containerColor = AppleRed,
-                                        contentColor = Color.White,
-                                        modifier = Modifier.offset(x = 6.dp, y = (-2).dp)
+                                    val badgeText = if (tab.badge > 99) "99+" else tab.badge.toString()
+                                    Box(
+                                        modifier = Modifier
+                                            .offset(x = 6.dp, y = 1.dp)
+                                            .defaultMinSize(minWidth = 17.dp, minHeight = 17.dp)
+                                            .clip(CircleShape)
+                                            .background(
+                                                if (isDark) Color.White.copy(alpha = 0.20f)
+                                                else Color.Black.copy(alpha = 0.08f)
+                                            )
+                                            .border(
+                                                width = 0.5.dp,
+                                                color = if (isDark) Color.White.copy(alpha = 0.30f) else Color.Black.copy(alpha = 0.14f),
+                                                shape = CircleShape
+                                            )
+                                            .padding(horizontal = if (badgeText.length > 1) 4.5.dp else 1.dp, vertical = 0.5.dp),
+                                        contentAlignment = Alignment.Center
                                     ) {
                                         Text(
-                                            text = if (tab.badge > 99) "99+" else tab.badge.toString(),
-                                            fontSize = 9.sp,
-                                            fontWeight = FontWeight.Bold
+                                            text = badgeText,
+                                            fontSize = 8.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isDark) Color.White else Color(0xFF2C2C2E),
+                                            textAlign = TextAlign.Center
                                         )
                                     }
                                 }

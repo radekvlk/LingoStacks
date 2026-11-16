@@ -1,0 +1,10 @@
+<en-GB>
+• Daily goal countdown: The training tab badge now shows remaining words to reach your daily goal and disappears once completed.
+• Refined glass badge: Replaced aggressive red badge with a subtle frosted glass circle that sits comfortably inside the bar with zero edge clipping.
+• Layout polish: Extra vertical breathing room on the floating navigation bar.
+</en-GB>
+<cs-CZ>
+• Odpočet denního cíle: Odznak na záložce Trénink nově ukazuje, kolik slov zbývá do denního cíle, a po jeho splnění sám čistě zmizí.
+• Jemný skleněný odznak: Křiklavou červenou barvu nahradil decentní poloprůhledný kruh v odstínu lišty s bezpečným odsazením bez ořezu o hranu.
+• Vyladění lišty: Více prostoru a komfortní odsazení prvků na plovoucí liště.
+</cs-CZ>

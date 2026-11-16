@@ -5,20 +5,18 @@ import mimetypes
 
 TOKEN_PATH = r"C:\Users\radek.vlk\.gemini\antigravity\brain\43b0acd7-1097-4287-b01f-eedb0d465b28\scratch\github_token.txt"
 REPO = "radekvlk/LingoStacks"
-TAG = "v1.0.8"
-NAME = "LingoStacks v1.0.8"
+TAG = "v1.0.9"
+NAME = "LingoStacks v1.0.9"
 
 BODY = """[CS]
-• **Oprava odznaku tréninku:** Počet slov k opakování (SRS) na plovoucí liště je ukotven na vnějším rohu ikony a nezakrývá symbol blesku.
-• **Sjednocený design pilulek:** Přepínač období žebříčku v nastavení [ Dnes | Tento týden ] sjednocen na autentický zaoblený tvar pilulky podle Apple HIG.
-• **Plná viditelnost navigace Androidu:** Spodní systémová 3tlačítková navigační lišta (Zpět, Domů, Poslední) zůstává trvale zřetelná a čitelná ve všech modálních oknech.
-• **Plynulé stažení prstem dolů:** Modální okno nastavení a statistik lze přirozeně a plynule zavřít tažením prstu za horní madlo či hlavičku.
+• **Odpočet denního cíle:** Odznak na záložce Trénink nově ukazuje přesný počet zbývajících slov do splnění denního cíle a po jeho dosažení sám čistě zmizí.
+• **Kulatý skleněný odznak:** Křiklavě červená barva nahrazena decentním kouřovým / mléčným sklem v přesném odstínu lišty s bezpečným odsazením bez jakéhokoliv ořezu o okraj.
+• **Vyladění prostoru lišty:** Zvýšení svislého prostoru plovoucí skleněné lišty pro ještě čistší a luxusnější vzhled na displeji.
 
 [EN]
-• **Fixed Practice Badge:** Review counter on the floating navigation bar is cleanly anchored to the outer shoulder, never obscuring the lightning icon.
-• **Unified Pill Controls:** Time period switcher in settings [ Today | This week ] matches authentic Apple pill design language.
-• **Android 3-Button Navigation Polish:** Bottom system navigation bar (Back, Home, Recents) remains fully visible with high contrast across all modal overlays.
-• **Swipe Down to Dismiss:** Settings & stats modal sheet supports smooth vertical drag gestures to close naturally.
+• **Daily Goal Countdown:** Practice tab badge now displays the exact number of words left to reach your daily goal and cleanly hides once achieved.
+• **Frosted Glass Badge:** Replaced aggressive red badge with a subtle frosted glass circle matching the navigation bar tone, safe from any edge clipping.
+• **Refined Bar Spacing:** Added vertical breathing room to the floating glass capsule for a premium iOS aesthetic.
 """
 
 def main():
@@ -61,7 +59,7 @@ def main():
 
     # 2. Upload APK assets
     apk_paths = [
-        ("LingoStacks_v1.0.8.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.8.apk"),
+        ("LingoStacks_v1.0.9.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.9.apk"),
         ("LingoStacks.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks.apk")
     ]
 
