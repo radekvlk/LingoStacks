@@ -459,7 +459,7 @@ object GermanVocabularyPart1 {
                 w("de4_84", "Pekárna", "Bäckerei", "🥐", "In der Bäckerei an der Ecke gibt es tollen Kuchen.", "[bekeráj]", "Baeckerei", "die Bäckerei"),
                 w("de4_85", "Jídelní lístek", "Speisekarte", "📜", "Könnten Sie uns bitte die Speisekarte bringen?", "[špajzekarte]", "die Speisekarte"),
                 w("de4_86", "Objednávka", "Bestellung", "📝", "Der Kellner nimmt gleich unsere Bestellung auf.", "[beštelung]", "die Bestellung"),
-                w("de4_87", "Účet", "Rechnung", "🧾", "Herr Ober, die Rechnung bitte!", "[rechnung]", "die Rechnung"),
+                w("de4_87", "Účet (v restauraci)", "Rechnung", "🧾", "Herr Ober, die Rechnung bitte!", "[rechnung]", "die Rechnung"),
                 w("de4_88", "Spropitné", "Trinkgeld", "🪙", "Der Service war super, wir geben gern Trinkgeld.", "[trinkgelt]", "das Trinkgeld"),
                 w("de4_89", "Chutný / Výborný", "lecker", "😋", "Die Nudeln sind wirklich sehr lecker!", "[leker]", "köstlich"),
                 w("de4_90", "Sladký", "süß", "🍯", "Dieser Kuchen ist mir etwas zu süß.", "[züs]", "suess"),

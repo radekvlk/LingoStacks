@@ -138,4 +138,97 @@ class WordMatcherTest {
         assertTrue(WordMatcher.isPrefixOfTarget(listOf("cook"), cookie))
         assertFalse(WordMatcher.isPrefixOfTarget(listOf("apple"), cookie))
     }
+
+    @Test
+    fun shortWordsAndLetterHomophones() {
+        // "tea" matched by "t", "T", "tee", "tea", or within phrases like "a cup of t"
+        val tea = word("Čaj", "tea")
+        assertNotNull(WordMatcher.matches(listOf("t"), tea))
+        assertNotNull(WordMatcher.matches(listOf("T"), tea))
+        assertNotNull(WordMatcher.matches(listOf("tee"), tea))
+        assertNotNull(WordMatcher.matches(listOf("tea"), tea))
+        assertNotNull(WordMatcher.matches(listOf("a cup of t"), tea))
+        assertNull(WordMatcher.matches(listOf("coffee"), tea))
+
+        // Single letter homophones: you -> u, are -> r, be -> b, why -> y, see -> c
+        val you = word("Ty", "you")
+        assertNotNull(WordMatcher.matches(listOf("u"), you))
+        assertNotNull(WordMatcher.matches(listOf("U"), you))
+
+        val are = word("Být (jsou)", "are")
+        assertNotNull(WordMatcher.matches(listOf("r"), are))
+        assertNotNull(WordMatcher.matches(listOf("R"), are))
+
+        val be = word("Být", "be")
+        assertNotNull(WordMatcher.matches(listOf("b"), be))
+        assertNotNull(WordMatcher.matches(listOf("B"), be))
+
+        val why = word("Proč", "why")
+        assertNotNull(WordMatcher.matches(listOf("y"), why))
+        assertNotNull(WordMatcher.matches(listOf("Y"), why))
+
+        val see = word("Vidět", "see")
+        assertNotNull(WordMatcher.matches(listOf("c"), see))
+        assertNotNull(WordMatcher.matches(listOf("C"), see))
+
+        // Short word typical vowel & devoicing STT substitutions
+        val cup = word("Šálek", "cup")
+        assertNotNull(WordMatcher.matches(listOf("cap"), cup))
+        assertNotNull(WordMatcher.matches(listOf("kap"), cup))
+
+        val run = word("Běhat", "run")
+        assertNotNull(WordMatcher.matches(listOf("ran"), run))
+
+        val dog = word("Pes", "dog")
+        assertNotNull(WordMatcher.matches(listOf("dock"), dog))
+        assertNotNull(WordMatcher.matches(listOf("dok"), dog))
+
+        val bed = word("Postel", "bed")
+        assertNotNull(WordMatcher.matches(listOf("bet"), bed))
+
+        // Czech devoicing and diacritic variants
+        val teaCz = word("Čaj", "tea")
+        assertNotNull(WordMatcher.matches(listOf("caj"), teaCz, expectCzech = true))
+
+        val dubCz = word("Dub", "oak")
+        assertNotNull(WordMatcher.matches(listOf("dup"), dubCz, expectCzech = true))
+
+        // German, French, Spanish short word / letter homophones
+        val teaDe = word("Čaj", "Tee")
+        assertNotNull(WordMatcher.matches(listOf("t"), teaDe, language = LearningLanguage.GERMAN))
+        assertNotNull(WordMatcher.matches(listOf("T"), teaDe, language = LearningLanguage.GERMAN))
+
+        val teaFr = word("Čaj", "thé")
+        assertNotNull(WordMatcher.matches(listOf("t"), teaFr, language = LearningLanguage.FRENCH))
+
+        val teaEs = word("Čaj", "té")
+        assertNotNull(WordMatcher.matches(listOf("t"), teaEs, language = LearningLanguage.SPANISH))
+    }
+
+    @Test
+    fun contextualFoodPhrasesAndParenthesesStripping() {
+        // eph47 with context in parentheses and broad accepted variants
+        val delicious = word(
+            czech = "To je výborné! (o jídle)",
+            english = "It is delicious!",
+            variants = listOf(
+                "its delicious", "this is delicious", "it tastes great",
+                "it tastes delicious", "it is great", "it's great",
+                "that is great", "that's great", "this is great"
+            )
+        )
+
+        // All natural translations should match
+        assertNotNull(WordMatcher.matches(listOf("it is delicious"), delicious))
+        assertNotNull(WordMatcher.matches(listOf("it's delicious"), delicious))
+        assertNotNull(WordMatcher.matches(listOf("it is great"), delicious))
+        assertNotNull(WordMatcher.matches(listOf("it's great"), delicious))
+        assertNotNull(WordMatcher.matches(listOf("that's great"), delicious))
+        assertNotNull(WordMatcher.matches(listOf("this is delicious"), delicious))
+        assertNotNull(WordMatcher.matches(listOf("it tastes great"), delicious))
+
+        // In reverse mode, speech in Czech shouldn't require saying "(o jídle)"
+        assertNotNull(WordMatcher.matches(listOf("to je výborné"), delicious, expectCzech = true))
+        assertNotNull(WordMatcher.matches(listOf("je to výborné"), delicious, expectCzech = true))
+    }
 }

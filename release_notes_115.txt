@@ -1,0 +1,10 @@
+<cs-CZ>
+• Optimalizace rozpoznávání krátkých slov a písmen: Okamžité vyhodnocení písmenných homofonů (např. TEA vs. T) a fonetických variant
+• Zpřesnění kontextu frází: Přidán kontext v závorkách u kulinářských i zdvořilostních frází napříč všemi 6 jazyky
+• Rozšíření uznávaných odpovědí: Širší škála přirozených synonym u překladů frází
+</cs-CZ>
+<en-GB>
+• Short words & letter homophones: Instant matching for letter homophones (e.g. TEA vs T) and phonetic variants
+• Contextual phrase hints: Added parenthesized context for dining and courtesy phrases across all 6 languages
+• Expanded accepted variants: Broader set of natural spoken synonyms accepted for phrases
+</en-GB>

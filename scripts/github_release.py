@@ -6,25 +6,23 @@ import mimetypes
 TOKEN_PATH = r"C:\Users\radek.vlk\.gemini\antigravity\brain\43b0acd7-1097-4287-b01f-eedb0d465b28\scratch\github_token.txt"
 REPO = "radekvlk/LingoStacks"
 TAG = "v1.0.9"
-NAME = "LingoStacks v1.0.9 (Build 114)"
+NAME = "LingoStacks v1.0.9 (Build 115)"
 
-BODY = """versionCode: 114
+BODY = """versionCode: 115
 
 [CS]
-• **Fluidní tekutá navigace (Liquid Glass Bar):** Spodní plovoucí lišta nyní podporuje interaktivní přetahování prstem v reálném čase, organickou tekutou deformaci (squash & stretch v pohybu), pružinový doskok (spring snap) k nejbližší záložce a jemnou haptickou odezvu při přechodu záložek podle Nuvio / Apple iOS designu.
-• **Plynulé animace dialogů:** Statistiky i Nastavení se otevírají s pružným Apple bounce efektem a hladkým zasouváním zpět do spodní lišty.
-• **Rychlé rozpoznávání hlasu:** V Nastavení přidán nový průvodce a přímé otevření systémového nastavení Androidu pro stažení offline hlasových balíčků (např. English US) pro bleskovou odezvu bez čekání.
-• **Multi-segmentový retention bar paměti:** Spodní lišta a indikátory na kartách lekcí zobrazují skutečný stav paměti (zelená = zvládnuto Box 4-5, oranžová = v tréninku Box 1-3, červená = k opakování).
-• **Inteligentní posun lekcí:** Tlačítko Trénink si pamatuje postup a po projití slov lekce automaticky plynule posune na navazující lekci.
-• **Čisté vektorové ikony:** V záhlaví cvičení vektorové ikony a indikátor „Projito X / Y • Trénink paměti“.
+• **Optimalizace rozpoznávání krátkých slov a písmen:** Okamžité vyhodnocení písmenných homofonů (např. TEA vs. T) a fonetických variant bez zpoždění.
+• **Zpřesnění kontextu frází:** Přidán kontext v závorkách u kulinářských i zdvořilostních frází napříč všemi 6 jazyky (např. „To je výborné! (o jídle)“, „Účet, prosím (v restauraci)“).
+• **Rozšíření uznávaných odpovědí:** Širší škála přirozených synonym u překladů frází (např. „it is great / that's great / it is delicious“).
+• **Fluidní tekutá navigace (Liquid Glass Bar):** Spodní plovoucí lišta s interaktivním přetahováním prstem, organickou tekutou deformací (squash & stretch) a pružinovým usazením.
+• **Plynulé animace dialogů:** Statistiky i Nastavení s bounce efektem a hladkým zavíráním.
 
 [EN]
-• **Fluid Liquid Glass Bottom Bar:** Interactive real-time finger dragging, organic liquid squash & stretch deformation during transit, spring bounce snap to the nearest tab, and notch haptic feedback inspired by Nuvio and Apple iOS.
-• **Smooth Sheet Animations:** Statistics and Settings sheets feature spring bounce enter and smooth exit transitions matching Practice.
-• **Fast Voice Recognition Guide:** Guide and shortcut in Settings to easily open Android settings and download offline speech packs (e.g. English US) for instant response.
-• **Multi-segmented Memory Retention Bar:** Visual representation of actual mastery state across Leitner boxes (green = mastered, orange = learning, red = review).
-• **Smart Lesson Auto-Advance:** Practice button remembers progress and automatically continues to the next lesson upon completion.
-• **Clean Vector Icons:** Vector icons and crisp Memory Training indicators in session.
+• **Short Words & Letter Homophones:** Instant matching for letter homophones (e.g. TEA vs T) and phonetic variants without delay.
+• **Contextual Phrase Hints:** Added parenthesized context for dining and courtesy phrases across all 6 languages (e.g. "To je výborné! (o jídle)", "Účet, prosím (v restauraci)").
+• **Expanded Accepted Variants:** Broader set of natural spoken synonyms accepted for phrases (e.g. "it is great / that's great / it is delicious").
+• **Fluid Liquid Glass Bottom Bar:** Interactive real-time finger dragging, liquid squash & stretch deformation, spring bounce snap, and subtle haptics.
+• **Smooth Sheet Animations:** Statistics and Settings sheets feature spring bounce enter and smooth exit transitions.
 """
 
 def main():

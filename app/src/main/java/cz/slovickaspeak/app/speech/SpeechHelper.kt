@@ -152,6 +152,35 @@ object WordMatcher {
         "10th" to "tenth"
     )
 
+    private val englishLetterToName = mapOf(
+        "a" to "ay",
+        "b" to "bee",
+        "c" to "see",
+        "d" to "dee",
+        "e" to "ee",
+        "f" to "ef",
+        "g" to "gee",
+        "h" to "aitch",
+        "i" to "eye",
+        "j" to "jay",
+        "k" to "kay",
+        "l" to "el",
+        "m" to "em",
+        "n" to "en",
+        "o" to "oh",
+        "p" to "pee",
+        "q" to "cue",
+        "r" to "are",
+        "s" to "ess",
+        "t" to "tea",
+        "u" to "you",
+        "v" to "vee",
+        "w" to "double u",
+        "x" to "ex",
+        "y" to "why",
+        "z" to "zee"
+    )
+
     // Common single-word homophones and STT substitutions when spoken in isolation
     private val homophoneGroups = listOf(
         setOf("one", "won", "1"),
@@ -159,9 +188,31 @@ object WordMatcher {
         setOf("three", "tree", "free", "3"),
         setOf("four", "for", "fore", "4"),
         setOf("eight", "ate", "8"),
-        setOf("sun", "son"),
+        setOf("sun", "son", "san"),
+        // English single-letter & monosyllabic homophones / ASR letter substitutions
+        setOf("tea", "tee", "t"),
+        setOf("be", "bee", "b"),
         setOf("sea", "see", "c"),
         setOf("eye", "i", "aye"),
+        setOf("you", "u", "ewe", "yew"),
+        setOf("are", "r", "our"),
+        setOf("why", "y"),
+        setOf("oh", "owe", "o"),
+        setOf("pea", "pee", "p"),
+        setOf("queue", "cue", "q"),
+        setOf("ex", "x"),
+        setOf("jay", "j"),
+        setOf("kay", "k"),
+        setOf("el", "l"),
+        setOf("em", "m"),
+        setOf("en", "n"),
+        setOf("ess", "es", "s"),
+        setOf("ay", "a"),
+        setOf("dee", "d"),
+        setOf("ee", "e"),
+        setOf("vee", "v"),
+        setOf("zee", "zed", "z"),
+        setOf("ok", "okay", "o k"),
         setOf("hour", "our"),
         setOf("meat", "meet"),
         setOf("weak", "week"),
@@ -217,9 +268,24 @@ object WordMatcher {
         setOf("warn", "worn"),
         setOf("work", "walk", "wok"),
         setOf("bird", "beard", "bert"),
-        setOf("bed", "bad", "bat"),
-        setOf("cat", "cut", "caught", "kat"),
-        setOf("dog", "dock", "dug"),
+        setOf("bed", "bad", "bat", "bet"),
+        setOf("cat", "cut", "caught", "kat", "ket"),
+        setOf("dog", "dock", "dug", "dok"),
+        setOf("cup", "cap", "kap"),
+        setOf("run", "ran"),
+        setOf("bus", "bass", "bas"),
+        setOf("bag", "beg", "bak"),
+        setOf("big", "bik"),
+        setOf("box", "boks"),
+        setOf("can", "ken"),
+        setOf("man", "men"),
+        setOf("sit", "set"),
+        setOf("pen", "pan"),
+        setOf("hi", "high"),
+        setOf("red", "ret"),
+        setOf("sad", "sat", "sed"),
+        setOf("leg", "lek"),
+        setOf("egg", "ek"),
         setOf("pig", "pick", "peak"),
         setOf("sheep", "ship", "cheap"),
         setOf("full", "fool"),
@@ -299,6 +365,8 @@ object WordMatcher {
         setOf("cien", "sien"),
         setOf("cerrar", "serrar"),
         setOf("callo", "cayo"),
+        setOf("te", "té", "tea", "t"),
+        setOf("si", "sí", "see"),
         // German number words & common ASR homophones
         setOf("null", "0"),
         setOf("eins", "ein", "eine", "1"),
@@ -332,6 +400,14 @@ object WordMatcher {
         setOf("isst", "ist"),
         setOf("laib", "leib"),
         setOf("stiel", "stil"),
+        setOf("tee", "te", "t"),
+        setOf("ei", "ay", "ai"),
+        setOf("kuh", "ku"),
+        setOf("rot", "rod"),
+        setOf("gut", "gud"),
+        setOf("bad", "bat"),
+        setOf("tag", "tak"),
+        setOf("zug", "zuk"),
         // French numbers & frequent ASR homophones
         setOf("un", "une", "1"),
         setOf("deux", "2"),
@@ -347,6 +423,10 @@ object WordMatcher {
         setOf("cent", "sans", "sang", "sent", "100"),
         setOf("mille", "mil", "1000"),
         setOf("eau", "haut", "au", "o"),
+        setOf("the", "tea", "t"),
+        setOf("lait", "lai", "les"),
+        setOf("riz", "ri"),
+        setOf("pain", "pin"),
         setOf("mer", "mere", "maire"),
         setOf("pere", "paire", "pair"),
         setOf("vert", "verre", "ver", "vers"),
@@ -377,7 +457,20 @@ object WordMatcher {
         setOf("anno", "hanno"),
         setOf("o", "ho"),
         setOf("ai", "hai"),
-        setOf("a", "ha")
+        setOf("a", "ha"),
+        // Czech monosyllabic voicing neutralization & common ASR variants
+        setOf("led", "let"),
+        setOf("dub", "dup"),
+        setOf("plot", "plod"),
+        setOf("med", "met"),
+        setOf("krev", "kref"),
+        setOf("lev", "lef"),
+        setOf("zeď", "zed", "zet"),
+        setOf("hrad", "hrat"),
+        setOf("oběd", "obed", "obet"),
+        setOf("nůž", "nuz", "nus"),
+        setOf("čaj", "caj"),
+        setOf("sýr", "sir")
     )
 
     fun stripAccents(input: String): String {
@@ -496,6 +589,9 @@ object WordMatcher {
         if (word.isEmpty()) return ""
         var s = stripAccents(word).lowercase(Locale.US).trim()
         s = digitToWord[s] ?: s
+        if (s.length == 1 && s[0] in 'a'..'z') {
+            s = englishLetterToName[s] ?: s
+        }
 
         if (s.length > 2 && s.startsWith("h")) {
             s = s.drop(1)
@@ -1104,7 +1200,7 @@ object WordMatcher {
         }
 
         // TIER 4: Language-Aware Phonetic Skeleton Match
-        val minPhoneticLen = if (isCzech) 3 else 2
+        val minPhoneticLen = 2
         for (target in rawTargets) {
             val targetNoSpace = target.replace(" ", "")
             val targetPhonetic = phoneticCode(targetNoSpace, language)
