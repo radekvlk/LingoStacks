@@ -1,0 +1,10 @@
+<cs-CZ>
+• Fluidní liquid glass lišta: Spodní navigační lišta podporuje plynulé přetahování prstem, tekutou deformaci (squash & stretch), pružinové dosednutí (spring snap) a jemnou haptickou odezvu po vzoru Apple/Nuvio
+• Plynulé animace dialogů: Statistiky i Nastavení s bounce efektem a hladkým zavíráním
+• Průvodce offline hlasovými balíčky v Nastavení pro bleskové rozpoznávání řeči
+</cs-CZ>
+<en-GB>
+• Fluid liquid glass bottom bar: Real-time finger dragging, liquid squash & stretch deformation, spring bounce snap, and subtle haptics inspired by Apple/Nuvio
+• Smooth sheet animations: Statistics and Settings with spring bounce enter and smooth slide exit
+• Fast voice recognition guide & shortcut in Settings for offline speech packs
+</en-GB>

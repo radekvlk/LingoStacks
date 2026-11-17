@@ -13,6 +13,8 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
@@ -24,6 +26,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -86,19 +90,24 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import cz.slovickaspeak.app.data.DeckMemorySummary
 import cz.slovickaspeak.app.data.LanguageCompleteStats
@@ -2860,7 +2869,47 @@ fun AppleFloatingGlassBar(
         }
     }
 
-    Box(
+    val pillBrush = remember(isDark) {
+        if (isDark) {
+            Brush.verticalGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.22f),
+                    Color.White.copy(alpha = 0.14f),
+                    Color.White.copy(alpha = 0.08f)
+                )
+            )
+        } else {
+            Brush.verticalGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.96f),
+                    Color.White.copy(alpha = 0.85f),
+                    Color.White.copy(alpha = 0.72f)
+                )
+            )
+        }
+    }
+
+    val pillBorderBrush = remember(isDark) {
+        if (isDark) {
+            Brush.verticalGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.45f),
+                    Color.White.copy(alpha = 0.18f),
+                    Color.White.copy(alpha = 0.06f)
+                )
+            )
+        } else {
+            Brush.verticalGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.95f),
+                    Color.White.copy(alpha = 0.40f),
+                    Color(0x18000000)
+                )
+            )
+        }
+    }
+
+    BoxWithConstraints(
         modifier = modifier
             .widthIn(max = 390.dp)
             .fillMaxWidth()
@@ -2878,146 +2927,258 @@ fun AppleFloatingGlassBar(
             .clip(CircleShape)
             .background(brush = glassBgBrush)
             .padding(4.dp),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.CenterStart
     ) {
-        Row(
+        val barWidth = maxWidth
+        val tabCount = tabs.size
+        val tabWidth = barWidth / tabCount
+        val density = LocalDensity.current
+        val tabWidthPx = with(density) { tabWidth.toPx() }
+
+        val tabFraction = remember { Animatable(selectedTab.toFloat()) }
+        var isDragging by remember { mutableStateOf(false) }
+        val coroutineScope = rememberCoroutineScope()
+        val haptics = LocalHapticFeedback.current
+        var lastHapticIndex by remember { mutableStateOf(selectedTab) }
+
+        // Keep synced when selectedTab changes externally
+        LaunchedEffect(selectedTab) {
+            if (!isDragging && tabFraction.targetValue != selectedTab.toFloat() && tabFraction.value != selectedTab.toFloat()) {
+                tabFraction.animateTo(
+                    targetValue = selectedTab.toFloat(),
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    )
+                )
+            }
+        }
+
+        // Liquid squash & stretch deformation while in transit
+        val currentFraction = tabFraction.value
+        val distFromNearest = kotlin.math.abs(currentFraction - currentFraction.roundToInt())
+        val stretchProgress = kotlin.math.sin(distFromNearest * kotlin.math.PI.toFloat()).coerceIn(0f, 1f)
+        val pillScaleX = 1f + 0.16f * stretchProgress
+        val pillScaleY = 1f - 0.06f * stretchProgress
+
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(58.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            tabs.forEach { tab ->
-                val isSelected = selectedTab == tab.index
+                .height(58.dp)
+                .pointerInput(tabWidthPx, tabCount) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        var dragStarted = false
+                        var totalDragX = 0f
+                        val touchSlop = viewConfiguration.touchSlop
 
-                val contentColor by animateColorAsState(
-                    targetValue = if (isSelected) {
-                        if (isDark) Color.White else Color(0xFF141416)
-                    } else {
-                        if (isDark) Color.White.copy(alpha = 0.58f) else Color(0xFF8E8E93)
-                    },
-                    animationSpec = tween(durationMillis = 180),
-                    label = "tabContentColor_${tab.index}"
-                )
+                        try {
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull { it.id == down.id } ?: break
 
-                val pillAlpha by animateFloatAsState(
-                    targetValue = if (isSelected) (if (isDark) 0.22f else 0.10f) else 0f,
-                    animationSpec = tween(durationMillis = 180),
-                    label = "tabPillAlpha_${tab.index}"
-                )
-
-                val pillBorderAlpha by animateFloatAsState(
-                    targetValue = if (isSelected) (if (isDark) 0.32f else 0.08f) else 0f,
-                    animationSpec = tween(durationMillis = 180),
-                    label = "tabPillBorder_${tab.index}"
-                )
-
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clip(CircleShape)
-                        .then(
-                            if (pillAlpha > 0.005f) {
-                                Modifier
-                                    .background(
-                                        if (isDark) {
-                                            Brush.verticalGradient(
-                                                listOf(
-                                                    Color.White.copy(alpha = pillAlpha * 1.2f),
-                                                    Color.White.copy(alpha = pillAlpha * 0.8f)
-                                                )
-                                            )
-                                        } else {
-                                            Brush.verticalGradient(
-                                                listOf(
-                                                    Color.Black.copy(alpha = pillAlpha),
-                                                    Color.Black.copy(alpha = pillAlpha)
+                                if (!change.pressed) {
+                                    // Pointer UP
+                                    if (dragStarted) {
+                                        isDragging = false
+                                        val targetIndex = tabFraction.value.roundToInt().coerceIn(0, tabCount - 1)
+                                        coroutineScope.launch {
+                                            tabFraction.animateTo(
+                                                targetValue = targetIndex.toFloat(),
+                                                animationSpec = spring(
+                                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                                    stiffness = Spring.StiffnessMediumLow
                                                 )
                                             )
                                         }
-                                    )
-                                    .border(
-                                        width = 0.75.dp,
-                                        brush = Brush.verticalGradient(
-                                            listOf(
-                                                (if (isDark) Color.White else Color.Black).copy(alpha = pillBorderAlpha),
-                                                (if (isDark) Color.White else Color.Black).copy(alpha = pillBorderAlpha * 0.35f)
-                                            )
-                                        ),
-                                        shape = CircleShape
-                                    )
-                            } else Modifier
-                        )
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) { onSelectTab(tab.index) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        BadgedBox(
-                            badge = {
-                                if (tab.badge > 0) {
-                                    val badgeText = if (tab.badge > 999) "999+" else tab.badge.toString()
-                                    val isSingleDigit = badgeText.length == 1
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = if (isDark) Color(0xFF2C2C2E) else Color.White,
-                                        border = BorderStroke(
-                                            width = 1.3.dp,
-                                            color = if (isDark) Color.White.copy(alpha = 0.40f) else Color.Black.copy(alpha = 0.22f)
-                                        ),
-                                        shadowElevation = 2.dp,
-                                        modifier = Modifier
-                                            .offset(x = 6.dp, y = 2.dp)
-                                            .then(
-                                                if (isSingleDigit) Modifier.size(19.dp)
-                                                else Modifier
-                                                    .height(19.dp)
-                                                    .widthIn(min = 19.dp)
-                                            )
-                                    ) {
-                                        Box(
-                                            modifier = if (isSingleDigit) {
-                                                Modifier.fillMaxSize()
-                                            } else {
-                                                Modifier
-                                                    .fillMaxHeight()
-                                                    .padding(horizontal = 5.dp)
-                                            },
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = badgeText,
-                                                fontSize = if (isSingleDigit) 9.5.sp else 8.5.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                lineHeight = 9.sp,
-                                                color = if (isDark) Color.White else Color(0xFF1C1C1E),
-                                                textAlign = TextAlign.Center
+                                        onSelectTab(targetIndex)
+                                    } else {
+                                        // Tap detected
+                                        val tappedIndex = (change.position.x / tabWidthPx).toInt().coerceIn(0, tabCount - 1)
+                                        coroutineScope.launch {
+                                            tabFraction.animateTo(
+                                                targetValue = tappedIndex.toFloat(),
+                                                animationSpec = spring(
+                                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                                    stiffness = Spring.StiffnessMediumLow
+                                                )
                                             )
                                         }
+                                        onSelectTab(tappedIndex)
+                                    }
+                                    change.consume()
+                                    break
+                                }
+
+                                val dragAmount = change.position.x - change.previousPosition.x
+                                totalDragX += dragAmount
+
+                                if (!dragStarted && kotlin.math.abs(totalDragX) > touchSlop) {
+                                    dragStarted = true
+                                    isDragging = true
+                                }
+
+                                if (dragStarted) {
+                                    change.consume()
+                                    val deltaFraction = dragAmount / tabWidthPx
+                                    val newFraction = (tabFraction.value + deltaFraction).coerceIn(-0.15f, (tabCount - 1).toFloat() + 0.15f)
+                                    val rounded = newFraction.roundToInt().coerceIn(0, tabCount - 1)
+                                    if (rounded != lastHapticIndex) {
+                                        lastHapticIndex = rounded
+                                        try {
+                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        } catch (_: Exception) {}
+                                    }
+                                    coroutineScope.launch {
+                                        tabFraction.snapTo(newFraction)
                                     }
                                 }
                             }
+                        } finally {
+                            if (isDragging) {
+                                isDragging = false
+                                val targetIndex = tabFraction.value.roundToInt().coerceIn(0, tabCount - 1)
+                                coroutineScope.launch {
+                                    tabFraction.animateTo(
+                                        targetValue = targetIndex.toFloat(),
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioLowBouncy,
+                                            stiffness = Spring.StiffnessMediumLow
+                                        )
+                                    )
+                                }
+                                onSelectTab(targetIndex)
+                            }
+                        }
+                    }
+                }
+        ) {
+            // 1. Single Continuous Sliding Liquid Glass Pill Indicator
+            Box(
+                modifier = Modifier
+                    .offset {
+                        IntOffset(
+                            x = (tabFraction.value * tabWidthPx).roundToInt(),
+                            y = 0
+                        )
+                    }
+                    .width(tabWidth)
+                    .fillMaxHeight()
+                    .graphicsLayer {
+                        scaleX = pillScaleX
+                        scaleY = pillScaleY
+                    }
+                    .padding(horizontal = 2.dp, vertical = 2.dp)
+                    .shadow(
+                        elevation = if (isDark) 5.dp else 4.dp,
+                        shape = CircleShape,
+                        spotColor = if (isDark) Color(0x60000000) else Color(0x25001830),
+                        ambientColor = Color.Transparent
+                    )
+                    .border(
+                        width = 0.85.dp,
+                        brush = pillBorderBrush,
+                        shape = CircleShape
+                    )
+                    .clip(CircleShape)
+                    .background(brush = pillBrush)
+            )
+
+            // 2. Tab Items Row (icons + labels)
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                tabs.forEach { tab ->
+                    val distance = kotlin.math.abs(tabFraction.value - tab.index)
+                    val proximity = (1f - distance).coerceIn(0f, 1f)
+                    val itemScale = 0.94f + 0.12f * proximity
+
+                    val contentColor = if (isDark) {
+                        Color.White.copy(alpha = 0.48f + 0.52f * proximity)
+                    } else {
+                        androidx.compose.ui.graphics.lerp(
+                            Color(0xFF8E8E93),
+                            Color(0xFF141416),
+                            proximity
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            modifier = Modifier.graphicsLayer {
+                                scaleX = itemScale
+                                scaleY = itemScale
+                            },
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
-                            Icon(
-                                imageVector = tab.icon,
-                                contentDescription = tab.title,
-                                tint = contentColor,
-                                modifier = Modifier.size(21.dp)
+                            BadgedBox(
+                                badge = {
+                                    if (tab.badge > 0) {
+                                        val badgeText = if (tab.badge > 999) "999+" else tab.badge.toString()
+                                        val isSingleDigit = badgeText.length == 1
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = if (isDark) Color(0xFF2C2C2E) else Color.White,
+                                            border = BorderStroke(
+                                                width = 1.3.dp,
+                                                color = if (isDark) Color.White.copy(alpha = 0.40f) else Color.Black.copy(alpha = 0.22f)
+                                            ),
+                                            shadowElevation = 2.dp,
+                                            modifier = Modifier
+                                                .offset(x = 6.dp, y = 2.dp)
+                                                .then(
+                                                    if (isSingleDigit) Modifier.size(19.dp)
+                                                    else Modifier
+                                                        .height(19.dp)
+                                                        .widthIn(min = 19.dp)
+                                                )
+                                        ) {
+                                            Box(
+                                                modifier = if (isSingleDigit) {
+                                                    Modifier.fillMaxSize()
+                                                } else {
+                                                    Modifier
+                                                        .fillMaxHeight()
+                                                        .padding(horizontal = 5.dp)
+                                                },
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = badgeText,
+                                                    fontSize = if (isSingleDigit) 9.5.sp else 8.5.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    lineHeight = 9.sp,
+                                                    color = if (isDark) Color.White else Color(0xFF1C1C1E),
+                                                    textAlign = TextAlign.Center
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = tab.icon,
+                                    contentDescription = tab.title,
+                                    tint = contentColor,
+                                    modifier = Modifier.size(21.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = tab.title,
+                                fontSize = 10.sp,
+                                fontWeight = if (proximity > 0.5f) FontWeight.SemiBold else FontWeight.Medium,
+                                color = contentColor
                             )
                         }
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = tab.title,
-                            fontSize = 10.sp,
-                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                            color = contentColor
-                        )
                     }
                 }
             }
