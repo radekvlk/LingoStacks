@@ -925,6 +925,7 @@ class ProgressStateHolder(context: Context) {
             .putString("selected_learning_language", language.name)
             .putBoolean("has_selected_initial_language", true)
             .apply()
+        cz.slovickaspeak.app.widget.LingoStacksWidgetProvider.updateAllWidgets(appContext)
         pushMyProgressToCloud()
     }
 
@@ -1824,6 +1825,7 @@ class ProgressStateHolder(context: Context) {
                 .putStringSet("mastered_word_ids", masteredSetSnapshot)
                 .putString("word_srs_stats_v1", serializedSrs)
                 .apply()
+            cz.slovickaspeak.app.widget.LingoStacksWidgetProvider.updateAllWidgets(appContext)
         }
     }
 

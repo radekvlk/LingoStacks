@@ -42,6 +42,7 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Mic
@@ -70,8 +71,10 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -1605,6 +1608,184 @@ private fun RecentAttemptsPanelContent(
 }
 
 @Composable
+private fun DailyGoalCelebrationBadge(
+    todayCompletedWords: Int,
+    dailyGoalWords: Int,
+    isCzech: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val haptic = LocalHapticFeedback.current
+    val goalReached = todayCompletedWords >= dailyGoalWords
+
+    var previousCompleted by remember { mutableStateOf(todayCompletedWords) }
+    var triggerCelebration by remember { mutableStateOf(false) }
+
+    val bounceScale = remember { Animatable(1f) }
+    val glowAlpha = remember { Animatable(if (goalReached) 0.12f else 0f) }
+    val iconRotation = remember { Animatable(0f) }
+    val particleProgress = remember { Animatable(0f) }
+
+    // Trigger celebration when the goal is reached during the session
+    LaunchedEffect(todayCompletedWords, dailyGoalWords) {
+        if (todayCompletedWords >= dailyGoalWords && previousCompleted < dailyGoalWords) {
+            triggerCelebration = true
+        }
+        previousCompleted = todayCompletedWords
+    }
+
+    LaunchedEffect(triggerCelebration) {
+        if (triggerCelebration) {
+            try {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            } catch (_: Exception) {}
+
+            launch {
+                particleProgress.snapTo(0f)
+                particleProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(750, easing = FastOutSlowInEasing)
+                )
+            }
+            launch {
+                glowAlpha.snapTo(0.35f)
+                glowAlpha.animateTo(
+                    targetValue = 0.12f,
+                    animationSpec = tween(850, easing = FastOutSlowInEasing)
+                )
+            }
+            launch {
+                iconRotation.animateTo(
+                    targetValue = -16f,
+                    animationSpec = tween(90, easing = LinearOutSlowInEasing)
+                )
+                iconRotation.animateTo(
+                    targetValue = 16f,
+                    animationSpec = tween(110, easing = FastOutSlowInEasing)
+                )
+                iconRotation.animateTo(
+                    targetValue = 0f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+                )
+            }
+            bounceScale.animateTo(
+                targetValue = 1.35f,
+                animationSpec = tween(180, easing = FastOutSlowInEasing)
+            )
+            bounceScale.animateTo(
+                targetValue = 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            )
+            triggerCelebration = false
+        }
+    }
+
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = if (goalReached) AppleGreen.copy(alpha = glowAlpha.value.coerceIn(0f, 0.4f)) else Color.Transparent,
+        modifier = modifier
+            .scale(bounceScale.value)
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ) {
+                if (goalReached) {
+                    triggerCelebration = true
+                }
+            }
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+        ) {
+            // Sparkle Particle Burst
+            if (particleProgress.value in 0.001f..0.999f) {
+                Canvas(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .graphicsLayer(clip = false)
+                ) {
+                    val p = particleProgress.value
+                    val particleCount = 8
+                    val maxRadius = 38.dp.toPx()
+                    val centerOffset = Offset(size.width / 2f, size.height / 2f)
+
+                    val sparkColors = listOf(
+                        Color(0xFFFFD700), // Gold
+                        AppleGreen,        // Apple Green
+                        Color(0xFFFF9500), // Amber
+                        Color(0xFF34C759)  // Green
+                    )
+
+                    for (i in 0 until particleCount) {
+                        val angle = (i.toFloat() / particleCount) * (2f * Math.PI.toFloat()) + 0.15f
+                        val currentRadius = p * maxRadius * (0.85f + 0.35f * (i % 3))
+                        val x = centerOffset.x + currentRadius * kotlin.math.cos(angle)
+                        val y = centerOffset.y + currentRadius * kotlin.math.sin(angle)
+                        val sparkAlpha = (1f - p).coerceIn(0f, 1f)
+                        val sparkSize = (4.5.dp.toPx() * (1f - p * 0.5f)).coerceAtLeast(1.5f)
+                        val color = sparkColors[i % sparkColors.size].copy(alpha = sparkAlpha)
+
+                        if (i % 2 == 0) {
+                            val arm = sparkSize * 1.5f
+                            val strokeW = (2.dp.toPx() * (1f - p)).coerceAtLeast(1f)
+                            drawLine(
+                                color = color,
+                                start = Offset(x - arm, y),
+                                end = Offset(x + arm, y),
+                                strokeWidth = strokeW
+                            )
+                            drawLine(
+                                color = color,
+                                start = Offset(x, y - arm),
+                                end = Offset(x, y + arm),
+                                strokeWidth = strokeW
+                            )
+                        } else {
+                            drawCircle(
+                                color = color,
+                                radius = sparkSize,
+                                center = Offset(x, y)
+                            )
+                        }
+                    }
+                }
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                val goalColor = if (goalReached) AppleGreen else AppleBlue
+                val iconTint = if (goalReached) Color(0xFFFFB300) else AppleBlue
+                Icon(
+                    imageVector = if (goalReached) Icons.Filled.EmojiEvents else Icons.Filled.TrackChanges,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier
+                        .size(13.5.dp)
+                        .graphicsLayer {
+                            rotationZ = iconRotation.value
+                        }
+                )
+                Text(
+                    text = if (isCzech) {
+                        "Dnes: $todayCompletedWords / $dailyGoalWords"
+                    } else {
+                        "Today: $todayCompletedWords / $dailyGoalWords"
+                    },
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.5.sp,
+                    color = goalColor
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun AppleSessionTopBar(
     deck: VocabDeck,
     strings: UiStrings,
@@ -1728,29 +1909,11 @@ private fun AppleSessionTopBar(
                     }
                 }
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    val goalReached = progressState.todayCompletedWords >= progressState.dailyGoalWords
-                    val goalColor = if (goalReached) AppleGreen else AppleBlue
-                    Icon(
-                        imageVector = Icons.Filled.TrackChanges,
-                        contentDescription = null,
-                        tint = goalColor,
-                        modifier = Modifier.size(13.dp)
-                    )
-                    Text(
-                        text = if (strings.isCzech) {
-                            "Dnes: ${progressState.todayCompletedWords} / ${progressState.dailyGoalWords}"
-                        } else {
-                            "Today: ${progressState.todayCompletedWords} / ${progressState.dailyGoalWords}"
-                        },
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.5.sp,
-                        color = goalColor
-                    )
-                }
+                DailyGoalCelebrationBadge(
+                    todayCompletedWords = progressState.todayCompletedWords,
+                    dailyGoalWords = progressState.dailyGoalWords,
+                    isCzech = strings.isCzech
+                )
             }
 
             // Session Progress Bar
@@ -1821,63 +1984,6 @@ private fun Flashcard3DStackArea(
         modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
-        // Third depth card in 3D stack (transforms purely in GPU graphicsLayer)
-        if (thirdWord != null) {
-            Surface(
-                shape = RoundedCornerShape(34.dp),
-                color = CardSurface,
-                border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.4f)),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.97f)
-                    .graphicsLayer {
-                        val prog = (abs(offsetXProvider()) / 380f).coerceIn(0f, 1f)
-                        scaleX = 0.86f + 0.05f * prog
-                        scaleY = 0.86f + 0.05f * prog
-                        translationY = (26f - 10f * prog) * density
-                        alpha = 0.45f + 0.25f * prog
-                    }
-            ) {}
-        }
-
-        // Second depth card in 3D stack (rises and scales up purely in GPU graphicsLayer; shadow stays outside alpha saveLayer)
-        if (nextWord != null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.97f)
-                    .graphicsLayer {
-                        val prog = (abs(offsetXProvider()) / 380f).coerceIn(0f, 1f)
-                        scaleX = 0.92f + 0.06f * prog
-                        scaleY = 0.92f + 0.06f * prog
-                        translationY = (14f - 12f * prog) * density
-                    }
-                    .softRoundedShadow(
-                        cornerRadius = 34.dp,
-                        maxAlpha = 0.06f,
-                        spreadDp = 10.dp,
-                        offsetYDp = 4.dp,
-                        alphaProvider = {
-                            val prog = (abs(offsetXProvider()) / 380f).coerceIn(0f, 1f)
-                            0.78f + 0.22f * prog
-                        }
-                    )
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(34.dp),
-                    color = CardSurface,
-                    border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
-                    shadowElevation = 0.dp,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            val prog = (abs(offsetXProvider()) / 380f).coerceIn(0f, 1f)
-                            alpha = 0.78f + 0.22f * prog
-                        }
-                ) {}
-            }
-        }
-
         // Active Foreground Card (reads offsetX, scale, alpha ONLY in graphicsLayer)
         SwipeableVocabCard(
             strings = strings,
@@ -2565,6 +2671,7 @@ private fun SwipeableVocabCard(
                 rotationZ = (x / 52f).coerceIn(-12f, 12f)
                 scaleX = s
                 scaleY = s
+                alpha = alphaProvider()
             }
             .softRoundedShadow(
                 cornerRadius = 34.dp,

@@ -123,7 +123,9 @@ val GoalOptions = listOf(5, 10, 15, 20, 30)
 fun DeckSelectionScreen(
     decks: List<VocabDeck>,
     progressState: cz.slovickaspeak.app.data.ProgressStateHolder,
-    onSelectDeck: (VocabDeck) -> Unit
+    onSelectDeck: (VocabDeck) -> Unit,
+    initialOpenStats: Boolean = false,
+    onStatsOpened: () -> Unit = {}
 ) {
     val strings = rememberAppStrings(progressState.nativeLanguage)
     val selectedLanguage = progressState.selectedLanguage
@@ -133,6 +135,14 @@ fun DeckSelectionScreen(
     var showSettingsDialog by remember { mutableStateOf(false) }
     var settingsInitialTab by remember { mutableIntStateOf(0) }
     var showCompleteStatsDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(initialOpenStats) {
+        if (initialOpenStats) {
+            settingsInitialTab = 0
+            showSettingsDialog = true
+            onStatsOpened()
+        }
+    }
     val portraitListState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val dailyGoalWords = progressState.dailyGoalWords

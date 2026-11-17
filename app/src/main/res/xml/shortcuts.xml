@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="practice"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_practice"
+        android:shortcutShortLabel="@string/shortcut_practice_short"
+        android:shortcutLongLabel="@string/shortcut_practice_long">
+        <intent
+            android:action="cz.slovickaspeak.app.ACTION_PRACTICE"
+            android:targetPackage="cz.slovickaspeak.app"
+            android:targetClass="cz.slovickaspeak.app.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="stats"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_stats"
+        android:shortcutShortLabel="@string/shortcut_stats_short"
+        android:shortcutLongLabel="@string/shortcut_stats_long">
+        <intent
+            android:action="cz.slovickaspeak.app.ACTION_STATS"
+            android:targetPackage="cz.slovickaspeak.app"
+            android:targetClass="cz.slovickaspeak.app.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="last_lesson"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_last_lesson"
+        android:shortcutShortLabel="@string/shortcut_last_lesson_short"
+        android:shortcutLongLabel="@string/shortcut_last_lesson_long">
+        <intent
+            android:action="cz.slovickaspeak.app.ACTION_LAST_LESSON"
+            android:targetPackage="cz.slovickaspeak.app"
+            android:targetClass="cz.slovickaspeak.app.MainActivity" />
+    </shortcut>
+</shortcuts>

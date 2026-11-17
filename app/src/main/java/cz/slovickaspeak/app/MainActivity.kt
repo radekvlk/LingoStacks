@@ -1,6 +1,7 @@
 package cz.slovickaspeak.app
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -18,10 +19,12 @@ import cz.slovickaspeak.app.model.BuiltInVocabulary
 import cz.slovickaspeak.app.model.CardAttemptResult
 import cz.slovickaspeak.app.model.VocabDeck
 import cz.slovickaspeak.app.model.VocabWord
+import cz.slovickaspeak.app.shortcuts.AppShortcutsHelper
 import cz.slovickaspeak.app.ui.DeckSelectionScreen
 import cz.slovickaspeak.app.ui.FlashcardSessionScreen
 import cz.slovickaspeak.app.ui.SessionSummaryScreen
 import cz.slovickaspeak.app.ui.theme.SlovickaSpeakTheme
+import cz.slovickaspeak.app.widget.LingoStacksWidgetProvider
 
 private sealed interface AppScreen {
     data object DeckList : AppScreen
@@ -37,8 +40,24 @@ private sealed interface AppScreen {
 }
 
 class MainActivity : ComponentActivity() {
+
+    companion object {
+        const val ACTION_PRACTICE = "cz.slovickaspeak.app.ACTION_PRACTICE"
+        const val ACTION_STATS = "cz.slovickaspeak.app.ACTION_STATS"
+        const val ACTION_LAST_LESSON = "cz.slovickaspeak.app.ACTION_LAST_LESSON"
+    }
+
+    private var pendingIntentAction by mutableStateOf<String?>(null)
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        pendingIntentAction = intent.action
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        pendingIntentAction = intent?.action
         enableEdgeToEdge()
         cz.slovickaspeak.app.model.CrossLanguageBridge.init(applicationContext)
 
@@ -51,6 +70,11 @@ class MainActivity : ComponentActivity() {
                 val observer = LifecycleEventObserver { _, event ->
                     if (event == Lifecycle.Event.ON_RESUME) {
                         progressState.checkNewDayRollover(alsoRefreshCloud = true)
+                        AppShortcutsHelper.updateDynamicShortcuts(
+                            this@MainActivity,
+                            progressState.streakDays
+                        )
+                        LingoStacksWidgetProvider.updateAllWidgets(this@MainActivity)
                         if (BuildConfig.ENABLE_OTA_UPDATES) {
                             progressState.retryPendingOtaInstallIfPermitted()
                             progressState.checkForOtaUpdate(manual = false)
@@ -93,6 +117,53 @@ class MainActivity : ComponentActivity() {
                 }
 
                 var currentScreen by remember { mutableStateOf<AppScreen>(AppScreen.DeckList) }
+                var openStatsFromIntent by remember { mutableStateOf(false) }
+
+                val activeDecks = remember(progressState.nativeLanguage, progressState.selectedLanguage) {
+                    cz.slovickaspeak.app.model.CrossLanguageBridge.decksFor(
+                        nativeLang = progressState.nativeLanguage,
+                        targetLang = progressState.selectedLanguage,
+                        context = this@MainActivity
+                    )
+                }
+
+                LaunchedEffect(pendingIntentAction, activeDecks) {
+                    val action = pendingIntentAction ?: return@LaunchedEffect
+                    pendingIntentAction = null
+                    when (action) {
+                        ACTION_PRACTICE -> {
+                            val targetDeck = activeDecks.find { it.id == progressState.lastStudiedDeckId }
+                                ?: activeDecks.firstOrNull()
+                            if (targetDeck != null) {
+                                progressState.updateLastStudiedDeck(targetDeck.id)
+                                if (!hasMicPermission) {
+                                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                }
+                                currentScreen = AppScreen.ActiveSession(
+                                    deck = targetDeck,
+                                    words = targetDeck.words
+                                )
+                            }
+                        }
+                        ACTION_LAST_LESSON -> {
+                            val targetDeck = activeDecks.find { it.id == progressState.lastStudiedDeckId }
+                                ?: activeDecks.firstOrNull()
+                            if (targetDeck != null) {
+                                if (!hasMicPermission) {
+                                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                }
+                                currentScreen = AppScreen.ActiveSession(
+                                    deck = targetDeck,
+                                    words = targetDeck.words
+                                )
+                            }
+                        }
+                        ACTION_STATS -> {
+                            currentScreen = AppScreen.DeckList
+                            openStatsFromIntent = true
+                        }
+                    }
+                }
 
                 AnimatedContent(
                     targetState = currentScreen,
@@ -134,16 +205,11 @@ class MainActivity : ComponentActivity() {
                 ) { screen ->
                     when (screen) {
                         is AppScreen.DeckList -> {
-                            val activeDecks = remember(progressState.nativeLanguage, progressState.selectedLanguage) {
-                                cz.slovickaspeak.app.model.CrossLanguageBridge.decksFor(
-                                    nativeLang = progressState.nativeLanguage,
-                                    targetLang = progressState.selectedLanguage,
-                                    context = this@MainActivity
-                                )
-                            }
                             DeckSelectionScreen(
                                 decks = activeDecks,
                                 progressState = progressState,
+                                initialOpenStats = openStatsFromIntent,
+                                onStatsOpened = { openStatsFromIntent = false },
                                 onSelectDeck = { selectedDeck ->
                                     progressState.updateLastStudiedDeck(selectedDeck.id)
                                     if (!hasMicPermission) {

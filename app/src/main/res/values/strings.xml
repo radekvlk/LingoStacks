@@ -1,3 +1,15 @@
 <resources>
     <string name="app_name">LingoStacks</string>
+
+    <!-- App Shortcuts -->
+    <string name="shortcut_practice_short">Trénovat</string>
+    <string name="shortcut_practice_long">Dnešní trénink</string>
+    <string name="shortcut_stats_short">Statistiky</string>
+    <string name="shortcut_stats_long">Statistiky &amp; pokrok</string>
+    <string name="shortcut_last_lesson_short">Poslední lekce</string>
+    <string name="shortcut_last_lesson_long">Pokračovat v poslední lekci</string>
+
+    <!-- App Widget -->
+    <string name="widget_name">LingoStacks Denní cíl</string>
+    <string name="widget_description">Sleduj svůj denní pokrok, streak a procvičuj slovíčka jedním kliknutím přímo z plochy.</string>
 </resources>
