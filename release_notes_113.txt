@@ -1,0 +1,10 @@
+<cs-CZ>
+• Plynulé animace: Statistiky i Nastavení se nyní otevírají s pružným bounce efektem a hladkým zasouváním
+• Průvodce a odkaz na stažení offline hlasových balíčků v Nastavení
+• Multi-segmentový bar retence paměti a automatický posun v Tréninku
+</cs-CZ>
+<en-GB>
+• Smooth animations: Statistics and Settings sheets now feature spring bounce enter and smooth exit transitions
+• Guide & shortcut in Settings to download offline speech packs
+• Multi-segmented memory retention bar & auto-advance in Practice
+</en-GB>

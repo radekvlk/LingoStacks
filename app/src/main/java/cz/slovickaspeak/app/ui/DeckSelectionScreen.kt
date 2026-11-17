@@ -516,30 +516,29 @@ fun DeckSelectionScreen(
                 .padding(horizontal = 24.dp, vertical = 14.dp)
         )
 
-        if (showSettingsDialog) {
-            AppleFullSettingsDialog(
-                progressState = progressState,
-                initialTab = settingsInitialTab,
-                onDismiss = {
-                    showSettingsDialog = false
-                    activeBottomTab = 0
-                }
-            )
-        }
+        AppleFullSettingsDialog(
+            visible = showSettingsDialog,
+            progressState = progressState,
+            initialTab = settingsInitialTab,
+            onDismiss = {
+                showSettingsDialog = false
+                activeBottomTab = 0
+            }
+        )
 
-        if (showCompleteStatsDialog) {
-            AppleCompleteStatsDialog(
-                progressState = progressState,
-                onOpenLeaderboard = {
-                    settingsInitialTab = 0
-                    showSettingsDialog = true
-                },
-                onDismiss = {
-                    showCompleteStatsDialog = false
-                    activeBottomTab = 0
-                }
-            )
-        }
+        AppleCompleteStatsDialog(
+            visible = showCompleteStatsDialog,
+            progressState = progressState,
+            onOpenLeaderboard = {
+                showCompleteStatsDialog = false
+                settingsInitialTab = 0
+                showSettingsDialog = true
+            },
+            onDismiss = {
+                showCompleteStatsDialog = false
+                activeBottomTab = 0
+            }
+        )
     }
 }
 }

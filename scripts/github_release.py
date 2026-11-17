@@ -6,17 +6,19 @@ import mimetypes
 TOKEN_PATH = r"C:\Users\radek.vlk\.gemini\antigravity\brain\43b0acd7-1097-4287-b01f-eedb0d465b28\scratch\github_token.txt"
 REPO = "radekvlk/LingoStacks"
 TAG = "v1.0.9"
-NAME = "LingoStacks v1.0.9 (Build 112)"
+NAME = "LingoStacks v1.0.9 (Build 113)"
 
-BODY = """versionCode: 112
+BODY = """versionCode: 113
 
 [CS]
+• **Plynulé animace dialogů:** Statistiky i Nastavení se nyní otevírají s pružným Apple bounce efektem a hladkým zasouváním zpět do spodní lišty.
 • **Rychlé rozpoznávání hlasu:** V Nastavení přidán nový průvodce a přímé otevření systémového nastavení Androidu pro stažení offline hlasových balíčků (např. English US) pro bleskovou odezvu bez čekání.
 • **Multi-segmentový retention bar paměti:** Spodní lišta a indikátory na kartách lekcí zobrazují skutečný stav paměti (zelená = zvládnuto Box 4-5, oranžová = v tréninku Box 1-3, červená = k opakování).
 • **Inteligentní posun lekcí:** Tlačítko Trénink si pamatuje postup a po projití slov lekce automaticky plynule posune na navazující lekci.
 • **Čisté vektorové ikony:** V záhlaví cvičení vektorové ikony a indikátor „Projito X / Y • Trénink paměti“.
 
 [EN]
+• **Smooth Sheet Animations:** Statistics and Settings sheets now feature spring bounce enter and smooth exit transitions matching Practice.
 • **Fast Voice Recognition Guide:** New guide and shortcut in Settings to easily open Android settings and download offline speech packs (e.g. English US) for instant response.
 • **Multi-segmented Memory Retention Bar:** Visual representation of actual mastery state across Leitner boxes (green = mastered, orange = learning, red = review).
 • **Smart Lesson Auto-Advance:** Practice button remembers progress and automatically continues to the next lesson upon completion.

@@ -12,6 +12,9 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -98,6 +101,7 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun AppleFullSettingsDialog(
+    visible: Boolean = true,
     progressState: ProgressStateHolder,
     initialTab: Int = 0,
     onDismiss: () -> Unit
@@ -110,6 +114,12 @@ fun AppleFullSettingsDialog(
     var showVoiceGuideDialog by remember { mutableStateOf(false) }
     var manualGoogleEmail by remember { mutableStateOf("") }
     var manualGoogleName by remember { mutableStateOf("") }
+
+    LaunchedEffect(visible, initialTab) {
+        if (visible) {
+            selectedTab = initialTab
+        }
+    }
 
     // Sync cloud leaderboard ONLY while Leaderboard tab is visible, in foreground (RESUMED), and user is signed in
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -162,16 +172,15 @@ fun AppleFullSettingsDialog(
         }
     }
 
-    if (showCompleteStatsInModal) {
-        AppleCompleteStatsDialog(
-            progressState = progressState,
-            onOpenLeaderboard = {
-                showCompleteStatsInModal = false
-                selectedTab = 0
-            },
-            onDismiss = { showCompleteStatsInModal = false }
-        )
-    }
+    AppleCompleteStatsDialog(
+        visible = showCompleteStatsInModal,
+        progressState = progressState,
+        onOpenLeaderboard = {
+            showCompleteStatsInModal = false
+            selectedTab = 0
+        },
+        onDismiss = { showCompleteStatsInModal = false }
+    )
 
     if (showVoiceGuideDialog) {
         VoiceRecognitionGuideDialog(
@@ -184,9 +193,14 @@ fun AppleFullSettingsDialog(
         )
     }
 
-    BackHandler(onBack = onDismiss)
+    BackHandler(enabled = visible, onBack = onDismiss)
 
     var dragOffsetY by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(visible) {
+        if (!visible) {
+            dragOffsetY = 0f
+        }
+    }
     val animatedOffsetY by animateFloatAsState(
         targetValue = dragOffsetY,
         animationSpec = spring(
@@ -217,32 +231,54 @@ fun AppleFullSettingsDialog(
         )
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.50f))
-            .clickable(
-                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                indication = null,
-                onClick = onDismiss
-            ),
-        contentAlignment = Alignment.BottomCenter
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(animationSpec = tween(220)),
+        exit = fadeOut(animationSpec = tween(200))
     ) {
-        Surface(
-            shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
-            color = SurfaceBg,
-            border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.5f)),
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.90f)
-                .offset { IntOffset(0, animatedOffsetY.roundToInt()) }
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.50f))
                 .clickable(
                     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                     indication = null,
-                    onClick = {} // Consume click inside sheet
-                )
-                .shadow(32.dp, RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp), spotColor = Color.Black.copy(alpha = 0.22f))
+                    onClick = onDismiss
+                ),
+            contentAlignment = Alignment.BottomCenter
         ) {
+            Surface(
+                shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
+                color = SurfaceBg,
+                border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.5f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.90f)
+                    .then(
+                        this@AnimatedVisibility.run {
+                            Modifier.animateEnterExit(
+                                enter = slideInVertically(
+                                    initialOffsetY = { fullHeight -> fullHeight },
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                        stiffness = Spring.StiffnessMediumLow
+                                    )
+                                ),
+                                exit = slideOutVertically(
+                                    targetOffsetY = { fullHeight -> fullHeight },
+                                    animationSpec = tween(260, easing = FastOutSlowInEasing)
+                                )
+                            )
+                        }
+                    )
+                    .offset { IntOffset(0, animatedOffsetY.roundToInt()) }
+                    .clickable(
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                        indication = null,
+                        onClick = {} // Consume click inside sheet
+                    )
+                    .shadow(32.dp, RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp), spotColor = Color.Black.copy(alpha = 0.22f))
+            ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -529,6 +565,7 @@ fun AppleFullSettingsDialog(
             }
         }
     }
+}
 }
 
 @Composable
@@ -3266,6 +3303,7 @@ fun OtaUpdateModalDialog(
 
 @Composable
 fun AppleCompleteStatsDialog(
+    visible: Boolean = true,
     progressState: ProgressStateHolder,
     onOpenLeaderboard: () -> Unit,
     onDismiss: () -> Unit
@@ -3278,34 +3316,56 @@ fun AppleCompleteStatsDialog(
         ?: allLanguageStats.firstOrNull()
         ?: progressState.getLanguageCompleteStats(progressState.selectedLanguage)
 
-    BackHandler(onBack = onDismiss)
+    BackHandler(enabled = visible, onBack = onDismiss)
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.50f))
-            .clickable(
-                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                indication = null,
-                onClick = onDismiss
-            ),
-        contentAlignment = Alignment.Center
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(animationSpec = tween(220)),
+        exit = fadeOut(animationSpec = tween(200))
     ) {
-        Surface(
-            shape = RoundedCornerShape(28.dp),
-            color = SurfaceBg,
-            border = BorderStroke(0.5.dp, CardBorderGray),
+        Box(
             modifier = Modifier
-                .fillMaxWidth(0.94f)
-                .fillMaxHeight(0.88f)
-                .navigationBarsPadding()
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.50f))
                 .clickable(
                     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                     indication = null,
-                    onClick = {}
-                )
-                .shadow(24.dp, RoundedCornerShape(28.dp), spotColor = Color.Black.copy(alpha = 0.18f))
+                    onClick = onDismiss
+                ),
+            contentAlignment = Alignment.Center
         ) {
+            Surface(
+                shape = RoundedCornerShape(28.dp),
+                color = SurfaceBg,
+                border = BorderStroke(0.5.dp, CardBorderGray),
+                modifier = Modifier
+                    .fillMaxWidth(0.94f)
+                    .fillMaxHeight(0.88f)
+                    .then(
+                        this@AnimatedVisibility.run {
+                            Modifier.animateEnterExit(
+                                enter = slideInVertically(
+                                    initialOffsetY = { fullHeight -> fullHeight },
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                        stiffness = Spring.StiffnessMediumLow
+                                    )
+                                ) + fadeIn(animationSpec = tween(200)),
+                                exit = slideOutVertically(
+                                    targetOffsetY = { fullHeight -> fullHeight },
+                                    animationSpec = tween(260, easing = FastOutSlowInEasing)
+                                ) + fadeOut(animationSpec = tween(200))
+                            )
+                        }
+                    )
+                    .navigationBarsPadding()
+                    .clickable(
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                        indication = null,
+                        onClick = {}
+                    )
+                    .shadow(24.dp, RoundedCornerShape(28.dp), spotColor = Color.Black.copy(alpha = 0.18f))
+            ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -3426,6 +3486,7 @@ fun AppleCompleteStatsDialog(
             }
         }
     }
+}
 }
 
 @Composable
