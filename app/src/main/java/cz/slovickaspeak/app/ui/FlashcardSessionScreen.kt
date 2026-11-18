@@ -5,6 +5,7 @@ import android.os.SystemClock
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -28,6 +29,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -74,6 +76,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.lifecycle.Lifecycle
@@ -905,12 +908,24 @@ fun FlashcardSessionScreen(
                 }
             }
         } else {
-            // Portrait (na vysku): Plne roztazene pres celou sirku + kompaktni Memory & Context pod kartou
+            // Portrait (na vysku): Prirozene Apple-style rozvrzeni s garantovanym odstupem od karty
+            val fontScale = LocalDensity.current.fontScale
+            val isLargeFont = fontScale > 1.15f
+            val isConstrainedHeight = configuration.screenHeightDp < 700 || isLargeFont
+            val currentWordSrsStat = remember(currentWord.id, isReversedCard, progressState.srsRevision) {
+                progressState.getWordSrsStat(currentWord.id, isReversed = isReversedCard)
+            }
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-                    .padding(horizontal = 18.dp, vertical = 8.dp),
+                    .padding(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = 6.dp,
+                        bottom = 12.dp
+                    ),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 AppleSessionTopBar(
@@ -921,13 +936,14 @@ fun FlashcardSessionScreen(
                     sessionTargetCount = totalDeckWords,
                     remainingCount = remainingCount,
                     sessionProgressFraction = sessionProgressFraction,
+                    compact = isConstrainedHeight,
                     onCloseSession = {
                         speechControllerRef?.stopListening()
                         onCloseSession()
                     }
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(if (isConstrainedHeight) 4.dp else 6.dp))
 
                 LiveSpeechBanner(
                     strings = strings,
@@ -940,10 +956,11 @@ fun FlashcardSessionScreen(
                     rmsLevelProvider = { rmsLevel },
                     animateMicWaves = isMicVisualActive,
                     expectCzech = isReversedCard,
-                    nativeLanguage = progressState.nativeLanguage
+                    nativeLanguage = progressState.nativeLanguage,
+                    compact = isConstrainedHeight
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(if (isConstrainedHeight) 4.dp else 8.dp))
 
                 Flashcard3DStackArea(
                     strings = strings,
@@ -952,6 +969,7 @@ fun FlashcardSessionScreen(
                     currentWord = currentWord,
                     nextWord = nextWord,
                     thirdWord = thirdWord,
+                    srsStat = currentWordSrsStat,
                     offsetXProvider = { offsetX.value },
                     cardScaleProvider = { cardScale.value },
                     cardAlphaProvider = { cardAlpha.value },
@@ -983,24 +1001,28 @@ fun FlashcardSessionScreen(
                         .fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                // WordMemoryInsightsCard: displayed ONLY when there is sufficient vertical space and normal font
+                // When font is large or space is tight, all room is dedicated to the flashcard!
+                if (!isConstrainedHeight) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    WordMemoryInsightsCard(
+                        strings = strings,
+                        language = deck.language,
+                        word = currentWord,
+                        srsStat = currentWordSrsStat,
+                        isRevealed = isTranslationRevealed,
+                        onSpeakSentence = { sentence ->
+                            speechControllerRef?.speakEnglish(sentence)
+                        },
+                        onRevealHint = handleToggleHint,
+                        compact = true,
+                        showSentence = configuration.screenHeightDp >= 750,
+                        isReversed = isReversedCard
+                    )
+                }
 
-                WordMemoryInsightsCard(
-                    strings = strings,
-                    language = deck.language,
-                    word = currentWord,
-                    srsStat = progressState.getWordSrsStat(currentWord.id, isReversed = isReversedCard),
-                    isRevealed = isTranslationRevealed,
-                    onSpeakSentence = { sentence ->
-                        speechControllerRef?.speakEnglish(sentence)
-                    },
-                    onRevealHint = handleToggleHint,
-                    compact = true,
-                    showSentence = configuration.screenHeightDp >= 640,
-                    isReversed = isReversedCard
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
+                // Garantovany 14dp odstup - ovladaci bar uz nikdy nebude nalepeny na karte ani na boxu pameti!
+                Spacer(modifier = Modifier.height(14.dp))
 
                 BottomControlBar(
                     strings = strings,
@@ -1643,11 +1665,11 @@ private fun DailyGoalCelebrationBadge(
                 particleProgress.snapTo(0f)
                 particleProgress.animateTo(
                     targetValue = 1f,
-                    animationSpec = tween(750, easing = FastOutSlowInEasing)
+                    animationSpec = tween(900, easing = CubicBezierEasing(0.18f, 0.75f, 0.22f, 1f))
                 )
             }
             launch {
-                glowAlpha.snapTo(0.35f)
+                glowAlpha.snapTo(0.38f)
                 glowAlpha.animateTo(
                     targetValue = 0.12f,
                     animationSpec = tween(850, easing = FastOutSlowInEasing)
@@ -1682,81 +1704,116 @@ private fun DailyGoalCelebrationBadge(
         }
     }
 
-    Surface(
-        shape = RoundedCornerShape(50),
-        color = if (goalReached) AppleGreen.copy(alpha = glowAlpha.value.coerceIn(0f, 0.4f)) else Color.Transparent,
+    Box(
+        contentAlignment = Alignment.Center,
         modifier = modifier
-            .scale(bounceScale.value)
-            .clickable(
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() }
-            ) {
-                if (goalReached) {
-                    triggerCelebration = true
-                }
-            }
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-        ) {
-            // Sparkle Particle Burst
-            if (particleProgress.value in 0.001f..0.999f) {
-                Canvas(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .graphicsLayer(clip = false)
-                ) {
-                    val p = particleProgress.value
-                    val particleCount = 8
-                    val maxRadius = 38.dp.toPx()
-                    val centerOffset = Offset(size.width / 2f, size.height / 2f)
+        // Sparkle Particle Burst - drawn outside the Surface pill without clipping!
+        if (particleProgress.value in 0.001f..0.999f) {
+            Canvas(
+                modifier = Modifier
+                    .size(280.dp, 160.dp)
+                    .graphicsLayer(clip = false)
+            ) {
+                val p = particleProgress.value
+                val particleCount = 16
+                val maxRadius = 72.dp.toPx()
+                val centerOffset = Offset(size.width / 2f, size.height / 2f)
 
-                    val sparkColors = listOf(
-                        Color(0xFFFFD700), // Gold
-                        AppleGreen,        // Apple Green
-                        Color(0xFFFF9500), // Amber
-                        Color(0xFF34C759)  // Green
-                    )
+                val sparkColors = listOf(
+                    Color(0xFFFFD700), // Pure Gold
+                    AppleGreen,        // Vibrant Apple Green
+                    Color(0xFFFF9500), // Amber Gold
+                    Color(0xFF34C759), // Emerald
+                    Color(0xFFFFDF00), // Golden Yellow
+                    Color(0xFF30D158)  // Mint Sparkle
+                )
 
-                    for (i in 0 until particleCount) {
-                        val angle = (i.toFloat() / particleCount) * (2f * Math.PI.toFloat()) + 0.15f
-                        val currentRadius = p * maxRadius * (0.85f + 0.35f * (i % 3))
-                        val x = centerOffset.x + currentRadius * kotlin.math.cos(angle)
-                        val y = centerOffset.y + currentRadius * kotlin.math.sin(angle)
-                        val sparkAlpha = (1f - p).coerceIn(0f, 1f)
-                        val sparkSize = (4.5.dp.toPx() * (1f - p * 0.5f)).coerceAtLeast(1.5f)
-                        val color = sparkColors[i % sparkColors.size].copy(alpha = sparkAlpha)
+                for (i in 0 until particleCount) {
+                    val angle = (i.toFloat() / particleCount) * (2f * Math.PI.toFloat()) + 0.15f * (i % 2)
+                    val distanceFactor = 0.65f + 0.55f * ((i * 7) % 5) / 4f
+                    val currentRadius = p * maxRadius * distanceFactor
+                    val gravityY = p * p * 14.dp.toPx()
+                    val x = centerOffset.x + currentRadius * kotlin.math.cos(angle)
+                    val y = centerOffset.y + currentRadius * kotlin.math.sin(angle) + gravityY
 
-                        if (i % 2 == 0) {
-                            val arm = sparkSize * 1.5f
-                            val strokeW = (2.dp.toPx() * (1f - p)).coerceAtLeast(1f)
-                            drawLine(
-                                color = color,
-                                start = Offset(x - arm, y),
-                                end = Offset(x + arm, y),
-                                strokeWidth = strokeW
-                            )
-                            drawLine(
-                                color = color,
-                                start = Offset(x, y - arm),
-                                end = Offset(x, y + arm),
-                                strokeWidth = strokeW
-                            )
-                        } else {
-                            drawCircle(
-                                color = color,
-                                radius = sparkSize,
-                                center = Offset(x, y)
-                            )
+                    val sparkAlpha = (1f - p * p).coerceIn(0f, 1f)
+                    val sparkSize = (5.dp.toPx() * (1f - p * 0.45f)).coerceAtLeast(1.8f)
+                    val color = sparkColors[i % sparkColors.size].copy(alpha = sparkAlpha)
+
+                    if (i % 3 == 0) {
+                        // 4-point glittering star
+                        val arm = sparkSize * 1.8f
+                        val strokeW = (2.2.dp.toPx() * (1f - p)).coerceAtLeast(1.2f)
+                        drawLine(
+                            color = color,
+                            start = Offset(x - arm, y),
+                            end = Offset(x + arm, y),
+                            strokeWidth = strokeW
+                        )
+                        drawLine(
+                            color = color,
+                            start = Offset(x, y - arm),
+                            end = Offset(x, y + arm),
+                            strokeWidth = strokeW
+                        )
+                        drawCircle(
+                            color = Color.White.copy(alpha = sparkAlpha),
+                            radius = sparkSize * 0.45f,
+                            center = Offset(x, y)
+                        )
+                    } else if (i % 3 == 1) {
+                        // Diamond spark
+                        val d = sparkSize * 1.2f
+                        val path = Path().apply {
+                            moveTo(x, y - d)
+                            lineTo(x + d * 0.7f, y)
+                            lineTo(x, y + d)
+                            lineTo(x - d * 0.7f, y)
+                            close()
                         }
+                        drawPath(path = path, color = color)
+                    } else {
+                        // Soft glowing orb with bright center
+                        drawCircle(
+                            color = color.copy(alpha = sparkAlpha * 0.45f),
+                            radius = sparkSize * 1.5f,
+                            center = Offset(x, y)
+                        )
+                        drawCircle(
+                            color = color,
+                            radius = sparkSize * 0.9f,
+                            center = Offset(x, y)
+                        )
+                        drawCircle(
+                            color = Color.White.copy(alpha = sparkAlpha * 0.85f),
+                            radius = sparkSize * 0.4f,
+                            center = Offset(x, y)
+                        )
                     }
                 }
             }
+        }
 
+        // Interactive Pill Badge
+        Surface(
+            shape = RoundedCornerShape(50),
+            color = if (goalReached) AppleGreen.copy(alpha = glowAlpha.value.coerceIn(0f, 0.4f)) else Color.Transparent,
+            modifier = Modifier
+                .scale(bounceScale.value)
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) {
+                    if (goalReached) {
+                        triggerCelebration = true
+                    }
+                }
+        ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
             ) {
                 val goalColor = if (goalReached) AppleGreen else AppleBlue
                 val iconTint = if (goalReached) Color(0xFFFFB300) else AppleBlue
@@ -1770,15 +1827,20 @@ private fun DailyGoalCelebrationBadge(
                             rotationZ = iconRotation.value
                         }
                 )
+                val isLargeFont = LocalDensity.current.fontScale > 1.15f
                 Text(
                     text = if (isCzech) {
-                        "Dnes: $todayCompletedWords / $dailyGoalWords"
+                        if (isLargeFont) "Dnes: $todayCompletedWords/$dailyGoalWords"
+                        else "Dnes: $todayCompletedWords / $dailyGoalWords"
                     } else {
-                        "Today: $todayCompletedWords / $dailyGoalWords"
+                        if (isLargeFont) "Today: $todayCompletedWords/$dailyGoalWords"
+                        else "Today: $todayCompletedWords / $dailyGoalWords"
                     },
                     fontWeight = FontWeight.Bold,
-                    fontSize = 11.5.sp,
-                    color = goalColor
+                    fontSize = if (isLargeFont) 11.sp else 11.5.sp,
+                    color = goalColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -1795,19 +1857,26 @@ private fun AppleSessionTopBar(
     remainingCount: Int,
     sessionProgressFraction: Float,
     onCloseSession: () -> Unit,
+    compact: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        shape = RoundedCornerShape(24.dp),
-        color = CardSurface,
-        border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
+    val fontScale = LocalDensity.current.fontScale
+    val isLargeFont = fontScale > 1.15f
+    val isConstrained = compact || isLargeFont
+
+    Box(
         modifier = modifier
             .fillMaxWidth()
             .shadow(4.dp, RoundedCornerShape(24.dp), spotColor = Color.Black.copy(alpha = 0.04f))
+            .background(CardSurface, RoundedCornerShape(24.dp))
+            .border(0.5.dp, CardBorderGray.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            modifier = Modifier.padding(
+                horizontal = 14.dp,
+                vertical = if (isConstrained) 6.dp else 10.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(if (isConstrained) 4.dp else 6.dp)
         ) {
             val levelColor = Color(deck.level.colorHex)
             val memorySummary = remember(deck.id, progressState.srsRevision, progressState.studyDirection) {
@@ -1826,17 +1895,17 @@ private fun AppleSessionTopBar(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(26.dp)
+                            .size(if (isConstrained) 24.dp else 26.dp)
                             .clip(CircleShape)
                             .background(levelColor.copy(alpha = 0.14f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        DeckVectorIcon(deck = deck, tint = levelColor, modifier = Modifier.size(16.dp))
+                        DeckVectorIcon(deck = deck, tint = levelColor, modifier = Modifier.size(if (isConstrained) 14.dp else 16.dp))
                     }
                     Text(
                         text = if (strings.isCzech) deck.title else deck.titleEn,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
+                        fontSize = if (isConstrained) 13.sp else 14.sp,
                         color = TextDark,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -1858,7 +1927,7 @@ private fun AppleSessionTopBar(
                 // Close button moved to top-right
                 Box(
                     modifier = Modifier
-                        .size(30.dp)
+                        .size(if (isConstrained) 26.dp else 30.dp)
                         .clip(CircleShape)
                         .background(SurfaceBg)
                         .clickable { onCloseSession() },
@@ -1868,7 +1937,7 @@ private fun AppleSessionTopBar(
                         imageVector = Icons.Default.Close,
                         contentDescription = null,
                         tint = TextMuted,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(if (isConstrained) 14.dp else 16.dp)
                     )
                 }
             }
@@ -1881,23 +1950,30 @@ private fun AppleSessionTopBar(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.weight(1f, fill = false)
                 ) {
                     Text(
                         text = if (strings.isCzech) {
                             if (remainingCount <= 0) {
                                 if (isDeckFullyMastered) "Lekce: $masteredCount / $sessionTargetCount • Dokončeno!"
-                                else "Projito $masteredCount / $sessionTargetCount • Trénink paměti"
+                                else "Projito $masteredCount / $sessionTargetCount"
+                            } else if (isConstrained) {
+                                "Lekce: $masteredCount / $sessionTargetCount"
                             } else "Lekce: $masteredCount / $sessionTargetCount (zbývá $remainingCount)"
                         } else {
                             if (remainingCount <= 0) {
                                 if (isDeckFullyMastered) "Lesson: $masteredCount / $sessionTargetCount • Done!"
-                                else "Completed $masteredCount / $sessionTargetCount • Memory training"
+                                else "Completed $masteredCount / $sessionTargetCount"
+                            } else if (isConstrained) {
+                                "Lesson: $masteredCount / $sessionTargetCount"
                             } else "Lesson: $masteredCount / $sessionTargetCount ($remainingCount left)"
                         },
                         fontWeight = FontWeight.SemiBold,
-                        fontSize = 11.5.sp,
-                        color = if (remainingCount <= 0) (if (isDeckFullyMastered) AppleGreen else AppleBlue) else TextDark
+                        fontSize = if (isConstrained) 11.sp else 11.5.sp,
+                        color = if (remainingCount <= 0) (if (isDeckFullyMastered) AppleGreen else AppleBlue) else TextDark,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     if (remainingCount <= 0) {
                         Icon(
@@ -1920,7 +1996,7 @@ private fun AppleSessionTopBar(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(8.dp)
+                    .height(if (isConstrained) 6.dp else 8.dp)
                     .clip(RoundedCornerShape(50))
                     .background(SurfaceBg)
             ) {
@@ -1952,6 +2028,7 @@ private fun Flashcard3DStackArea(
     currentWord: VocabWord,
     nextWord: VocabWord?,
     thirdWord: VocabWord?,
+    srsStat: cz.slovickaspeak.app.data.WordSrsStat? = null,
     offsetXProvider: () -> Float,
     cardScaleProvider: () -> Float,
     cardAlphaProvider: () -> Float,
@@ -1992,6 +2069,7 @@ private fun Flashcard3DStackArea(
             word = currentWord,
             deckLevelLabel = "${deck.level.label} • ${deck.level.localizedDescription(strings.isCzech)}",
             deckLevelColor = Color(deck.level.colorHex),
+            srsStat = srsStat,
             offsetXProvider = offsetXProvider,
             scaleProvider = cardScaleProvider,
             alphaProvider = cardAlphaProvider,
@@ -2246,8 +2324,13 @@ private fun LiveSpeechBanner(
     expectCzech: Boolean = false,
     nativeLanguage: LearningLanguage = LearningLanguage.CZECH,
     isMicSleeping: Boolean = false,
-    onWakeMic: () -> Unit = {}
+    onWakeMic: () -> Unit = {},
+    compact: Boolean = false
 ) {
+    val fontScale = LocalDensity.current.fontScale
+    val isLargeFont = fontScale > 1.15f
+    val isConstrained = compact || isLargeFont
+
     val bgColor by animateColorAsState(
         targetValue = when (feedbackState) {
             CardFeedbackState.SPOKEN_CORRECT, CardFeedbackState.SWIPED_CORRECT -> AppleGreenTint
@@ -2272,20 +2355,23 @@ private fun LiveSpeechBanner(
             .clickable(enabled = isMicSleeping, onClick = onWakeMic)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
+            modifier = Modifier.padding(
+                horizontal = 14.dp,
+                vertical = if (isConstrained) 5.dp else 9.dp
+            ),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
             Box(
                 modifier = Modifier
-                    .size(8.dp)
+                    .size(if (isConstrained) 7.dp else 8.dp)
                     .clip(CircleShape)
                     .background(dotColor)
             )
 
             // Dynamic Audio Waveform (Canvas GPU draw phase with zero measure/layout churn)
             if (micAutoEnabled && isListening && feedbackState == CardFeedbackState.NEUTRAL && !isMicSleeping) {
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(6.dp))
                 AudioWaveVisualizer(
                     color = dotColor,
                     rmsLevelProvider = rmsLevelProvider,
@@ -2293,12 +2379,12 @@ private fun LiveSpeechBanner(
                 )
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(6.dp))
 
             val statusText = when {
                 isMicSleeping ->
-                    if (strings.isCzech) "🔋 Mikrofon pozastaven pro úsporu (klepněte pro probuzení)"
-                    else "🔋 Mic paused for battery saver (tap to wake)"
+                    if (strings.isCzech) "🔋 Mikrofon pozastaven (klepněte pro probuzení)"
+                    else "🔋 Mic paused (tap to wake)"
                 feedbackState == CardFeedbackState.SPOKEN_CORRECT ->
                     strings.bannerSpokenCorrect(lastHeardText ?: "")
                 feedbackState == CardFeedbackState.SPOKEN_WRONG_FLASH ->
@@ -2313,7 +2399,10 @@ private fun LiveSpeechBanner(
                 !lastHeardText.isNullOrBlank() ->
                     strings.bannerHeard(lastHeardText)
                 micAutoEnabled ->
-                    if (expectCzech) {
+                    if (isConstrained) {
+                        if (strings.isCzech) "Poslouchám... řekni slovo"
+                        else "Listening... speak now"
+                    } else if (expectCzech) {
                         if (nativeLanguage == LearningLanguage.CZECH) strings.bannerListeningCzech
                         else strings.bannerListeningForLanguage(nativeLanguage)
                     } else {
@@ -2325,10 +2414,12 @@ private fun LiveSpeechBanner(
 
             Text(
                 text = statusText,
-                fontSize = 13.sp,
+                fontSize = if (isConstrained) 12.sp else 13.sp,
                 fontWeight = FontWeight.Medium,
                 color = TextDark,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                maxLines = if (isConstrained) 1 else 2,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -2589,6 +2680,7 @@ private fun SwipeableVocabCard(
     word: VocabWord,
     deckLevelLabel: String,
     deckLevelColor: Color,
+    srsStat: cz.slovickaspeak.app.data.WordSrsStat? = null,
     offsetXProvider: () -> Float,
     scaleProvider: () -> Float,
     alphaProvider: () -> Float,
@@ -2709,323 +2801,340 @@ private fun SwipeableVocabCard(
                 }
         ) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-            val isUltraCompactCard = maxHeight < 290.dp
+            val fontScale = LocalDensity.current.fontScale
+            val isLargeFont = fontScale > 1.15f
+            val isUltraCompactCard = maxHeight < 290.dp || isLargeFont
             val isCompactCard = maxHeight < 350.dp
             val cardVertPadding = when {
-                isUltraCompactCard -> 10.dp
-                isCompactCard -> 12.dp
+                maxHeight < 240.dp -> 6.dp
+                isUltraCompactCard -> 8.dp
+                isCompactCard -> 10.dp
                 else -> 14.dp
             }
             val emojiBoxSize = when {
-                isUltraCompactCard -> 50.dp
-                isCompactCard -> 64.dp
-                else -> 84.dp
+                maxHeight < 240.dp -> 36.dp
+                isUltraCompactCard -> 44.dp
+                isCompactCard -> 56.dp
+                else -> 74.dp
             }
             val emojiFontSize = when {
-                isUltraCompactCard -> 27.sp
-                isCompactCard -> 34.sp
-                else -> 44.sp
+                maxHeight < 240.dp -> 19.sp
+                isUltraCompactCard -> 23.sp
+                isCompactCard -> 29.sp
+                else -> 38.sp
             }
             val hintSlotMinHeight = when {
-                isUltraCompactCard -> 46.dp
-                isCompactCard -> 54.dp
-                else -> 64.dp
+                maxHeight < 240.dp -> 38.dp
+                isUltraCompactCard -> 42.dp
+                isCompactCard -> 48.dp
+                else -> 56.dp
             }
+            val showEmoji = maxHeight >= 200.dp
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 18.dp, vertical = cardVertPadding)
-        ) {
-            // Top Row: Left/Right Swipe Badges + Word Display & Auto-Pronounce Corner Toggles
-            Row(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.TopCenter),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp, vertical = cardVertPadding),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Box(modifier = Modifier.weight(1f)) {
-                    if (showLeftSwipeBadge ||
-                        feedbackState == CardFeedbackState.SWIPED_WRONG ||
-                        feedbackState == CardFeedbackState.SPOKEN_WRONG_FLASH
+                // 1. Top Row: Left/Right Swipe Badges + Word Display & Auto-Pronounce Corner Toggles
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        if (showLeftSwipeBadge ||
+                            feedbackState == CardFeedbackState.SWIPED_WRONG ||
+                            feedbackState == CardFeedbackState.SPOKEN_WRONG_FLASH
+                        ) {
+                            Surface(
+                                color = AppleRed,
+                                shape = RoundedCornerShape(50)
+                            ) {
+                                Text(
+                                    text = if (feedbackState == CardFeedbackState.SPOKEN_WRONG_FLASH) {
+                                        strings.badgeTryAgain
+                                    } else {
+                                        strings.badgeDontKnow
+                                    },
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+                                )
+                            }
+                        } else {
+                            val boxLevel = (srsStat?.box ?: 0).coerceIn(0, 5)
+                            val badgeLabel = if (boxLevel > 0 && isLargeFont) "$deckLevelLabel • Box $boxLevel/5" else deckLevelLabel
+                            Surface(
+                                color = deckLevelColor.copy(alpha = 0.12f),
+                                shape = RoundedCornerShape(50)
+                            ) {
+                                Text(
+                                    text = badgeLabel,
+                                    color = deckLevelColor,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    if (showRightSwipeBadge ||
+                        feedbackState == CardFeedbackState.SPOKEN_CORRECT ||
+                        feedbackState == CardFeedbackState.SWIPED_CORRECT
                     ) {
                         Surface(
-                            color = AppleRed,
+                            color = AppleGreen,
                             shape = RoundedCornerShape(50)
                         ) {
                             Text(
-                                text = if (feedbackState == CardFeedbackState.SPOKEN_WRONG_FLASH) {
-                                    strings.badgeTryAgain
+                                text = if (feedbackState == CardFeedbackState.SPOKEN_CORRECT) {
+                                    strings.badgeSpoken
                                 } else {
-                                    strings.badgeDontKnow
+                                    strings.badgeKnow
                                 },
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
                             )
                         }
                     } else {
-                        Surface(
-                            color = deckLevelColor.copy(alpha = 0.12f),
-                            shape = RoundedCornerShape(50)
-                        ) {
-                            Text(
-                                text = deckLevelLabel,
-                                color = deckLevelColor,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.padding(horizontal = 11.dp, vertical = 4.dp)
-                            )
-                        }
-                    }
-                }
-
-                if (showRightSwipeBadge ||
-                    feedbackState == CardFeedbackState.SPOKEN_CORRECT ||
-                    feedbackState == CardFeedbackState.SWIPED_CORRECT
-                ) {
-                    Surface(
-                        color = AppleGreen,
-                        shape = RoundedCornerShape(50)
-                    ) {
-                        Text(
-                            text = if (feedbackState == CardFeedbackState.SPOKEN_CORRECT) {
-                                strings.badgeSpoken
-                            } else {
-                                strings.badgeKnow
-                            },
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+                        CardCornerToolbarCapsule(
+                            pauseWhileSpeaking = pauseWhileSpeaking,
+                            onTogglePauseWhileSpeaking = onTogglePauseWhileSpeaking,
+                            autoPronounceEnabled = autoPronounceEnabled,
+                            onToggleAutoPronounce = onToggleAutoPronounce,
+                            showRecentWordsPanel = showRecentWordsPanel,
+                            onToggleRecentWordsPanel = onToggleRecentWordsPanel,
+                            strings = strings
                         )
                     }
-                } else {
-                    CardCornerToolbarCapsule(
-                        pauseWhileSpeaking = pauseWhileSpeaking,
-                        onTogglePauseWhileSpeaking = onTogglePauseWhileSpeaking,
-                        autoPronounceEnabled = autoPronounceEnabled,
-                        onToggleAutoPronounce = onToggleAutoPronounce,
-                        showRecentWordsPanel = showRecentWordsPanel,
-                        onToggleRecentWordsPanel = onToggleRecentWordsPanel,
-                        strings = strings
-                    )
                 }
-            }
 
-            // 2. Middle Content (Centered in card with optical center offset)
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.Center)
-                    .offset(y = if (isUltraCompactCard) (-4).dp else (-18).dp)
-                    .padding(vertical = 2.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                val emojiCorner = if (isUltraCompactCard) 18.dp else 24.dp
-                Surface(
-                    shape = RoundedCornerShape(emojiCorner),
-                    color = SurfaceBg,
-                    border = BorderStroke(1.dp, CardBorderGray.copy(alpha = 0.45f)),
-                    shadowElevation = 0.dp,
+                // 2. Middle Content (Word is King - centered with weight(1f), verticalScroll safety)
+                Box(
                     modifier = Modifier
-                        .size(emojiBoxSize)
-                        .softRoundedShadow(
-                            cornerRadius = emojiCorner,
-                            maxAlpha = 0.08f,
-                            spreadDp = 8.dp,
-                            offsetYDp = 3.dp
-                        )
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(vertical = 2.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
+                    Column(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.radialGradient(
-                                    colors = listOf(CardElevatedSurface, SurfaceBg)
-                                )
-                            ),
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Text(
-                            text = word.emoji,
-                            fontSize = emojiFontSize
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(if (isUltraCompactCard) 5.dp else 8.dp))
-
-                val targetSpeakLanguage = if (isReversed) nativeLanguage else language
-                Text(
-                    text = strings.cardPromptSpeakLanguage(targetSpeakLanguage),
-                    fontSize = if (isUltraCompactCard) 10.sp else 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AppleBlue,
-                    letterSpacing = 1.1.sp
-                )
-
-                Spacer(modifier = Modifier.height(if (isUltraCompactCard) 2.dp else 4.dp))
-
-                val frontWordText = if (isReversed) word.english else word.czech
-                Text(
-                    text = frontWordText,
-                    fontSize = when {
-                        isUltraCompactCard && frontWordText.length > 22 -> 19.sp
-                        isUltraCompactCard -> 22.sp
-                        frontWordText.length > 34 -> 20.sp
-                        frontWordText.length > 22 -> 23.sp
-                        else -> 26.sp
-                    },
-                    fontWeight = FontWeight.ExtraBold,
-                    color = TextDark,
-                    textAlign = TextAlign.Center,
-                    lineHeight = when {
-                        isUltraCompactCard -> 25.sp
-                        frontWordText.length > 34 -> 25.sp
-                        frontWordText.length > 22 -> 28.sp
-                        else -> 32.sp
-                    },
-                    letterSpacing = (-0.4).sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 8.dp)
-                )
-                if (isReversed && word.phonetic.isNotEmpty() && !isUltraCompactCard) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = word.phonetic,
-                        fontSize = 12.5.sp,
-                        color = TextMuted
-                    )
-                }
-            }
-
-            // 3. Dedicated Bottom Slot: either Hint pill OR Translation card
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .heightIn(min = hintSlotMinHeight),
-                contentAlignment = Alignment.BottomCenter
-            ) {
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = !showHintTranslation,
-                    enter = fadeIn(tween(150)) + scaleIn(initialScale = 0.92f, animationSpec = tween(150)),
-                    exit = fadeOut(tween(120)) + scaleOut(targetScale = 0.92f, animationSpec = tween(120))
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(50),
-                        color = SurfaceBg,
-                        border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .clickable(onClick = onToggleHint)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(
-                                horizontal = 18.dp,
-                                vertical = if (isUltraCompactCard) 8.dp else 10.dp
-                            ),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(7.dp)
-                        ) {
-                            SimpleLightbulbIcon(
-                                tint = AppleOrange,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = strings.showHintButton,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = TextDark
-                            )
-                        }
-                    }
-                }
-
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = showHintTranslation,
-                    enter = fadeIn(tween(180)) + scaleIn(initialScale = 0.94f, animationSpec = tween(180, easing = AppleGlideEasing)),
-                    exit = fadeOut(tween(130)) + scaleOut(targetScale = 0.94f, animationSpec = tween(130))
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = SurfaceBg,
-                        border = BorderStroke(0.5.dp, CardBorderGray),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(
-                                horizontal = 14.dp,
-                                vertical = if (isCompactCard) 8.dp else 12.dp
-                            ),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            val revealedText = if (isReversed) word.czech else word.english
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+                        if (showEmoji) {
+                            val emojiCorner = if (isUltraCompactCard) 14.dp else 22.dp
+                            Surface(
+                                shape = RoundedCornerShape(emojiCorner),
+                                color = SurfaceBg,
+                                border = BorderStroke(1.dp, CardBorderGray.copy(alpha = 0.45f)),
+                                shadowElevation = 0.dp,
+                                modifier = Modifier
+                                    .size(emojiBoxSize)
+                                    .softRoundedShadow(
+                                        cornerRadius = emojiCorner,
+                                        maxAlpha = 0.08f,
+                                        spreadDp = 6.dp,
+                                        offsetYDp = 2.dp
+                                    )
                             ) {
-                                Text(
-                                    text = revealedText,
-                                    fontSize = when {
-                                        revealedText.length > 26 -> 18.sp
-                                        isCompactCard || revealedText.length > 18 -> 20.sp
-                                        else -> 24.sp
-                                    },
-                                    lineHeight = when {
-                                        revealedText.length > 26 -> 22.sp
-                                        isCompactCard || revealedText.length > 18 -> 24.sp
-                                        else -> 28.sp
-                                    },
-                                    fontWeight = FontWeight.Bold,
-                                    color = AppleBlue,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.weight(1f, fill = false)
-                                )
-                                if (!isReversed) {
-                                    IconButton(
-                                        onClick = onPlayAudio,
-                                        modifier = Modifier.size(26.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                                            contentDescription = null,
-                                            tint = AppleBlue
-                                        )
-                                    }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            Brush.radialGradient(
+                                                colors = listOf(CardElevatedSurface, SurfaceBg)
+                                            )
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = word.emoji,
+                                        fontSize = emojiFontSize
+                                    )
                                 }
                             }
-                            if (!isReversed && word.phonetic.isNotEmpty()) {
+
+                            Spacer(modifier = Modifier.height(if (isUltraCompactCard) 4.dp else 8.dp))
+                        }
+
+                        val targetSpeakLanguage = if (isReversed) nativeLanguage else language
+                        Text(
+                            text = strings.cardPromptSpeakLanguage(targetSpeakLanguage),
+                            fontSize = if (isUltraCompactCard) 9.5.sp else 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AppleBlue,
+                            letterSpacing = 1.1.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(if (isUltraCompactCard) 2.dp else 4.dp))
+
+                        val frontWordText = if (isReversed) word.english else word.czech
+                        Text(
+                            text = frontWordText,
+                            fontSize = when {
+                                isUltraCompactCard && frontWordText.length > 22 -> 19.sp
+                                isUltraCompactCard -> 22.sp
+                                frontWordText.length > 34 -> 20.sp
+                                frontWordText.length > 22 -> 23.sp
+                                else -> 26.sp
+                            },
+                            fontWeight = FontWeight.ExtraBold,
+                            color = TextDark,
+                            textAlign = TextAlign.Center,
+                            lineHeight = when {
+                                isUltraCompactCard -> 25.sp
+                                frontWordText.length > 34 -> 25.sp
+                                frontWordText.length > 22 -> 28.sp
+                                else -> 32.sp
+                            },
+                            letterSpacing = (-0.4).sp,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(horizontal = 6.dp)
+                        )
+                        if (isReversed && word.phonetic.isNotEmpty() && !isUltraCompactCard) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = word.phonetic,
+                                fontSize = 12.5.sp,
+                                color = TextMuted
+                            )
+                        }
+                    }
+                }
+
+                // 3. Dedicated Bottom Slot: either Hint pill OR Translation card
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = hintSlotMinHeight),
+                    contentAlignment = Alignment.BottomCenter
+                ) {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = !showHintTranslation,
+                        enter = fadeIn(tween(150)) + scaleIn(initialScale = 0.92f, animationSpec = tween(150)),
+                        exit = fadeOut(tween(120)) + scaleOut(targetScale = 0.92f, animationSpec = tween(120))
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = SurfaceBg,
+                            border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .clickable(onClick = onToggleHint)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(
+                                    horizontal = 16.dp,
+                                    vertical = if (isUltraCompactCard) 7.dp else 9.dp
+                                ),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(7.dp)
+                            ) {
+                                SimpleLightbulbIcon(
+                                    tint = AppleOrange,
+                                    modifier = Modifier.size(15.dp)
+                                )
                                 Text(
-                                    text = word.phonetic,
-                                    fontSize = if (isCompactCard) 12.5.sp else 14.sp,
-                                    color = TextMuted
+                                    text = strings.showHintButton,
+                                    fontSize = if (isUltraCompactCard) 12.sp else 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = TextDark
                                 )
                             }
-                            if (!isCompactCard && word.exampleSentence.isNotEmpty()) {
-                                Text(
-                                    text = "“${word.exampleSentence}”",
-                                    fontSize = 12.sp,
-                                    fontStyle = FontStyle.Italic,
-                                    color = TextMuted,
-                                    textAlign = TextAlign.Center,
-                                    maxLines = 2
-                                )
+                        }
+                    }
+
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = showHintTranslation,
+                        enter = fadeIn(tween(180)) + scaleIn(initialScale = 0.94f, animationSpec = tween(180, easing = AppleGlideEasing)),
+                        exit = fadeOut(tween(130)) + scaleOut(targetScale = 0.94f, animationSpec = tween(130))
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = SurfaceBg,
+                            border = BorderStroke(0.5.dp, CardBorderGray),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(
+                                    horizontal = 14.dp,
+                                    vertical = if (isCompactCard) 8.dp else 12.dp
+                                ),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                val revealedText = if (isReversed) word.czech else word.english
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+                                ) {
+                                    Text(
+                                        text = revealedText,
+                                        fontSize = when {
+                                            revealedText.length > 26 -> 18.sp
+                                            isCompactCard || revealedText.length > 18 -> 20.sp
+                                            else -> 24.sp
+                                        },
+                                        lineHeight = when {
+                                            revealedText.length > 26 -> 22.sp
+                                            isCompactCard || revealedText.length > 18 -> 24.sp
+                                            else -> 28.sp
+                                        },
+                                        fontWeight = FontWeight.Bold,
+                                        color = AppleBlue,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.weight(1f, fill = false)
+                                    )
+                                    if (!isReversed) {
+                                        IconButton(
+                                            onClick = onPlayAudio,
+                                            modifier = Modifier.size(26.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                                contentDescription = null,
+                                                tint = AppleBlue
+                                            )
+                                        }
+                                    }
+                                }
+                                if (!isReversed && word.phonetic.isNotEmpty()) {
+                                    Text(
+                                        text = word.phonetic,
+                                        fontSize = if (isCompactCard) 12.5.sp else 14.sp,
+                                        color = TextMuted
+                                    )
+                                }
+                                if (!isCompactCard && word.exampleSentence.isNotEmpty()) {
+                                    Text(
+                                        text = "“${word.exampleSentence}”",
+                                        fontSize = 12.sp,
+                                        fontStyle = FontStyle.Italic,
+                                        color = TextMuted,
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 2
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
-        }
 
             if (showRecentWordsPanel) {
                 Box(
@@ -3141,8 +3250,15 @@ private fun BottomControlBar(
     enabled: Boolean,
     onSwipeDontKnow: () -> Unit,
     onToggleMic: () -> Unit,
-    onSwipeKnow: () -> Unit
+    onSwipeKnow: () -> Unit,
+    floating: Boolean = false,
+    modifier: Modifier = Modifier
 ) {
+    val coroutineScope = rememberCoroutineScope()
+    val micClickScale = remember { Animatable(1f) }
+    val dontKnowClickScale = remember { Animatable(1f) }
+    val knowClickScale = remember { Animatable(1f) }
+
     // Store animated states without reading .value during composition -> zero per-frame recomposition!
     val smoothRmsAnim = remember { Animatable(0f) }
     LaunchedEffect(animateMicWaves, rmsLevelProvider) {
@@ -3164,7 +3280,7 @@ private fun BottomControlBar(
         derivedStateOf { animateMicWaves && rmsLevelProvider() > 0.10f }
     }
     val voicePulseScaleState = animateFloatAsState(
-        targetValue = if (isVoiceActive) 1.11f else 1.0f,
+        targetValue = if (isVoiceActive) 1.10f else 1.0f,
         animationSpec = spring(
             dampingRatio = 0.80f,
             stiffness = 175f
@@ -3172,38 +3288,13 @@ private fun BottomControlBar(
         label = "voicePulseScale"
     )
     val iconVoiceScaleState = animateFloatAsState(
-        targetValue = if (isVoiceActive) 1.05f else 1.0f,
+        targetValue = if (isVoiceActive) 1.06f else 1.0f,
         animationSpec = spring(
             dampingRatio = 0.78f,
             stiffness = 185f
         ),
         label = "iconVoiceScale"
     )
-
-    // Paired closely-spaced circular ripples triggered ONLY during active speech (0 CPU when quiet)
-    val voiceWaveProgress = remember { Animatable(0f) }
-    LaunchedEffect(animateMicWaves) {
-        if (!animateMicWaves) {
-            voiceWaveProgress.snapTo(0f)
-            return@LaunchedEffect
-        }
-        snapshotFlow { isVoiceActive || smoothRmsAnim.value > 0.02f || voicePulseScaleState.value > 1.005f }
-            .collectLatest { speaking ->
-                if (speaking) {
-                    voiceWaveProgress.snapTo(0f)
-                    var cycleBase = 0f
-                    while (true) {
-                        voiceWaveProgress.animateTo(
-                            targetValue = cycleBase + 1f,
-                            animationSpec = tween(durationMillis = 1050, easing = LinearEasing)
-                        )
-                        cycleBase += 1f
-                    }
-                } else {
-                    voiceWaveProgress.snapTo(0f)
-                }
-            }
-    }
 
     val breathScaleState: State<Float>
     val wave1State: State<Float>
@@ -3251,195 +3342,202 @@ private fun BottomControlBar(
         Brush.linearGradient(listOf(Color(0xFF636366), Color(0xFF48484A)))
     }
 
+    // Unified floating capsule: center mic Y position is 100% constant in both states (zero vertical jump!)
+    // Smooth horizontal expansion with spring physics when transitioning between mic and manual mode
     Surface(
-        shape = RoundedCornerShape(40.dp),
-        color = CardSurface,
-        border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.6f)),
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(10.dp, RoundedCornerShape(40.dp), spotColor = Color.Black.copy(alpha = 0.06f))
+        shape = RoundedCornerShape(percent = 50),
+        color = CardSurface.copy(alpha = 0.95f),
+        border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.65f)),
+        modifier = modifier
+            .shadow(
+                elevation = 6.dp,
+                shape = RoundedCornerShape(percent = 50),
+                spotColor = Color.Black.copy(alpha = 0.08f)
+            )
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = 0.70f,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            )
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 13.dp),
+            modifier = Modifier.padding(
+                horizontal = if (micAutoEnabled) 10.dp else 16.dp,
+                vertical = 7.dp
+            ),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Left Button: Nevím (✕) - schová se při zapnutém mikrofonu, naskočí s bounce efektem při vypnutí
-            AnimatedVisibility(
-                visible = !micAutoEnabled,
-                enter = slideInHorizontally(
-                    initialOffsetX = { it },
-                    animationSpec = spring(dampingRatio = 0.52f, stiffness = Spring.StiffnessMediumLow)
-                ) + scaleIn(
-                    initialScale = 0.25f,
-                    animationSpec = spring(dampingRatio = 0.52f, stiffness = Spring.StiffnessMediumLow)
-                ) + fadeIn(tween(180)),
-                exit = slideOutHorizontally(
-                    targetOffsetX = { it },
-                    animationSpec = tween(160)
-                ) + scaleOut(targetScale = 0.25f, animationSpec = tween(160)) + fadeOut(tween(130))
-            ) {
-                Box(
-                    modifier = Modifier
-                        .padding(end = 24.dp)
-                        .size(64.dp)
-                        .shadow(6.dp, CircleShape, spotColor = AppleRed.copy(alpha = 0.18f))
-                        .clip(CircleShape)
-                        .background(AppleRedTint)
-                        .clickable(enabled = enabled, onClick = onSwipeDontKnow),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = CardElevatedSurface,
-                        border = BorderStroke(1.2.dp, AppleRed.copy(alpha = 0.55f)),
-                        modifier = Modifier.size(52.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = strings.badgeDontKnow,
-                                tint = AppleRed.copy(alpha = 0.88f),
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Center Circular Microphone Button with circular outward fading ripples that expand further on voice
-            Box(
-                modifier = Modifier
-                    .size(96.dp)
-                    .drawBehind {
-                        if (animateMicWaves) {
-                            val buttonRadius = 32.dp.toPx()
-                            val voice = smoothRmsAnim.value
-                            val pulseNorm = ((voicePulseScaleState.value - 1f) / 0.11f).coerceIn(0f, 1f)
-                            val energy = maxOf(voice, pulseNorm * 0.8f).coerceIn(0f, 1f)
-                            val strokePx = 1.5.dp.toPx()
-
-                            // Calm idle breathing waves fade down smoothly when active paired speech waves take over
-                            val idleMask = (1f - energy * 0.85f).coerceIn(0f, 1f)
-                            if (idleMask > 0.02f) {
-                                val idleExtra = 15.dp.toPx()
-                                val idleIntensity = 0.28f * idleMask
-                                val p1 = wave1State.value
-                                val p2 = wave2State.value
-                                for (i in 0..1) {
-                                    val p = if (i == 0) p1 else p2
-                                    val fade = (1f - p) * (1f - p)
-                                    val r = buttonRadius * 0.90f + (buttonRadius * 0.10f + idleExtra) * p
-                                    val a = (idleIntensity * fade).coerceIn(0f, 1f)
-                                    drawCircle(color = AppleBlue.copy(alpha = a * 0.45f), radius = r)
-                                    drawCircle(
-                                        color = AppleIndigo.copy(alpha = a * 0.65f),
-                                        radius = r,
-                                        style = Stroke(width = strokePx)
-                                    )
-                                }
-                            }
-
-                            // Two concentric circular waves closely following one behind the other during speech
-                            if (energy > 0.01f) {
-                                val t = voiceWaveProgress.value
-                                val voiceExtra = (20f + 8f * energy).dp.toPx()
-                                val voiceIntensity = 0.34f * energy
-                                val phases = if (t >= 0.24f) {
-                                    floatArrayOf(t % 1f, (t - 0.24f) % 1f)
-                                } else {
-                                    floatArrayOf(t)
-                                }
-                                for (rawP in phases) {
-                                    val eased = 1f - (1f - rawP) * (1f - rawP)
-                                    val fade = (1f - eased) * (1f - eased)
-                                    val r = buttonRadius * 0.92f + (buttonRadius * 0.08f + voiceExtra) * eased
-                                    val a = (voiceIntensity * fade).coerceIn(0f, 1f)
-                                    drawCircle(color = AppleBlue.copy(alpha = a * 0.42f), radius = r)
-                                    drawCircle(
-                                        color = AppleIndigo.copy(alpha = a * 0.72f),
-                                        radius = r,
-                                        style = Stroke(width = strokePx)
-                                    )
-                                }
-                            }
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .graphicsLayer {
-                            val s = breathScaleState.value * (voicePulseScaleState.value + smoothRmsAnim.value * 0.02f)
-                            scaleX = s
-                            scaleY = s
-                        }
-                        .shadow(
-                            elevation = if (micAutoEnabled) 10.dp else 6.dp,
-                            shape = CircleShape,
-                            spotColor = if (micAutoEnabled) AppleBlue.copy(alpha = 0.42f) else Color.Black.copy(alpha = 0.2f)
-                        )
-                        .clip(CircleShape)
-                        .background(if (micAutoEnabled) activeMicBrush else inactiveMicBrush)
-                        .clickable(onClick = onToggleMic),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = if (micAutoEnabled) Icons.Default.Mic else Icons.Default.MicOff,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier
-                            .size(28.dp)
-                            .graphicsLayer {
-                                val glyphScale = if (micAutoEnabled) iconVoiceScaleState.value else 1.0f
-                                scaleX = glyphScale
-                                scaleY = glyphScale
-                            }
-                    )
-                }
-            }
-
-            // Right Button: Vím (✓) - schová se při zapnutém mikrofonu, naskočí s bounce efektem při vypnutí
+            // Left Button: Nevím (✕) - Spring bounce pop-in animation
             AnimatedVisibility(
                 visible = !micAutoEnabled,
                 enter = slideInHorizontally(
                     initialOffsetX = { -it },
                     animationSpec = spring(dampingRatio = 0.52f, stiffness = Spring.StiffnessMediumLow)
                 ) + scaleIn(
-                    initialScale = 0.25f,
+                    initialScale = 0.20f,
                     animationSpec = spring(dampingRatio = 0.52f, stiffness = Spring.StiffnessMediumLow)
                 ) + fadeIn(tween(180)),
                 exit = slideOutHorizontally(
                     targetOffsetX = { -it },
-                    animationSpec = tween(160)
-                ) + scaleOut(targetScale = 0.25f, animationSpec = tween(160)) + fadeOut(tween(130))
+                    animationSpec = tween(150)
+                ) + scaleOut(
+                    targetScale = 0.20f,
+                    animationSpec = tween(150)
+                ) + fadeOut(tween(120))
             ) {
-                Box(
-                    modifier = Modifier
-                        .padding(start = 24.dp)
-                        .size(64.dp)
-                        .shadow(6.dp, CircleShape, spotColor = AppleGreen.copy(alpha = 0.18f))
-                        .clip(CircleShape)
-                        .background(AppleGreenTint)
-                        .clickable(enabled = enabled, onClick = onSwipeKnow),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = CardElevatedSurface,
-                        border = BorderStroke(1.2.dp, AppleGreen.copy(alpha = 0.55f)),
-                        modifier = Modifier.size(52.dp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .graphicsLayer {
+                                scaleX = dontKnowClickScale.value
+                                scaleY = dontKnowClickScale.value
+                            }
+                            .shadow(4.dp, CircleShape, spotColor = AppleRed.copy(alpha = 0.22f))
+                            .clip(CircleShape)
+                            .background(AppleRedTint)
+                            .clickable(
+                                enabled = enabled,
+                                onClick = {
+                                    coroutineScope.launch {
+                                        dontKnowClickScale.animateTo(0.85f, tween(60))
+                                        dontKnowClickScale.animateTo(1f, spring(dampingRatio = 0.45f))
+                                    }
+                                    onSwipeDontKnow()
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = strings.badgeKnow,
-                                tint = AppleGreen.copy(alpha = 0.88f),
-                                modifier = Modifier.size(24.dp)
-                            )
+                        Surface(
+                            shape = CircleShape,
+                            color = CardElevatedSurface,
+                            border = BorderStroke(1.2.dp, AppleRed.copy(alpha = 0.55f)),
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = strings.badgeDontKnow,
+                                    tint = AppleRed.copy(alpha = 0.88f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(14.dp))
+                }
+            }
+
+            // Center Button: Microphone
+            // Size is strictly fixed at 54.dp in BOTH states -> center Y does not move even 1 pixel!
+            // Tactile click bounce effect when pressed!
+            Box(
+                modifier = Modifier
+                    .size(54.dp)
+                    .graphicsLayer {
+                        val pulse = if (micAutoEnabled) {
+                            breathScaleState.value * (voicePulseScaleState.value + smoothRmsAnim.value * 0.02f)
+                        } else {
+                            1.0f
+                        }
+                        val s = pulse * micClickScale.value
+                        scaleX = s
+                        scaleY = s
+                    }
+                    .shadow(
+                        elevation = if (micAutoEnabled) (if (isVoiceActive) 10.dp else 6.dp) else 4.dp,
+                        shape = CircleShape,
+                        spotColor = if (micAutoEnabled) {
+                            AppleBlue.copy(alpha = if (isVoiceActive) 0.55f else 0.35f)
+                        } else {
+                            Color.Black.copy(alpha = 0.18f)
+                        }
+                    )
+                    .clip(CircleShape)
+                    .background(if (micAutoEnabled) activeMicBrush else inactiveMicBrush)
+                    .clickable(
+                        onClick = {
+                            coroutineScope.launch {
+                                micClickScale.animateTo(0.84f, tween(65, easing = FastOutSlowInEasing))
+                                micClickScale.animateTo(1f, spring(dampingRatio = 0.42f, stiffness = Spring.StiffnessMedium))
+                            }
+                            onToggleMic()
+                        }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (micAutoEnabled) Icons.Default.Mic else Icons.Default.MicOff,
+                    contentDescription = if (micAutoEnabled) "Mikrofon zapnutý" else "Mikrofon vypnutý",
+                    tint = Color.White,
+                    modifier = Modifier
+                        .size(25.dp)
+                        .graphicsLayer {
+                            val glyphScale = if (micAutoEnabled) iconVoiceScaleState.value else 1.0f
+                            scaleX = glyphScale
+                            scaleY = glyphScale
+                        }
+                )
+            }
+
+            // Right Button: Vím (✓) - Spring bounce pop-in animation
+            AnimatedVisibility(
+                visible = !micAutoEnabled,
+                enter = slideInHorizontally(
+                    initialOffsetX = { it },
+                    animationSpec = spring(dampingRatio = 0.52f, stiffness = Spring.StiffnessMediumLow)
+                ) + scaleIn(
+                    initialScale = 0.20f,
+                    animationSpec = spring(dampingRatio = 0.52f, stiffness = Spring.StiffnessMediumLow)
+                ) + fadeIn(tween(180)),
+                exit = slideOutHorizontally(
+                    targetOffsetX = { it },
+                    animationSpec = tween(150)
+                ) + scaleOut(
+                    targetScale = 0.20f,
+                    animationSpec = tween(150)
+                ) + fadeOut(tween(120))
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .graphicsLayer {
+                                scaleX = knowClickScale.value
+                                scaleY = knowClickScale.value
+                            }
+                            .shadow(4.dp, CircleShape, spotColor = AppleGreen.copy(alpha = 0.22f))
+                            .clip(CircleShape)
+                            .background(AppleGreenTint)
+                            .clickable(
+                                enabled = enabled,
+                                onClick = {
+                                    coroutineScope.launch {
+                                        knowClickScale.animateTo(0.85f, tween(60))
+                                        knowClickScale.animateTo(1f, spring(dampingRatio = 0.45f))
+                                    }
+                                    onSwipeKnow()
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = CardElevatedSurface,
+                            border = BorderStroke(1.2.dp, AppleGreen.copy(alpha = 0.55f)),
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = strings.badgeKnow,
+                                    tint = AppleGreen.copy(alpha = 0.88f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
                     }
                 }
