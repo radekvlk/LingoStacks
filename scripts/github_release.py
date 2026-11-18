@@ -5,22 +5,20 @@ import mimetypes
 
 TOKEN_PATH = r"C:\Users\radek.vlk\.gemini\antigravity\brain\43b0acd7-1097-4287-b01f-eedb0d465b28\scratch\github_token.txt"
 REPO = "radekvlk/LingoStacks"
-TAG = "v1.0.11"
-NAME = "LingoStacks v1.0.11 (Build 117)"
+TAG = "v1.0.12"
+NAME = "LingoStacks v1.0.12 (Build 118)"
 
-BODY = """versionCode: 117
+BODY = """versionCode: 118
 
 [CS]
-• **Optimalizace pro velká písma (Accessibility & Large Fonts):** Karta se slovíčkem si nyní vždy drží maximální velikost, čitelnost a centrální postavení bez ořezu. Při zvětšeném systémovém písmu se horní panel a hlasový banner inteligentně přizpůsobí do kompaktního režimu a stav upevnění slova v paměti se elegantně přesune do horního odznáčku karty.
-• **Stabilní plovoucí ovládací panel (Bottom Control Bar):** Odstraněno lepení ovládacího baru na spodní kartu paměti — přidán garantovaný 14dp odstup. Mikrofon má v obou režimech (aktivní poslech i manuální režim) naprosto identický rozměr (54 dp) a přesně ukotvenou svislou osu Y (0,0 px svislý skok při přepínání).
-• **Taktilní pružinové animace (Spring & Bounce physics):** Při přepnutí do manuálního režimu se kontejner plynule rozšíří s pružinovým tlumením a tlačítka [✕] a [✓] naskočí s hravým spring pop-in efektem ze stran. Klepnutí na samotný mikrofon má taktilní kompresní odezvu (bounce squash & spring back).
-• **Širokoúhlý jiskřivý particle burst:** Zlaté a smaragdové částice při splnění denního limitu se nyní volně rozletují do prostoru bez oříznutí hranou odznaku.
+• **Symetrický plovoucí mikrofon (100% fixní střed & čistý bounce):** Mikrofon je nyní pevně ukotven přesně v geometrickém středu obrazovky (Alignment.Center). Při přepínání mezi poslechem a manuálním režimem se jeho pozice nehne ani o 0,0 px (odstraněno jakékoliv ujíždění do stran či pocit přijíždění zleva). Tlačítka [✕] a [✓] se plynule a symetricky vysouvají zpoza mikrofonu na obě strany. Kliknutí na mikrofon má přirozený taktilní pružinový stisk na místě (tactile bounce).
+• **Kompaktní odznak denního limitu při jiskřičkách:** Opraveno roztahování zeleného obdélníku s čísly při splnění cíle. Odznak si drží čistou pevnou velikost přesně podle textu, zatímco zlaté a smaragdové částice volně vyletují do prostoru bez oříznutí.
+• **Optimalizace pro velká písma (Accessibility & Large Fonts):** Karta se slovíčkem si drží maximální velikost, čitelnost a centrální postavení bez ořezu.
 
 [EN]
-• **Accessibility & Large System Fonts Optimization:** Flashcard content maintains maximum visibility, scale, and center prominence without clipping. With larger system fonts, top bar and speech banner adapt into a space-efficient compact layout, while memory progress neatly moves into the card's top header badge.
-• **Stable Floating Control Bar (Zero Vertical Jump):** Completely eliminated collision with bottom cards by guaranteeing a clean 14dp breathing gap. The microphone button maintains the exact same 54dp size and vertical Y center in both voice and manual modes (0.0 px vertical shift).
-• **Tactile Spring & Bounce Animations:** Switching to manual mode smoothly expands the capsule island with iOS spring physics, popping in the [✕] and [✓] action buttons with spring bounce. Tapping the mic button delivers tactile elastic compression and spring back.
-• **Unconstrained Sparkle Particle Burst:** Golden & emerald celebratory particles on daily goal completion now expand freely across the screen without clipping.
+• **Symmetrical Floating Mic Island (100% Fixed Center & In-Place Bounce):** The microphone is anchored to the exact screen center at all times. Switching between voice listening and manual mode maintains 0.0 px horizontal and vertical movement (completely eliminated any sideways drift). Action buttons [✕] and [✓] smoothly emerge symmetrically from behind the center mic. Tapping the mic provides a tactile elastic in-place bounce.
+• **Fixed Daily Goal Badge Bounds During Particle Burst:** Prevented the goal badge rectangle from stretching during celebration. The pill badge maintains its compact bounds while gold and emerald sparkle particles burst freely into the surrounding space.
+• **Large System Fonts Optimization:** Flashcard content keeps maximum prominence and scale without clipping under any accessibility font settings.
 """
 
 def main():
@@ -74,9 +72,9 @@ def main():
 
     # 2. Upload APK assets
     apk_paths = [
-        ("LingoStacks_v1.0.11.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.11.apk"),
-        ("LingoStacks.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.11.apk"),
-        ("LingoStacks_v1.0.11_playstore.aab", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.11_playstore.aab")
+        ("LingoStacks_v1.0.12.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.12.apk"),
+        ("LingoStacks.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.12.apk"),
+        ("LingoStacks_v1.0.12_playstore.aab", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.12_playstore.aab")
     ]
 
     # Delete existing asset with same name if any

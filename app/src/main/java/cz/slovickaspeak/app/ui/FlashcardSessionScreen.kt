@@ -1706,13 +1706,63 @@ private fun DailyGoalCelebrationBadge(
 
     Box(
         contentAlignment = Alignment.Center,
-        modifier = modifier
+        modifier = modifier.graphicsLayer(clip = false)
     ) {
-        // Sparkle Particle Burst - drawn outside the Surface pill without clipping!
+        // Interactive Pill Badge - natural compact size, NEVER stretched by particles!
+        Surface(
+            shape = RoundedCornerShape(50),
+            color = if (goalReached) AppleGreen.copy(alpha = glowAlpha.value.coerceIn(0f, 0.4f)) else Color.Transparent,
+            modifier = Modifier
+                .scale(bounceScale.value)
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) {
+                    if (goalReached) {
+                        triggerCelebration = true
+                    }
+                }
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                val goalColor = if (goalReached) AppleGreen else AppleBlue
+                val iconTint = if (goalReached) Color(0xFFFFB300) else AppleBlue
+                Icon(
+                    imageVector = if (goalReached) Icons.Filled.EmojiEvents else Icons.Filled.TrackChanges,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier
+                        .size(13.5.dp)
+                        .graphicsLayer {
+                            rotationZ = iconRotation.value
+                        }
+                )
+                val isLargeFont = LocalDensity.current.fontScale > 1.15f
+                Text(
+                    text = if (isCzech) {
+                        if (isLargeFont) "Dnes: $todayCompletedWords/$dailyGoalWords"
+                        else "Dnes: $todayCompletedWords / $dailyGoalWords"
+                    } else {
+                        if (isLargeFont) "Today: $todayCompletedWords/$dailyGoalWords"
+                        else "Today: $todayCompletedWords / $dailyGoalWords"
+                    },
+                    fontWeight = FontWeight.Bold,
+                    fontSize = if (isLargeFont) 11.sp else 11.5.sp,
+                    color = goalColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        // Sparkle Particle Burst - uses matchParentSize so it NEVER alters the badge dimensions!
         if (particleProgress.value in 0.001f..0.999f) {
             Canvas(
                 modifier = Modifier
-                    .size(280.dp, 160.dp)
+                    .matchParentSize()
                     .graphicsLayer(clip = false)
             ) {
                 val p = particleProgress.value
@@ -1792,56 +1842,6 @@ private fun DailyGoalCelebrationBadge(
                         )
                     }
                 }
-            }
-        }
-
-        // Interactive Pill Badge
-        Surface(
-            shape = RoundedCornerShape(50),
-            color = if (goalReached) AppleGreen.copy(alpha = glowAlpha.value.coerceIn(0f, 0.4f)) else Color.Transparent,
-            modifier = Modifier
-                .scale(bounceScale.value)
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() }
-                ) {
-                    if (goalReached) {
-                        triggerCelebration = true
-                    }
-                }
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-            ) {
-                val goalColor = if (goalReached) AppleGreen else AppleBlue
-                val iconTint = if (goalReached) Color(0xFFFFB300) else AppleBlue
-                Icon(
-                    imageVector = if (goalReached) Icons.Filled.EmojiEvents else Icons.Filled.TrackChanges,
-                    contentDescription = null,
-                    tint = iconTint,
-                    modifier = Modifier
-                        .size(13.5.dp)
-                        .graphicsLayer {
-                            rotationZ = iconRotation.value
-                        }
-                )
-                val isLargeFont = LocalDensity.current.fontScale > 1.15f
-                Text(
-                    text = if (isCzech) {
-                        if (isLargeFont) "Dnes: $todayCompletedWords/$dailyGoalWords"
-                        else "Dnes: $todayCompletedWords / $dailyGoalWords"
-                    } else {
-                        if (isLargeFont) "Today: $todayCompletedWords/$dailyGoalWords"
-                        else "Today: $todayCompletedWords / $dailyGoalWords"
-                    },
-                    fontWeight = FontWeight.Bold,
-                    fontSize = if (isLargeFont) 11.sp else 11.5.sp,
-                    color = goalColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
             }
         }
     }
@@ -3342,8 +3342,20 @@ private fun BottomControlBar(
         Brush.linearGradient(listOf(Color(0xFF636366), Color(0xFF48484A)))
     }
 
-    // Unified floating capsule: center mic Y position is 100% constant in both states (zero vertical jump!)
-    // Smooth horizontal expansion with spring physics when transitioning between mic and manual mode
+    // Symmetrical expansion progress: 0f = compact circle (mic only), 1f = 3-button island [✕] [🎤] [✓]
+    val expandProgress by animateFloatAsState(
+        targetValue = if (!micAutoEnabled) 1f else 0f,
+        animationSpec = spring(
+            dampingRatio = 0.72f,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "controlBarExpand"
+    )
+
+    val capsuleWidth = 68.dp + (138.dp * expandProgress)
+    val density = LocalDensity.current
+    val travelDistancePx = with(density) { 64.dp.toPx() }
+
     Surface(
         shape = RoundedCornerShape(percent = 50),
         color = CardSurface.copy(alpha = 0.95f),
@@ -3354,87 +3366,113 @@ private fun BottomControlBar(
                 shape = RoundedCornerShape(percent = 50),
                 spotColor = Color.Black.copy(alpha = 0.08f)
             )
-            .animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = 0.70f,
-                    stiffness = Spring.StiffnessMediumLow
-                )
-            )
+            .width(capsuleWidth)
+            .height(68.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(
-                horizontal = if (micAutoEnabled) 10.dp else 16.dp,
-                vertical = 7.dp
-            ),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
         ) {
-            // Left Button: Nevím (✕) - Spring bounce pop-in animation
-            AnimatedVisibility(
-                visible = !micAutoEnabled,
-                enter = slideInHorizontally(
-                    initialOffsetX = { -it },
-                    animationSpec = spring(dampingRatio = 0.52f, stiffness = Spring.StiffnessMediumLow)
-                ) + scaleIn(
-                    initialScale = 0.20f,
-                    animationSpec = spring(dampingRatio = 0.52f, stiffness = Spring.StiffnessMediumLow)
-                ) + fadeIn(tween(180)),
-                exit = slideOutHorizontally(
-                    targetOffsetX = { -it },
-                    animationSpec = tween(150)
-                ) + scaleOut(
-                    targetScale = 0.20f,
-                    animationSpec = tween(150)
-                ) + fadeOut(tween(120))
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(46.dp)
-                            .graphicsLayer {
-                                scaleX = dontKnowClickScale.value
-                                scaleY = dontKnowClickScale.value
-                            }
-                            .shadow(4.dp, CircleShape, spotColor = AppleRed.copy(alpha = 0.22f))
-                            .clip(CircleShape)
-                            .background(AppleRedTint)
-                            .clickable(
-                                enabled = enabled,
-                                onClick = {
-                                    coroutineScope.launch {
-                                        dontKnowClickScale.animateTo(0.85f, tween(60))
-                                        dontKnowClickScale.animateTo(1f, spring(dampingRatio = 0.45f))
-                                    }
-                                    onSwipeDontKnow()
+            // Left Button: Nevím (✕)
+            // Symmetrically emerges from behind the center mic to the left by 64dp
+            if (expandProgress > 0.005f) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .graphicsLayer {
+                            translationX = -travelDistancePx * expandProgress
+                            val s = (0.25f + 0.75f * expandProgress) * dontKnowClickScale.value
+                            scaleX = s
+                            scaleY = s
+                            alpha = expandProgress.coerceIn(0f, 1f)
+                        }
+                        .size(46.dp)
+                        .shadow(4.dp, CircleShape, spotColor = AppleRed.copy(alpha = 0.22f))
+                        .clip(CircleShape)
+                        .background(AppleRedTint)
+                        .clickable(
+                            enabled = enabled && !micAutoEnabled && expandProgress > 0.8f,
+                            onClick = {
+                                coroutineScope.launch {
+                                    dontKnowClickScale.animateTo(0.85f, tween(60))
+                                    dontKnowClickScale.animateTo(1f, spring(dampingRatio = 0.45f))
                                 }
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = CardElevatedSurface,
-                            border = BorderStroke(1.2.dp, AppleRed.copy(alpha = 0.55f)),
-                            modifier = Modifier.size(38.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = strings.badgeDontKnow,
-                                    tint = AppleRed.copy(alpha = 0.88f),
-                                    modifier = Modifier.size(20.dp)
-                                )
+                                onSwipeDontKnow()
                             }
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = CardElevatedSurface,
+                        border = BorderStroke(1.2.dp, AppleRed.copy(alpha = 0.55f)),
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = strings.badgeDontKnow,
+                                tint = AppleRed.copy(alpha = 0.88f),
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
                     }
-                    Spacer(modifier = Modifier.width(14.dp))
+                }
+            }
+
+            // Right Button: Vím (✓)
+            // Symmetrically emerges from behind the center mic to the right by 64dp
+            if (expandProgress > 0.005f) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .graphicsLayer {
+                            translationX = travelDistancePx * expandProgress
+                            val s = (0.25f + 0.75f * expandProgress) * knowClickScale.value
+                            scaleX = s
+                            scaleY = s
+                            alpha = expandProgress.coerceIn(0f, 1f)
+                        }
+                        .size(46.dp)
+                        .shadow(4.dp, CircleShape, spotColor = AppleGreen.copy(alpha = 0.22f))
+                        .clip(CircleShape)
+                        .background(AppleGreenTint)
+                        .clickable(
+                            enabled = enabled && !micAutoEnabled && expandProgress > 0.8f,
+                            onClick = {
+                                coroutineScope.launch {
+                                    knowClickScale.animateTo(0.85f, tween(60))
+                                    knowClickScale.animateTo(1f, spring(dampingRatio = 0.45f))
+                                }
+                                onSwipeKnow()
+                            }
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = CardElevatedSurface,
+                        border = BorderStroke(1.2.dp, AppleGreen.copy(alpha = 0.55f)),
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = strings.badgeKnow,
+                                tint = AppleGreen.copy(alpha = 0.88f),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
                 }
             }
 
             // Center Button: Microphone
-            // Size is strictly fixed at 54.dp in BOTH states -> center Y does not move even 1 pixel!
-            // Tactile click bounce effect when pressed!
+            // Anchored strictly at Alignment.Center -> ZERO horizontal and ZERO vertical shift!
+            // Tactile click bounce in place!
             Box(
                 modifier = Modifier
+                    .align(Alignment.Center)
                     .size(54.dp)
                     .graphicsLayer {
                         val pulse = if (micAutoEnabled) {
@@ -3460,7 +3498,7 @@ private fun BottomControlBar(
                     .clickable(
                         onClick = {
                             coroutineScope.launch {
-                                micClickScale.animateTo(0.84f, tween(65, easing = FastOutSlowInEasing))
+                                micClickScale.animateTo(0.86f, tween(60, easing = FastOutSlowInEasing))
                                 micClickScale.animateTo(1f, spring(dampingRatio = 0.42f, stiffness = Spring.StiffnessMedium))
                             }
                             onToggleMic()
@@ -3480,67 +3518,6 @@ private fun BottomControlBar(
                             scaleY = glyphScale
                         }
                 )
-            }
-
-            // Right Button: Vím (✓) - Spring bounce pop-in animation
-            AnimatedVisibility(
-                visible = !micAutoEnabled,
-                enter = slideInHorizontally(
-                    initialOffsetX = { it },
-                    animationSpec = spring(dampingRatio = 0.52f, stiffness = Spring.StiffnessMediumLow)
-                ) + scaleIn(
-                    initialScale = 0.20f,
-                    animationSpec = spring(dampingRatio = 0.52f, stiffness = Spring.StiffnessMediumLow)
-                ) + fadeIn(tween(180)),
-                exit = slideOutHorizontally(
-                    targetOffsetX = { it },
-                    animationSpec = tween(150)
-                ) + scaleOut(
-                    targetScale = 0.20f,
-                    animationSpec = tween(150)
-                ) + fadeOut(tween(120))
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Box(
-                        modifier = Modifier
-                            .size(46.dp)
-                            .graphicsLayer {
-                                scaleX = knowClickScale.value
-                                scaleY = knowClickScale.value
-                            }
-                            .shadow(4.dp, CircleShape, spotColor = AppleGreen.copy(alpha = 0.22f))
-                            .clip(CircleShape)
-                            .background(AppleGreenTint)
-                            .clickable(
-                                enabled = enabled,
-                                onClick = {
-                                    coroutineScope.launch {
-                                        knowClickScale.animateTo(0.85f, tween(60))
-                                        knowClickScale.animateTo(1f, spring(dampingRatio = 0.45f))
-                                    }
-                                    onSwipeKnow()
-                                }
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = CardElevatedSurface,
-                            border = BorderStroke(1.2.dp, AppleGreen.copy(alpha = 0.55f)),
-                            modifier = Modifier.size(38.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = strings.badgeKnow,
-                                    tint = AppleGreen.copy(alpha = 0.88f),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-                    }
-                }
             }
         }
     }
