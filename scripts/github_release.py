@@ -5,20 +5,24 @@ import mimetypes
 
 TOKEN_PATH = r"C:\Users\radek.vlk\.gemini\antigravity\brain\43b0acd7-1097-4287-b01f-eedb0d465b28\scratch\github_token.txt"
 REPO = "radekvlk/LingoStacks"
-TAG = "v1.0.12"
-NAME = "LingoStacks v1.0.12 (Build 118)"
+TAG = "v1.0.14"
+NAME = "LingoStacks v1.0.14 (Build 120)"
 
-BODY = """versionCode: 118
+BODY = """versionCode: 120
 
 [CS]
-• **Symetrický plovoucí mikrofon (100% fixní střed & čistý bounce):** Mikrofon je nyní pevně ukotven přesně v geometrickém středu obrazovky (Alignment.Center). Při přepínání mezi poslechem a manuálním režimem se jeho pozice nehne ani o 0,0 px (odstraněno jakékoliv ujíždění do stran či pocit přijíždění zleva). Tlačítka [✕] a [✓] se plynule a symetricky vysouvají zpoza mikrofonu na obě strany. Kliknutí na mikrofon má přirozený taktilní pružinový stisk na místě (tactile bounce).
-• **Kompaktní odznak denního limitu při jiskřičkách:** Opraveno roztahování zeleného obdélníku s čísly při splnění cíle. Odznak si drží čistou pevnou velikost přesně podle textu, zatímco zlaté a smaragdové částice volně vyletují do prostoru bez oříznutí.
-• **Optimalizace pro velká písma (Accessibility & Large Fonts):** Karta se slovíčkem si drží maximální velikost, čitelnost a centrální postavení bez ořezu.
+• **Ukazatel pozice v žebříčku:** Přímo v záhlaví i na připnuté kartě v žebříčku vidíte své přesné umístění (#X z N hráčů), počet XP i dynamický odstup na hráče před vámi. Není potřeba nikam rolovat ani se hledat v dlouhém seznamu.
+• **Oprava odkazu na offline balíčky řeči:** Tlačítko v nastavení nyní otevírá přímo hlasové nastavení Google / správu klávesnic namísto chybného přesměrování na výběr digitálního asistenta.
+• **Oprava denního cíle a popisků:** Tlačítko Zopakovat chyby již nepřepisuje denní cíl a statistická dlaždice nese jasný popisek „Dnes splněno“.
+• **Výslovnostní homofon kravata (tie / thai):** Bezpečné uznání slova tie i při izolovaném rozpoznání jako Thai.
+• **Úprava textu v nastavení:** Odstraněn matoucí technický pojem bounce.
 
 [EN]
-• **Symmetrical Floating Mic Island (100% Fixed Center & In-Place Bounce):** The microphone is anchored to the exact screen center at all times. Switching between voice listening and manual mode maintains 0.0 px horizontal and vertical movement (completely eliminated any sideways drift). Action buttons [✕] and [✓] smoothly emerge symmetrically from behind the center mic. Tapping the mic provides a tactile elastic in-place bounce.
-• **Fixed Daily Goal Badge Bounds During Particle Burst:** Prevented the goal badge rectangle from stretching during celebration. The pill badge maintains its compact bounds while gold and emerald sparkle particles burst freely into the surrounding space.
-• **Large System Fonts Optimization:** Flashcard content keeps maximum prominence and scale without clipping under any accessibility font settings.
+• **Leaderboard User Rank Indicator:** Prominent pinned card in the leaderboard section displays your exact ranking (#X of N learners), your period XP, and dynamic gap to the player ahead.
+• **Fixed Offline Speech Pack Settings Link:** Direct navigation to Google speech / keyboard settings without redirecting to the digital assistant selection screen.
+• **Fixed Daily Goal & Clarified Stats:** Retrying missed cards never overwrites the user's daily goal setting, and the stat tile is clearly labeled "Today's Progress".
+• **Pronunciation Homophone 'tie' / 'thai':** Reliable acceptance of 'tie' even when Google STT transcribes isolated audio as 'Thai'.
+• **Updated Settings Copy:** Removed the technical term 'bounce'.
 """
 
 def main():
@@ -72,9 +76,9 @@ def main():
 
     # 2. Upload APK assets
     apk_paths = [
-        ("LingoStacks_v1.0.12.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.12.apk"),
-        ("LingoStacks.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.12.apk"),
-        ("LingoStacks_v1.0.12_playstore.aab", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.12_playstore.aab")
+        ("LingoStacks_v1.0.14.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.14.apk"),
+        ("LingoStacks.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.14.apk"),
+        ("LingoStacks_v1.0.14_playstore.aab", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.14_playstore.aab")
     ]
 
     # Delete existing asset with same name if any

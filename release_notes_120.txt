@@ -1,0 +1,10 @@
+<cs-CZ>
+• Ukazatel pozice v žebříčku: připnutá karta vaší pozice (#X z N hráčů) s odznakem, XP a odstupem na dalšího soupeře
+• Oprava odkazu na offline balíčky řeči: přímé otevření nastavení Google řeči bez přesměrování na asistenta
+• Úprava popisku v nastavení aplikace (odstraněno slovo bounce)
+</cs-CZ>
+<en-GB>
+• Leaderboard user rank indicator: pinned card showing your exact position (#X of N) with rank badge, XP and gap to next rival
+• Fixed offline speech pack link in settings: directly opens Google speech settings without redirecting to digital assistant
+• Updated settings copy (removed technical term bounce)
+</en-GB>
