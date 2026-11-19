@@ -502,7 +502,7 @@ fun AppleFullSettingsDialog(
                                 )
                                 AppleInsetToggleRow(
                                     title = if (strings.isCzech) "Zobrazení slova po odpovědi" else "Word Display After Answer",
-                                    subtitle = if (strings.isCzech) "Po odjezdu karty ukáže bounce okno se slovem." else "Shows a bounce bubble with the word between cards.",
+                                    subtitle = if (strings.isCzech) "Po odjezdu karty ukáže okno se slovem." else "Shows a window with the word between cards.",
                                     checked = progressState.pauseCardWhileSpeaking,
                                     onCheckedChange = { progressState.updatePauseCardWhileSpeaking(it) },
                                     vectorIcon = Icons.Filled.Visibility,
@@ -1312,28 +1312,48 @@ fun VoiceRecognitionGuideDialog(
 fun openVoiceRecognitionSettings(context: android.content.Context) {
     val intents = mutableListOf<Intent>()
 
-    // Intent 1: Android Voice Input settings
-    try {
-        intents.add(Intent(android.provider.Settings.ACTION_VOICE_INPUT_SETTINGS).apply {
+    // Priority 1: Direct Google Voice Search / Offline Language Pack settings
+    val directGoogleComponents = listOf(
+        android.content.ComponentName("com.google.android.googlequicksearchbox", "com.google.android.apps.gsa.settingsui.VoiceSearchPreferences"),
+        android.content.ComponentName("com.google.android.googlequicksearchbox", "com.google.android.voicesearch.greco3.languagepack.InstallActivity"),
+        android.content.ComponentName("com.google.android.googlequicksearchbox", "com.google.android.apps.gsa.velvet.ui.settings.VoiceSearchPreferences"),
+        android.content.ComponentName("com.google.android.voicesearch", "com.google.android.voicesearch.VoiceSearchPreferences"),
+        android.content.ComponentName("com.google.android.googlequicksearchbox", "com.google.android.voicesearch.VoiceSearchPreferences")
+    )
+    for (comp in directGoogleComponents) {
+        intents.add(Intent(Intent.ACTION_MAIN).apply {
+            component = comp
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         })
-    } catch (_: Throwable) {}
+    }
 
-    // Intent 2: Android standard speech recognition management action string
-    try {
-        intents.add(Intent("android.speech.action.MANAGE_SPEECH_RECOGNITION").apply {
+    // Priority 2: Speech Services by Google / Gboard Voice typing settings
+    val auxiliaryComponents = listOf(
+        android.content.ComponentName("com.google.android.tts", "com.google.android.apps.speech.tts.googletts.settings.GoogleTtsSettingsActivity"),
+        android.content.ComponentName("com.google.android.inputmethod.latin", "com.google.android.apps.inputmethod.latin.preference.SettingsActivity")
+    )
+    for (comp in auxiliaryComponents) {
+        intents.add(Intent(Intent.ACTION_MAIN).apply {
+            component = comp
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         })
-    } catch (_: Throwable) {}
+    }
 
-    // Intent 3: Input method / keyboard settings (which has Voice typing)
+    // Priority 3: Manage keyboards / Input method settings (shows Google Voice Typing & Gboard with gear icon)
     try {
         intents.add(Intent(android.provider.Settings.ACTION_INPUT_METHOD_SETTINGS).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         })
     } catch (_: Throwable) {}
 
-    // Intent 4: General system settings
+    // Priority 4: System Language settings
+    try {
+        intents.add(Intent(android.provider.Settings.ACTION_LOCALE_SETTINGS).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        })
+    } catch (_: Throwable) {}
+
+    // Priority 5: General system settings
     try {
         intents.add(Intent(android.provider.Settings.ACTION_SETTINGS).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -2175,9 +2195,9 @@ private fun CardExitSpeedSectionCard(
     SettingsSwitchCard(
         title = if (strings.isCzech) "Zobrazení slova po odpovědi" else "Word Display After Answer",
         subtitle = if (strings.isCzech) {
-            "Po odjezdu karty ukáže bounce okno se slovem; vypnuté přejde ihned na další kartu."
+            "Po odjezdu karty ukáže okno se slovem; vypnuté přejde ihned na další kartu."
         } else {
-            "Shows a bounce bubble with the word between cards; turn off for an instant transition."
+            "Shows a window with the word between cards; turn off for an instant transition."
         },
         checked = pauseWhileSpeaking,
         onCheckedChange = onSelectPauseWhileSpeaking,
