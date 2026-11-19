@@ -584,6 +584,11 @@ fun DailyLeaderboardSectionCard(
     }?.coerceAtLeast(10) ?: 10
     var expandedEntryId by remember { mutableStateOf<String?>(null) }
 
+    val myIndex = activeEntries.indexOfFirst { it.isCurrentUser }
+    val myEntry = if (myIndex >= 0) activeEntries[myIndex] else null
+    val myRank = if (myIndex >= 0) myIndex + 1 else null
+    val totalParticipants = activeEntries.size
+
     Surface(
         shape = RoundedCornerShape(20.dp),
         color = CardSurface,
@@ -624,6 +629,30 @@ fun DailyLeaderboardSectionCard(
                             fontWeight = FontWeight.Bold,
                             color = TextDark
                         )
+                        if (isSignedIn && myRank != null) {
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = when (myRank) {
+                                    1 -> Color(0xFFE5A100).copy(alpha = 0.2f)
+                                    2 -> Color(0xFF8E8E93).copy(alpha = 0.2f)
+                                    3 -> Color(0xFFCD7F32).copy(alpha = 0.2f)
+                                    else -> AppleBlue.copy(alpha = 0.15f)
+                                }
+                            ) {
+                                Text(
+                                    text = if (strings.isCzech) "#$myRank z $totalParticipants" else "#$myRank of $totalParticipants",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = when (myRank) {
+                                        1 -> Color(0xFFB27B00)
+                                        2 -> Color(0xFF636366)
+                                        3 -> Color(0xFFA0522D)
+                                        else -> AppleBlue
+                                    },
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
                     }
                     Text(
                         text = when {
@@ -726,6 +755,134 @@ fun DailyLeaderboardSectionCard(
                         fontSize = 12.sp,
                         color = TextMuted,
                         modifier = Modifier.padding(14.dp)
+                    )
+                }
+            } else if (myEntry != null && myRank != null) {
+                val myPeriodXp = if (selectedPeriod == LeaderboardPeriod.TODAY) myEntry.todayXp else myEntry.weeklyXp
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = AppleBlueTint,
+                    border = BorderStroke(1.2.dp, AppleBlue.copy(alpha = 0.55f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickable {
+                            expandedEntryId = if (expandedEntryId == myEntry.id) null else myEntry.id
+                        }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 11.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        when (myRank) {
+                                            1 -> Color(0xFFE5A100)
+                                            2 -> Color(0xFF8E8E93)
+                                            3 -> Color(0xFFCD7F32)
+                                            else -> AppleBlue
+                                        }
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "#$myRank",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color.White
+                                )
+                            }
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = if (strings.isCzech) "Vaše pozice: $myRank. z $totalParticipants" else "Your Rank: #$myRank of $totalParticipants",
+                                        fontSize = 13.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = AppleBlueDark
+                                    )
+                                    Surface(
+                                        shape = RoundedCornerShape(50),
+                                        color = AppleBlue.copy(alpha = 0.18f)
+                                    ) {
+                                        Text(
+                                            text = if (strings.isCzech) "Vy" else "You",
+                                            fontSize = 9.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = AppleBlue,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.5.dp)
+                                        )
+                                    }
+                                }
+                                val motivationText = when {
+                                    myRank == 1 ->
+                                        if (strings.isCzech) "🥇 Skvělá práce, vedete žebříček!" else "🥇 Great job, leading the leaderboard!"
+                                    myRank in 2..3 ->
+                                        if (strings.isCzech) "Jste na stupních vítězů! 🏆" else "On the podium! 🏆"
+                                    else -> {
+                                        val aheadEntry = activeEntries.getOrNull(myIndex - 1)
+                                        if (aheadEntry != null) {
+                                            val aheadXp = if (selectedPeriod == LeaderboardPeriod.TODAY) aheadEntry.todayXp else aheadEntry.weeklyXp
+                                            val diff = (aheadXp - myPeriodXp).coerceAtLeast(1)
+                                            if (strings.isCzech) "Ještě $diff XP a posunete se na ${myRank - 1}. místo"
+                                            else "$diff XP to reach rank #${myRank - 1}"
+                                        } else {
+                                            if (strings.isCzech) "Mluvte pro zisk XP a posun výše"
+                                            else "Speak to earn XP and climb up"
+                                        }
+                                    }
+                                }
+                                Text(
+                                    text = motivationText,
+                                    fontSize = 11.sp,
+                                    color = TextMuted,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = AppleBlue
+                        ) {
+                            Text(
+                                text = "$myPeriodXp XP",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp, bottom = 2.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (strings.isCzech) "Kompletní pořadí ($totalParticipants hráčů)" else "All Rankings ($totalParticipants learners)",
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextMuted
                     )
                 }
             }
