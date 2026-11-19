@@ -236,6 +236,7 @@ object WordMatcher {
         setOf("heal", "heel"),
         setOf("steal", "steel"),
         setOf("tail", "tale"),
+        setOf("tie", "thai", "tye", "ty"),
         setOf("way", "weigh"),
         setOf("which", "witch"),
         setOf("root", "route"),
