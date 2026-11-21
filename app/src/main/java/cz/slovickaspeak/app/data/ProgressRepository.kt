@@ -381,6 +381,16 @@ class ProgressStateHolder(context: Context) {
         if (isReversed) "${wordId}__rev" else wordId
 
     private fun isWordMastered(wordId: String, useReversed: Boolean): Boolean {
+        if (studyDirection == cz.slovickaspeak.app.model.StudyDirection.MIXED) {
+            val fwdKey = srsKey(wordId, false)
+            val revKey = srsKey(wordId, true)
+            val fwdStat = wordSrsMap[fwdKey]
+            val revStat = wordSrsMap[revKey]
+            val fwdMastered = (fwdStat != null && fwdStat.box >= 1 && fwdKey !in needsReviewWordIds) ||
+                (fwdStat == null && wordId in masteredWordIds && fwdKey !in needsReviewWordIds)
+            val revMastered = revStat != null && revStat.box >= 1 && revKey !in needsReviewWordIds
+            return fwdMastered || revMastered
+        }
         val key = srsKey(wordId, useReversed)
         val stat = wordSrsMap[key]
         return (stat != null && stat.box >= 1 && key !in needsReviewWordIds) ||
@@ -388,9 +398,26 @@ class ProgressStateHolder(context: Context) {
     }
 
     private fun isWordNeedsReview(wordId: String, useReversed: Boolean, now: Long): Boolean {
+        if (studyDirection == cz.slovickaspeak.app.model.StudyDirection.MIXED) {
+            val fwdKey = srsKey(wordId, false)
+            val revKey = srsKey(wordId, true)
+            val fwdStat = wordSrsMap[fwdKey]
+            val revStat = wordSrsMap[revKey]
+            val fwdNeeds = fwdKey in needsReviewWordIds || (fwdStat != null && (fwdStat.box == 0 || fwdStat.dueAtMillis <= now))
+            val revNeeds = revKey in needsReviewWordIds || (revStat != null && (revStat.box == 0 || revStat.dueAtMillis <= now))
+            return fwdNeeds || revNeeds
+        }
         val key = srsKey(wordId, useReversed)
         val stat = wordSrsMap[key]
         return key in needsReviewWordIds || (stat != null && (stat.box == 0 || stat.dueAtMillis <= now))
+    }
+
+    fun isWordMasteredOrLearning(wordId: String): Boolean {
+        @Suppress("UNUSED_EXPRESSION")
+        srsRevision
+        val fwd = wordSrsMap[wordId]
+        val rev = wordSrsMap[srsKey(wordId, true)]
+        return fwd != null || rev != null || wordId in masteredWordIds
     }
 
     fun getWordSrsStat(wordId: String, isReversed: Boolean = false): WordSrsStat? {
@@ -418,6 +445,7 @@ class ProgressStateHolder(context: Context) {
         @Suppress("UNUSED_EXPRESSION")
         srsRevision
         val now = System.currentTimeMillis()
+        val isMixed = studyDirection == cz.slovickaspeak.app.model.StudyDirection.MIXED
         val useReversed = studyDirection == cz.slovickaspeak.app.model.StudyDirection.FOREIGN_TO_NATIVE
         var mastered = 0
         var learning = 0
@@ -425,10 +453,24 @@ class ProgressStateHolder(context: Context) {
         var totalScore = 0f
 
         for (word in deck.words) {
-            val key = srsKey(word.id, useReversed)
-            val stat = wordSrsMap[key]
+            val stat = if (isMixed) {
+                val fwd = wordSrsMap[word.id]
+                val rev = wordSrsMap[srsKey(word.id, true)]
+                when {
+                    fwd != null && rev != null -> if (fwd.box >= rev.box) fwd else rev
+                    fwd != null -> fwd
+                    else -> rev
+                }
+            } else {
+                wordSrsMap[srsKey(word.id, useReversed)]
+            }
+            val wordNeedsReview = if (isMixed) {
+                isWordNeedsReview(word.id, false, now) || isWordNeedsReview(word.id, true, now)
+            } else {
+                isWordNeedsReview(word.id, useReversed, now)
+            }
             when {
-                isWordNeedsReview(word.id, useReversed, now) -> {
+                wordNeedsReview -> {
                     needsReview++
                     totalScore += 0.20f
                 }
@@ -444,7 +486,7 @@ class ProgressStateHolder(context: Context) {
                         else -> 0.75f
                     }
                 }
-                (!useReversed && stat == null && word.id in masteredWordIds) -> {
+                ((!useReversed || isMixed) && stat == null && word.id in masteredWordIds) -> {
                     learning++
                     totalScore += 0.50f
                 }
@@ -519,27 +561,68 @@ class ProgressStateHolder(context: Context) {
     fun prioritizeWordsForSession(words: List<cz.slovickaspeak.app.model.VocabWord>, targetCount: Int): List<cz.slovickaspeak.app.model.VocabWord> {
         if (words.isEmpty()) return emptyList()
         val now = System.currentTimeMillis()
+        val isMixed = studyDirection == cz.slovickaspeak.app.model.StudyDirection.MIXED
         val useReversed = studyDirection == cz.slovickaspeak.app.model.StudyDirection.FOREIGN_TO_NATIVE
 
         val tier1Critical = words.filter { w ->
-            val key = srsKey(w.id, useReversed)
-            val st = wordSrsMap[key]
-            key in needsReviewWordIds || (st != null && st.box == 0)
-        }.shuffled().sortedByDescending { w -> wordSrsMap[srsKey(w.id, useReversed)]?.lapses ?: 1 }
+            if (isMixed) {
+                val fwdKey = srsKey(w.id, false)
+                val revKey = srsKey(w.id, true)
+                val fwdStat = wordSrsMap[fwdKey]
+                val revStat = wordSrsMap[revKey]
+                fwdKey in needsReviewWordIds || revKey in needsReviewWordIds ||
+                    (fwdStat != null && fwdStat.box == 0) || (revStat != null && revStat.box == 0)
+            } else {
+                val key = srsKey(w.id, useReversed)
+                val st = wordSrsMap[key]
+                key in needsReviewWordIds || (st != null && st.box == 0)
+            }
+        }.shuffled().sortedByDescending { w ->
+            if (isMixed) {
+                maxOf(wordSrsMap[srsKey(w.id, false)]?.lapses ?: 0, wordSrsMap[srsKey(w.id, true)]?.lapses ?: 0)
+            } else {
+                wordSrsMap[srsKey(w.id, useReversed)]?.lapses ?: 1
+            }
+        }
 
         val tier1Ids = tier1Critical.map { it.id }.toSet()
 
         val tier2Due = words.filter { w ->
-            val key = srsKey(w.id, useReversed)
-            val st = wordSrsMap[key]
-            w.id !in tier1Ids && st != null && st.box >= 1 && st.dueAtMillis <= now
-        }.shuffled().sortedBy { w -> wordSrsMap[srsKey(w.id, useReversed)]?.dueAtMillis ?: 0L }
+            if (isMixed) {
+                val fwdStat = wordSrsMap[srsKey(w.id, false)]
+                val revStat = wordSrsMap[srsKey(w.id, true)]
+                w.id !in tier1Ids && (
+                    (fwdStat != null && fwdStat.box >= 1 && fwdStat.dueAtMillis <= now) ||
+                    (revStat != null && revStat.box >= 1 && revStat.dueAtMillis <= now)
+                )
+            } else {
+                val key = srsKey(w.id, useReversed)
+                val st = wordSrsMap[key]
+                w.id !in tier1Ids && st != null && st.box >= 1 && st.dueAtMillis <= now
+            }
+        }.shuffled().sortedBy { w ->
+            if (isMixed) {
+                minOf(
+                    wordSrsMap[srsKey(w.id, false)]?.dueAtMillis ?: Long.MAX_VALUE,
+                    wordSrsMap[srsKey(w.id, true)]?.dueAtMillis ?: Long.MAX_VALUE
+                )
+            } else {
+                wordSrsMap[srsKey(w.id, useReversed)]?.dueAtMillis ?: 0L
+            }
+        }
 
         val tier2Ids = tier2Due.map { it.id }.toSet()
 
         val tier3Unseen = words.filter { w ->
-            val key = srsKey(w.id, useReversed)
-            w.id !in tier1Ids && w.id !in tier2Ids && key !in wordSrsMap && (useReversed || w.id !in masteredWordIds)
+            if (isMixed) {
+                val fwdKey = srsKey(w.id, false)
+                val revKey = srsKey(w.id, true)
+                w.id !in tier1Ids && w.id !in tier2Ids &&
+                    fwdKey !in wordSrsMap && revKey !in wordSrsMap && w.id !in masteredWordIds
+            } else {
+                val key = srsKey(w.id, useReversed)
+                w.id !in tier1Ids && w.id !in tier2Ids && key !in wordSrsMap && (useReversed || w.id !in masteredWordIds)
+            }
         }.shuffled()
 
         val tier3Ids = tier3Unseen.map { it.id }.toSet()
@@ -547,8 +630,24 @@ class ProgressStateHolder(context: Context) {
         val tier4Learned = words.filter { w ->
             w.id !in tier1Ids && w.id !in tier2Ids && w.id !in tier3Ids
         }.shuffled().sortedWith(
-            compareBy<cz.slovickaspeak.app.model.VocabWord> { wordSrsMap[srsKey(it.id, useReversed)]?.box ?: 1 }
-                .thenBy { wordSrsMap[srsKey(it.id, useReversed)]?.dueAtMillis ?: Long.MAX_VALUE }
+            compareBy<cz.slovickaspeak.app.model.VocabWord> {
+                if (isMixed) {
+                    val fwdBox = wordSrsMap[srsKey(it.id, false)]?.box ?: 0
+                    val revBox = wordSrsMap[srsKey(it.id, true)]?.box ?: 0
+                    maxOf(fwdBox, revBox).coerceAtLeast(1)
+                } else {
+                    wordSrsMap[srsKey(it.id, useReversed)]?.box ?: 1
+                }
+            }.thenBy {
+                if (isMixed) {
+                    minOf(
+                        wordSrsMap[srsKey(it.id, false)]?.dueAtMillis ?: Long.MAX_VALUE,
+                        wordSrsMap[srsKey(it.id, true)]?.dueAtMillis ?: Long.MAX_VALUE
+                    )
+                } else {
+                    wordSrsMap[srsKey(it.id, useReversed)]?.dueAtMillis ?: Long.MAX_VALUE
+                }
+            }
         )
 
         val prioritizedUnique = tier1Critical + tier2Due + tier3Unseen + tier4Learned
@@ -986,9 +1085,7 @@ class ProgressStateHolder(context: Context) {
                 todayBaseXp += if (result.method == AnswerMethod.SPOKEN_CORRECT) 2 else 1
                 updateTodayInWeeklyLog()
                 needsReviewWordIds.remove(srsWordKey)
-                if (!isReversed) {
-                    masteredWordIds.add(result.word.id)
-                }
+                masteredWordIds.add(result.word.id)
 
                 val prevBox = prevStat?.box ?: 0
                 // Speaking out loud strengthens memory faster than manual swipe

@@ -879,7 +879,7 @@ fun DailyLeaderboardSectionCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = if (strings.isCzech) "Kompletní pořadí ($totalParticipants hráčů)" else "All Rankings ($totalParticipants learners)",
+                        text = if (strings.isCzech) "Kompletní pořadí ($totalParticipants)" else "All Rankings ($totalParticipants)",
                         fontSize = 11.5.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = TextMuted

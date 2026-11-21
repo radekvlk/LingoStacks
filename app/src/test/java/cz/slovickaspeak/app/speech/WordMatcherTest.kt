@@ -231,4 +231,17 @@ class WordMatcherTest {
         assertNotNull(WordMatcher.matches(listOf("to je výborné"), delicious, expectCzech = true))
         assertNotNull(WordMatcher.matches(listOf("je to výborné"), delicious, expectCzech = true))
     }
+
+    @Test
+    fun irregularVerbsA2TripletMatching() {
+        val putVerb = word("Položit / Dát (3 tvary)", "put – put – put")
+        assertNotNull(WordMatcher.matches(listOf("put put put"), putVerb))
+
+        val writeVerb = word("Psát (3 tvary)", "write – wrote – written", listOf("right wrote written"))
+        assertNotNull(WordMatcher.matches(listOf("write wrote written"), writeVerb))
+        assertNotNull(WordMatcher.matches(listOf("right wrote written"), writeVerb))
+
+        val sellVerb = word("Prodat (3 tvary)", "sell – sold – sold")
+        assertNotNull(WordMatcher.matches(listOf("sell sold sold"), sellVerb))
+    }
 }

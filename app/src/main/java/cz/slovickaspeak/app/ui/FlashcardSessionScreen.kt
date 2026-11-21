@@ -591,9 +591,15 @@ fun FlashcardSessionScreen(
     }
     val totalDeckWords = deck.words.size.coerceAtLeast(1)
     val persistentLearnedCount = deckMemorySummary.learnedAnyCount.coerceIn(0, totalDeckWords)
-    val remainingCount = (totalDeckWords - persistentLearnedCount).coerceAtLeast(0)
+    val sessionMasteredUniqueCount = remember(deck.id, masteredWordIdsInSession.size, progressState.srsRevision) {
+        deck.words.count { w ->
+            w.id in masteredWordIdsInSession || progressState.isWordMasteredOrLearning(w.id)
+        }.coerceIn(0, totalDeckWords)
+    }
+    val effectiveMasteredCount = maxOf(persistentLearnedCount, sessionMasteredUniqueCount, masteredWordIdsInSession.size).coerceIn(0, totalDeckWords)
+    val remainingCount = (totalDeckWords - effectiveMasteredCount).coerceAtLeast(0)
     val sessionProgressFraction by animateFloatAsState(
-        targetValue = (persistentLearnedCount.toFloat() / totalDeckWords.toFloat()).coerceIn(0f, 1f),
+        targetValue = (effectiveMasteredCount.toFloat() / totalDeckWords.toFloat()).coerceIn(0f, 1f),
         animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
         label = "sessionProgressBar"
     )
@@ -777,7 +783,7 @@ fun FlashcardSessionScreen(
                         deck = deck,
                         strings = strings,
                         progressState = progressState,
-                        masteredCount = persistentLearnedCount,
+                        masteredCount = effectiveMasteredCount,
                         sessionTargetCount = totalDeckWords,
                         remainingCount = remainingCount,
                         sessionProgressFraction = sessionProgressFraction,
@@ -932,7 +938,7 @@ fun FlashcardSessionScreen(
                     deck = deck,
                     strings = strings,
                     progressState = progressState,
-                    masteredCount = persistentLearnedCount,
+                    masteredCount = effectiveMasteredCount,
                     sessionTargetCount = totalDeckWords,
                     remainingCount = remainingCount,
                     sessionProgressFraction = sessionProgressFraction,
