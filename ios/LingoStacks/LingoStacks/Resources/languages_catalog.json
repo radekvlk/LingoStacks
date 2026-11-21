@@ -1,0 +1,65 @@
+[
+  {
+    "code": "en",
+    "speechLocaleTag": "en-US",
+    "flagEmoji": "🇬🇧",
+    "titleCs": "Angličtina",
+    "titleEn": "English",
+    "deckCount": 19,
+    "wordCount": 1430
+  },
+  {
+    "code": "es",
+    "speechLocaleTag": "es-ES",
+    "flagEmoji": "🇪🇸",
+    "titleCs": "Španělština",
+    "titleEn": "Spanish",
+    "deckCount": 19,
+    "wordCount": 1710
+  },
+  {
+    "code": "de",
+    "speechLocaleTag": "de-DE",
+    "flagEmoji": "🇩🇪",
+    "titleCs": "Němčina",
+    "titleEn": "German",
+    "deckCount": 19,
+    "wordCount": 1710
+  },
+  {
+    "code": "fr",
+    "speechLocaleTag": "fr-FR",
+    "flagEmoji": "🇫🇷",
+    "titleCs": "Francouzština",
+    "titleEn": "French",
+    "deckCount": 19,
+    "wordCount": 1710
+  },
+  {
+    "code": "it",
+    "speechLocaleTag": "it-IT",
+    "flagEmoji": "🇮🇹",
+    "titleCs": "Italština",
+    "titleEn": "Italian",
+    "deckCount": 19,
+    "wordCount": 1710
+  },
+  {
+    "code": "pt",
+    "speechLocaleTag": "pt-PT",
+    "flagEmoji": "🇵🇹",
+    "titleCs": "Portugalština",
+    "titleEn": "Portuguese",
+    "deckCount": 19,
+    "wordCount": 1710
+  },
+  {
+    "code": "cs",
+    "speechLocaleTag": "cs-CZ",
+    "flagEmoji": "🇨🇿",
+    "titleCs": "Čeština",
+    "titleEn": "Czech",
+    "deckCount": 19,
+    "wordCount": 1430
+  }
+]

@@ -1,0 +1,32 @@
+name: LingoStacks
+options:
+  bundleIdPrefix: cz.slovickaspeak
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+settings:
+  SWIFT_VERSION: "5.9"
+  ENABLE_BITCODE: NO
+
+targets:
+  LingoStacks:
+    type: application
+    platform: iOS
+    sources:
+      - path: LingoStacks
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: cz.slovickaspeak.app
+      PRODUCT_NAME: LingoStacks
+      MARKETING_VERSION: "1.0.15"
+      CURRENT_PROJECT_VERSION: 121
+      GENERATE_INFOPLIST_FILE: NO
+      INFOPLIST_FILE: LingoStacks/Info.plist
+      ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+      TARGETED_DEVICE_FAMILY: "1,2"
+      CODE_SIGN_STYLE: Automatic
+    frameworks:
+      - framework: Speech.framework
+      - framework: AVFoundation.framework
+      - framework: UserNotifications.framework
