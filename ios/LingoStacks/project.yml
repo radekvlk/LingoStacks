@@ -30,3 +30,4 @@ targets:
       - framework: Speech.framework
       - framework: AVFoundation.framework
       - framework: UserNotifications.framework
+      - framework: AuthenticationServices.framework

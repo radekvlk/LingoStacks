@@ -3,6 +3,7 @@
 //  LingoStacks
 //
 //  Lesson summary with accuracy score, XP earned, and review list
+//  Dynamic Cupertino styling supporting Light and Dark mode
 //
 
 import SwiftUI
@@ -42,7 +43,7 @@ public struct SessionSummaryView: View {
 
     public var body: some View {
         ZStack {
-            Color(red: 0.06, green: 0.08, blue: 0.12)
+            Color(uiColor: .systemGroupedBackground)
                 .ignoresSafeArea()
 
             VStack(spacing: 20) {
@@ -54,7 +55,7 @@ public struct SessionSummaryView: View {
 
                     Text("Skvělá práce!")
                         .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
+                        .foregroundColor(.primary)
 
                     Text("Lekce byla úspěšně dokončena")
                         .font(.subheadline)
@@ -65,94 +66,116 @@ public struct SessionSummaryView: View {
                 HStack(spacing: 12) {
                     summaryStat(
                         icon: "percent",
-                        color: .green,
+                        color: LingoColors.appleGreen,
                         title: "Úspěšnost",
                         value: "\(accuracyPercent) %"
                     )
 
                     summaryStat(
                         icon: "waveform",
-                        color: .blue,
+                        color: LingoColors.appleBlue,
                         title: "Hlasem",
                         value: "\(spokenCount)"
                     )
 
                     summaryStat(
-                        icon: "bolt.fill",
-                        color: .yellow,
+                        icon: "sparkles",
+                        color: LingoColors.appleOrange,
                         title: "Získáno XP",
-                        value: "+\(earnedXp)"
+                        value: "+\(earnedXp) XP"
                     )
                 }
                 .padding(.horizontal, 16)
 
-                // Words that need review
-                if !failedWords.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("K zopakování:")
-                            .font(.subheadline.bold())
-                            .foregroundColor(.secondary)
-                            .padding(.horizontal, 20)
+                // Words Review List
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Přehled slovíček v lekci")
+                        .font(.subheadline.bold())
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 20)
 
-                        ScrollView {
-                            VStack(spacing: 8) {
-                                ForEach(failedWords) { word in
-                                    HStack {
-                                        Text(word.emoji)
-                                        Text(word.czech)
-                                            .font(.headline)
-                                            .foregroundColor(.white)
-                                        Spacer()
-                                        Text(word.foreign)
+                    ScrollView {
+                        LazyVStack(spacing: 8) {
+                            ForEach(Array(results.enumerated()), id: \.offset) { index, attempt in
+                                HStack(spacing: 12) {
+                                    Text(attempt.word.emoji)
+                                        .font(.title3)
+
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(attempt.word.czech)
                                             .font(.subheadline.bold())
-                                            .foregroundColor(.orange)
+                                            .foregroundColor(.primary)
+                                        Text(attempt.word.foreign)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
                                     }
-                                    .padding(12)
-                                    .cupertinoGlass(cornerRadius: 14)
+
+                                    Spacer()
+
+                                    if attempt.isCorrect {
+                                        HStack(spacing: 4) {
+                                            if attempt.method == .spokenCorrect {
+                                                Image(systemName: "waveform")
+                                                    .font(.caption)
+                                                    .foregroundColor(LingoColors.appleBlue)
+                                            }
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .foregroundColor(LingoColors.appleGreen)
+                                        }
+                                    } else {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .foregroundColor(LingoColors.appleRed)
+                                    }
                                 }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(Color(uiColor: .secondarySystemGroupedBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .stroke(Color(uiColor: .separator).opacity(0.4), lineWidth: 0.6)
+                                )
                             }
-                            .padding(.horizontal, 20)
                         }
+                        .padding(.horizontal, 16)
                     }
-                } else {
-                    Spacer()
-                    VStack(spacing: 6) {
-                        Text("🌟 Perfektní skóre!")
-                            .font(.headline)
-                            .foregroundColor(.yellow)
-                        Text("Všechna slovíčka jste zvládl na jedničku.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
                 }
 
                 Spacer()
 
-                // Bottom Action Buttons
-                VStack(spacing: 12) {
-                    Button(action: onRestart) {
-                        HStack {
-                            Image(systemName: "arrow.counterclockwise")
-                            Text("Procvičit znovu")
+                // Bottom Buttons
+                VStack(spacing: 10) {
+                    if !failedWords.isEmpty {
+                        Button {
+                            onRestart()
+                        } label: {
+                            HStack {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                Text("Zopakovat chyby (\(failedWords.count))")
+                            }
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 50)
+                            .background(LingoColors.appleOrange)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         }
-                        .font(.headline.bold())
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(Color.blue)
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
 
-                    Button(action: onFinish) {
-                        Text("Zpět na výběr sady")
+                    Button {
+                        onFinish()
+                    } label: {
+                        Text("Pokračovat")
                             .font(.headline)
-                            .foregroundColor(.secondary)
-                            .padding(.vertical, 10)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 50)
+                            .background(LingoColors.appleBlue)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
                 }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 24)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 20)
             }
         }
     }
@@ -160,19 +183,24 @@ public struct SessionSummaryView: View {
     private func summaryStat(icon: String, color: Color, title: String, value: String) -> some View {
         VStack(spacing: 6) {
             Image(systemName: icon)
-                .font(.title3)
+                .font(.headline.bold())
                 .foregroundColor(color)
 
             Text(value)
-                .font(.title3.bold())
-                .foregroundColor(.white)
+                .font(.system(size: 17, weight: .bold, design: .rounded))
+                .foregroundColor(.primary)
 
             Text(title)
                 .font(.caption2)
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 14)
-        .cupertinoGlass(cornerRadius: 16)
+        .padding(.vertical, 12)
+        .background(Color(uiColor: .secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color(uiColor: .separator).opacity(0.4), lineWidth: 0.6)
+        )
     }
 }

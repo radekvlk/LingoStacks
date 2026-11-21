@@ -50,12 +50,16 @@ public struct LeaderboardView: View {
                     }
                 }
             }
-            .navigationTitle("🏆 Denní žebříček")
+            .navigationTitle(selectedPeriod == .today ? "🏆 Denní žebříček" : "🏆 Týdenní žebříček")
         }
     }
 
     private func leaderboardRow(rank: Int, entry: FriendProgress) -> some View {
-        HStack(spacing: 12) {
+        let isWeek = (selectedPeriod == .week)
+        let xpValue = isWeek ? entry.weeklyXp : entry.todayXp
+        let wordsValue = isWeek ? entry.weeklyCompleted : entry.todayCompleted
+
+        return HStack(spacing: 12) {
             ZStack {
                 if rank == 1 {
                     Text("🥇").font(.title2)
@@ -75,7 +79,7 @@ public struct LeaderboardView: View {
                 HStack(spacing: 6) {
                     Text(entry.displayName)
                         .font(.headline)
-                        .foregroundColor(entry.isCurrentUser ? .blue : .primary)
+                        .foregroundColor(entry.isCurrentUser ? LingoColors.appleBlue : .primary)
 
                     if entry.isCurrentUser {
                         Text("Vy")
@@ -83,24 +87,32 @@ public struct LeaderboardView: View {
                             .foregroundColor(.white)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(Color.blue)
+                            .background(LingoColors.appleBlue)
                             .clipShape(Capsule())
                     }
                 }
 
-                Text("Série: \(entry.streakDays) dní 🔥")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                HStack(spacing: 6) {
+                    Text("🔥 \(entry.streakDays) dní")
+                        .font(.caption)
+                        .foregroundColor(LingoColors.appleOrange)
+                    Text("•")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text("\(wordsValue) slov")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
 
             Spacer()
 
             VStack(alignment: .trailing, spacing: 2) {
-                Text("\(entry.todayCompleted)")
+                Text("\(xpValue) XP")
                     .font(.headline.bold())
-                    .foregroundColor(.green)
+                    .foregroundColor(LingoColors.appleGreen)
 
-                Text("slov")
+                Text(entry.statusText)
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }

@@ -2,15 +2,16 @@
 //  LingoStacksApp.swift
 //  LingoStacks
 //
-//  iOS Main Entry Point
+//  iOS Main Entry Point with dynamic Appearance management
 //
 
 import SwiftUI
 
 @main
 struct LingoStacksApp: App {
+    @ObservedObject var pm = ProgressManager.shared
+
     init() {
-        // Pre-warm audio session and vocabulary on app launch
         _ = ProgressManager.shared
         _ = VocabularyRepository.shared
     }
@@ -18,7 +19,9 @@ struct LingoStacksApp: App {
     var body: some Scene {
         WindowGroup {
             MainAppView()
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(
+                    pm.appearance == .dark ? .dark : (pm.appearance == .light ? .light : nil)
+                )
         }
     }
 }

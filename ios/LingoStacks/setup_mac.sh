@@ -8,15 +8,15 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-echo "🚀 [LingoStacks iOS] Připravuji Xcode projekt..."
+echo "🚀 [LingoStacks iOS] Pripravuji Xcode projekt..."
 
-# Check if XcodeGen is installed, if not, install via Homebrew or mint
+# Check if XcodeGen is installed, if not, install via Homebrew
 if ! command -v xcodegen &> /dev/null; then
-    echo "📦 XcodeGen nebyl nalezen. Instaluji přes Homebrew..."
+    echo "📦 XcodeGen nebyl nalezen. Instaluji pres Homebrew..."
     if command -v brew &> /dev/null; then
         brew install xcodegen
     else
-        echo "❌ Homebrew není nainstalován. Prosím nainstalujte XcodeGen ručně: brew install xcodegen"
+        echo "❌ Homebrew neni nainstalovan. Prosim nainstalujte XcodeGen: brew install xcodegen"
         exit 1
     fi
 fi
@@ -25,6 +25,6 @@ fi
 echo "🔨 Generuji LingoStacks.xcodeproj..."
 xcodegen generate
 
-echo "✅ Projekt LingoStacks.xcodeproj byl úspěšně vygenerován!"
-echo "📱 Otevírám v Xcode..."
+echo "✅ Projekt LingoStacks.xcodeproj byl uspesne vygenerovan!"
+echo "📱 Oteviram v Xcode..."
 open LingoStacks.xcodeproj

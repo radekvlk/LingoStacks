@@ -7,6 +7,58 @@
 
 import Foundation
 import Combine
+import SwiftUI
+
+public enum AppAppearance: String, CaseIterable, Identifiable {
+    case system = "system"
+    case light = "light"
+    case dark = "dark"
+
+    public var id: String { rawValue }
+
+    public func title(isCzech: Bool = true) -> String {
+        switch self {
+        case .system: return isCzech ? "Podle systému ⚙️" : "System Default ⚙️"
+        case .light: return isCzech ? "Světlý ☀️" : "Light ☀️"
+        case .dark: return isCzech ? "Tmavý 🌙" : "Dark 🌙"
+        }
+    }
+}
+
+public struct AppleUserProfile: Codable, Equatable {
+    public var userId: String
+    public var displayName: String
+    public var email: String
+    public var inviteCode: String
+
+    public init(userId: String, displayName: String, email: String, inviteCode: String) {
+        self.userId = userId
+        self.displayName = displayName
+        self.email = email
+        self.inviteCode = inviteCode
+    }
+}
+
+public struct CefrLevelStat: Identifiable {
+    public var id: String { level.id }
+    public let level: CefrLevel
+    public let masteredCount: Int
+    public let totalCount: Int
+
+    public var ratio: Double {
+        guard totalCount > 0 else { return 0 }
+        return Double(masteredCount) / Double(totalCount)
+    }
+}
+
+public struct LanguageCompleteStats {
+    public let language: LearningLanguage
+    public let totalWords: Int
+    public let activeMasteredCount: Int
+    public let passiveMasteredCount: Int
+    public let dueForReviewCount: Int
+    public let levelStats: [CefrLevelStat]
+}
 
 public final class ProgressManager: ObservableObject {
     public static let shared = ProgressManager()
@@ -20,7 +72,14 @@ public final class ProgressManager: ObservableObject {
         return df
     }()
 
-    // MARK: - Published Properties for SwiftUI
+    // MARK: - Published Properties
+
+    @Published public var appearance: AppAppearance {
+        didSet {
+            defaults.set(appearance.rawValue, forKey: "lingostacks_appearance")
+            objectWillChange.send()
+        }
+    }
 
     @Published public var selectedLanguage: LearningLanguage {
         didSet {
@@ -51,26 +110,51 @@ public final class ProgressManager: ObservableObject {
     @Published public var totalSpokenCorrect: Int = 0
     @Published public var completedSessions: Int = 0
     @Published public var totalCorrect: Int = 0
+
     @Published public var autoPronounce: Bool = true {
         didSet { defaults.set(autoPronounce, forKey: "lingostacks_auto_pronounce") }
+    }
+    public var autoPronounceEnabled: Bool {
+        get { autoPronounce }
+        set { autoPronounce = newValue }
+    }
+    @Published public var pauseCardWhileSpeaking: Bool = true {
+        didSet { defaults.set(pauseCardWhileSpeaking, forKey: "lingostacks_pause_speaking") }
     }
     @Published public var hapticFeedbackEnabled: Bool = true {
         didSet { defaults.set(hapticFeedbackEnabled, forKey: "lingostacks_haptic") }
     }
 
-    // SRS State: wordId -> WordSrsStat
+    // User Profile & Apple Sign-In
+    @Published public var userProfile: AppleUserProfile? {
+        didSet {
+            if let user = userProfile {
+                defaults.set(try? JSONEncoder().encode(user), forKey: "lingostacks_apple_profile")
+            } else {
+                defaults.removeObject(forKey: "lingostacks_apple_profile")
+            }
+            objectWillChange.send()
+        }
+    }
+
+    public var userName: String {
+        userProfile?.displayName ?? defaults.string(forKey: "lingostacks_user_name") ?? "Student"
+    }
+
+    public var userInviteCode: String {
+        userProfile?.inviteCode ?? defaults.string(forKey: "lingostacks_invite_code") ?? "LINGO-1001"
+    }
+
+    // SRS State
     @Published public private(set) var wordSrsMap: [String: WordSrsStat] = [:]
     @Published public private(set) var needsReviewWordIds: Set<String> = []
     @Published public private(set) var masteredWordIds: Set<String> = []
     @Published public private(set) var srsRevision: Int = 0
 
-    // User Profile
-    @Published public var userName: String = "User" {
-        didSet { defaults.set(userName, forKey: "lingostacks_user_name") }
-    }
-    @Published public var userInviteCode: String = ""
-
     private init() {
+        let appRaw = defaults.string(forKey: "lingostacks_appearance") ?? AppAppearance.system.rawValue
+        self.appearance = AppAppearance(rawValue: appRaw) ?? .system
+
         let langCode = defaults.string(forKey: "lingostacks_selected_language") ?? "en"
         self.selectedLanguage = LearningLanguage(rawValue: langCode) ?? .english
 
@@ -80,21 +164,117 @@ public final class ProgressManager: ObservableObject {
         self.dailyGoalWords = defaults.integer(forKey: "lingostacks_daily_goal")
         if self.dailyGoalWords <= 0 { self.dailyGoalWords = 30 }
 
-        self.userName = defaults.string(forKey: "lingostacks_user_name") ?? "User"
-        self.userInviteCode = defaults.string(forKey: "lingostacks_invite_code") ?? ""
-        if self.userInviteCode.isEmpty {
-            self.userInviteCode = String(UUID().uuidString.prefix(6)).uppercased()
-            defaults.set(self.userInviteCode, forKey: "lingostacks_invite_code")
+        if let userData = defaults.data(forKey: "lingostacks_apple_profile"),
+           let user = try? JSONDecoder().decode(AppleUserProfile.self, from: userData) {
+            self.userProfile = user
         }
 
         self.autoPronounce = defaults.object(forKey: "lingostacks_auto_pronounce") as? Bool ?? true
+        self.pauseCardWhileSpeaking = defaults.object(forKey: "lingostacks_pause_speaking") as? Bool ?? true
         self.hapticFeedbackEnabled = defaults.object(forKey: "lingostacks_haptic") as? Bool ?? true
 
         loadSrsData()
         checkNewDayRollover()
     }
 
-    // MARK: - Date Helpers
+    // MARK: - Sign in with Apple & Profile Management
+
+    public func signInWithApple(userId: String, name: String?, email: String?) {
+        let cleanName = (name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false) ? name! : "Uživatel Apple"
+        let cleanEmail = (email?.contains("@") == true) ? email!.lowercased() : "\(userId)@privaterelay.appleid.com"
+        let hash = abs(cleanEmail.hashValue) % 9000 + 1000
+        let code = "SLOV-\(hash)"
+
+        let profile = AppleUserProfile(
+            userId: userId,
+            displayName: cleanName,
+            email: cleanEmail,
+            inviteCode: code
+        )
+        self.userProfile = profile
+        defaults.set(cleanName, forKey: "lingostacks_user_name")
+        defaults.set(code, forKey: "lingostacks_invite_code")
+
+        pushProgressToFirestore()
+        LeaderboardService.shared.refreshLeaderboard()
+    }
+
+    public func signInManually(name: String, email: String) {
+        let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Student" : name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let hash = abs(cleanEmail.hashValue) % 9000 + 1000
+        let code = "SLOV-\(hash)"
+
+        let profile = AppleUserProfile(
+            userId: UUID().uuidString,
+            displayName: cleanName,
+            email: cleanEmail,
+            inviteCode: code
+        )
+        self.userProfile = profile
+        defaults.set(cleanName, forKey: "lingostacks_user_name")
+        defaults.set(code, forKey: "lingostacks_invite_code")
+
+        pushProgressToFirestore()
+        LeaderboardService.shared.refreshLeaderboard()
+    }
+
+    public func signOut() {
+        self.userProfile = nil
+        defaults.removeObject(forKey: "lingostacks_apple_profile")
+        LeaderboardService.shared.refreshLeaderboard()
+    }
+
+    // MARK: - Firestore Sync (Shared with Android)
+
+    public func pushProgressToFirestore() {
+        guard let user = userProfile, user.email.contains("@") else { return }
+
+        let firestoreUrl = "https://firestore.googleapis.com/v1/projects/lingowords-88ed4/databases/(default)/documents/leaderboard/\(user.userId)"
+        guard let url = URL(string: firestoreUrl) else { return }
+
+        let currentMastered = masteredWordIds.count
+        let totalWords = 1430
+        let accuracy = totalCorrect > 0 ? Int(Double(totalCorrect) / Double(max(1, totalCorrect + 5)) * 100) : 95
+
+        let fields: [String: Any] = [
+            "uid": ["stringValue": user.userId],
+            "code": ["stringValue": user.inviteCode],
+            "name": ["stringValue": user.displayName],
+            "date": ["stringValue": todayKey],
+            "lastActiveDate": ["stringValue": todayKey],
+            "languageCode": ["stringValue": selectedLanguage.code],
+            "todayCompleted": ["integerValue": "\(todayCompletedWords)"],
+            "todayXp": ["integerValue": "\(todayXp)"],
+            "weeklyCompleted": ["integerValue": "\(weeklyCompletedWords)"],
+            "weeklyXp": ["integerValue": "\(weeklyXp)"],
+            "dailyGoal": ["integerValue": "\(dailyGoalWords)"],
+            "streakDays": ["integerValue": "\(streakDays)"],
+            "totalSpoken": ["integerValue": "\(totalSpokenCorrect)"],
+            "masteredCount": ["integerValue": "\(currentMastered)"],
+            "totalCorrect": ["integerValue": "\(totalCorrect)"],
+            "completedSessions": ["integerValue": "\(completedSessions)"],
+            "accuracyPercent": ["integerValue": "\(accuracy)"],
+            "catalogWordCount": ["integerValue": "\(totalWords)"],
+            "ts": ["integerValue": "\(Int64(Date().timeIntervalSince1970 * 1000))"]
+        ]
+
+        let payload: [String: Any] = ["fields": fields]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = body
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if error == nil {
+                print("✓ [Firestore] Leaderboard synced for \(user.displayName)")
+            }
+        }.resume()
+    }
+
+    // MARK: - Date & Streak Helpers
 
     public var todayKey: String { dateFormatter.string(from: Date()) }
 
@@ -103,18 +283,14 @@ public final class ProgressManager: ObservableObject {
         return dateFormatter.string(from: yesterday)
     }
 
-    // MARK: - Midnight Rollover
-
     public func checkNewDayRollover() {
         let currentDay = todayKey
         let lastDay = defaults.string(forKey: "lingostacks_last_study_date")
 
         if lastDay != currentDay {
-            // New day detected
             if lastDay == yesterdayKey {
                 // Maintained streak!
             } else if lastDay != nil {
-                // Missed day -> reset streak to 0 if not completed yesterday
                 let yesterdayCompleted = defaults.integer(forKey: "lingostacks_completed_\(yesterdayKey)")
                 if yesterdayCompleted < dailyGoalWords {
                     streakDays = 0
@@ -159,7 +335,7 @@ public final class ProgressManager: ObservableObject {
         return total
     }
 
-    // MARK: - SRS Logic
+    // MARK: - SRS Mechanics (Leitner + SM-2)
 
     private func srsKey(wordId: String, isReversed: Bool) -> String {
         isReversed ? "\(wordId)__rev" : wordId
@@ -203,16 +379,48 @@ public final class ProgressManager: ObservableObject {
         return deck.words.filter { isWordNeedsReview(wordId: $0.id, useReversed: rev) }.count
     }
 
-    /// Smart prioritizer for session (combines due reviews + unmastered + random)
+    public func getLanguageCompleteStats(for language: LearningLanguage) -> LanguageCompleteStats {
+        let decks = VocabularyRepository.shared.decks(for: language)
+        let useRev = (studyDirection == .foreignToNative)
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
+
+        var total = 0
+        var activeMastered = 0
+        var passiveMastered = 0
+        var dueCount = 0
+
+        var levelStats: [CefrLevelStat] = []
+        for level in CefrLevel.allCases {
+            let levelWords = decks.filter { $0.level == level }.flatMap { $0.words }
+            let mastered = levelWords.filter { isWordMastered(wordId: $0.id, useReversed: useRev) }.count
+            levelStats.append(CefrLevelStat(level: level, masteredCount: mastered, totalCount: levelWords.count))
+        }
+
+        for deck in decks {
+            for word in deck.words {
+                total += 1
+                if isWordMastered(wordId: word.id, useReversed: false) { activeMastered += 1 }
+                if isWordMastered(wordId: word.id, useReversed: true) { passiveMastered += 1 }
+                if isWordNeedsReview(wordId: word.id, useReversed: useRev, nowMillis: now) { dueCount += 1 }
+            }
+        }
+
+        return LanguageCompleteStats(
+            language: language,
+            totalWords: total,
+            activeMasteredCount: activeMastered,
+            passiveMasteredCount: passiveMastered,
+            dueForReviewCount: dueCount,
+            levelStats: levelStats
+        )
+    }
+
     public func prioritizeWordsForSession(words: [VocabWord], targetCount: Int = 10) -> [VocabWord] {
         let now = Int64(Date().timeIntervalSince1970 * 1000)
         let rev = (studyDirection == .foreignToNative)
 
-        // 1. Due words (need review)
         let dueWords = words.filter { isWordNeedsReview(wordId: $0.id, useReversed: rev, nowMillis: now) }
-        // 2. Unlearned words
         let unlearned = words.filter { !isWordMastered(wordId: $0.id, useReversed: rev) && !dueWords.contains($0) }
-        // 3. Mastered words
         let mastered = words.filter { isWordMastered(wordId: $0.id, useReversed: rev) && !dueWords.contains($0) }
 
         var result: [VocabWord] = []
@@ -251,7 +459,6 @@ public final class ProgressManager: ObservableObject {
             needsReviewWordIds.remove(srsWordKey)
             if !isReversed { masteredWordIds.insert(result.word.id) }
 
-            // Streak & Daily tracking
             let curDay = todayKey
             let lastDay = defaults.string(forKey: "lingostacks_last_study_date")
             if lastDay != curDay {
@@ -263,7 +470,6 @@ public final class ProgressManager: ObservableObject {
             todayCompletedWords += 1
             defaults.set(todayCompletedWords, forKey: "lingostacks_completed_\(curDay)")
 
-            // XP Calculation
             let baseExp = (result.method == .spokenCorrect) ? 15 : 10
             let streakBonus = min(20, streakDays * 2)
             todayXp += (baseExp + streakBonus)
@@ -276,13 +482,12 @@ public final class ProgressManager: ObservableObject {
             totalCorrect += 1
             defaults.set(totalCorrect, forKey: "lingostacks_total_correct")
         } else {
-            // Failed -> reset box to 0, mark in needsReview
             let lapses = (prevStat?.lapses ?? 0) + 1
             wordSrsMap[srsWordKey] = WordSrsStat(
                 wordId: srsWordKey,
                 box: 0,
                 lapses: lapses,
-                dueAtMillis: now + (2 * 3600 * 1000) // retry in 2 hours
+                dueAtMillis: now + (2 * 3600 * 1000)
             )
             needsReviewWordIds.insert(srsWordKey)
             if !isReversed { masteredWordIds.remove(result.word.id) }
@@ -290,6 +495,7 @@ public final class ProgressManager: ObservableObject {
 
         srsRevision += 1
         saveSrsData()
+        pushProgressToFirestore()
     }
 
     public func completeSession() {
@@ -297,6 +503,7 @@ public final class ProgressManager: ObservableObject {
         defaults.set(completedSessions, forKey: "lingostacks_completed_sessions")
         weeklyCompletedWords = calculateWeeklyCompleted()
         weeklyXp = calculateWeeklyXp()
+        pushProgressToFirestore()
     }
 
     // MARK: - Persistence

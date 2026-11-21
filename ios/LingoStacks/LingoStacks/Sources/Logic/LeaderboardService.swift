@@ -91,10 +91,14 @@ public final class LeaderboardService: ObservableObject {
             let todayCompleted = Int(fields["todayCompleted"]?["integerValue"] as? String ?? "0") ?? 0
             let dailyGoal = Int(fields["dailyGoal"]?["integerValue"] as? String ?? "30") ?? 30
             let streakDays = Int(fields["streakDays"]?["integerValue"] as? String ?? "0") ?? 0
+            let todayXp = Int(fields["todayXp"]?["integerValue"] as? String ?? "0") ?? (todayCompleted + (todayCompleted >= dailyGoal ? 25 : 0))
+            let weeklyXp = Int(fields["weeklyXp"]?["integerValue"] as? String ?? "0") ?? (todayXp * max(1, streakDays))
+            let weeklyCompleted = Int(fields["weeklyCompleted"]?["integerValue"] as? String ?? "0") ?? todayCompleted
             let totalSpoken = Int(fields["totalSpoken"]?["integerValue"] as? String ?? "0") ?? 0
             let mastered = Int(fields["masteredCount"]?["integerValue"] as? String ?? "0") ?? 0
             let totalCorrect = Int(fields["totalCorrect"]?["integerValue"] as? String ?? "0") ?? 0
             let completedSessions = Int(fields["completedSessions"]?["integerValue"] as? String ?? "0") ?? 0
+            let accuracy = Int(fields["accuracyPercent"]?["integerValue"] as? String ?? "92") ?? 92
             let lang = fields["languageCode"]?["stringValue"] as? String ?? "en"
             let lastActive = fields["lastActiveDate"]?["stringValue"] as? String ?? ""
 
@@ -108,15 +112,18 @@ public final class LeaderboardService: ObservableObject {
                 dailyGoal: dailyGoal,
                 streakDays: streakDays,
                 totalSpoken: totalSpoken,
-                statusText: todayCompleted > 0 ? "Aktivní dnes" : "Odpočívá",
+                statusText: todayCompleted >= dailyGoal ? "Cíl splněn ✓" : "Dnes \(todayCompleted)/\(dailyGoal) slov",
                 isCurrentUser: isMe,
                 masteredCount: mastered,
                 totalCorrectCount: totalCorrect,
                 completedSessions: completedSessions,
-                accuracyPercent: 92,
+                accuracyPercent: accuracy,
                 catalogWordCount: 1430,
                 languageCode: lang,
-                lastActiveDate: lastActive
+                lastActiveDate: lastActive,
+                todayXp: todayXp,
+                weeklyCompleted: weeklyCompleted,
+                weeklyXp: weeklyXp
             ))
         }
 
@@ -125,8 +132,16 @@ public final class LeaderboardService: ObservableObject {
             entries.append(currentUserEntry())
         }
 
-        self.dailyLeaderboard = entries.sorted { $0.todayCompleted > $1.todayCompleted }
-        self.weeklyLeaderboard = entries.sorted { $0.streakDays > $1.streakDays }
+        self.dailyLeaderboard = entries.sorted {
+            if $0.todayXp != $1.todayXp { return $0.todayXp > $1.todayXp }
+            if $0.accuracyPercent != $1.accuracyPercent { return $0.accuracyPercent > $1.accuracyPercent }
+            return $0.streakDays > $1.streakDays
+        }
+        self.weeklyLeaderboard = entries.sorted {
+            if $0.weeklyXp != $1.weeklyXp { return $0.weeklyXp > $1.weeklyXp }
+            if $0.accuracyPercent != $1.accuracyPercent { return $0.accuracyPercent > $1.accuracyPercent }
+            return $0.streakDays > $1.streakDays
+        }
     }
 
     private func currentUserEntry() -> FriendProgress {
@@ -139,7 +154,7 @@ public final class LeaderboardService: ObservableObject {
             dailyGoal: pm.dailyGoalWords,
             streakDays: pm.streakDays,
             totalSpoken: pm.totalSpokenCorrect,
-            statusText: "Aktivní dnes",
+            statusText: pm.todayCompletedWords >= pm.dailyGoalWords ? "Cíl splněn ✓" : "Dnes \(pm.todayCompletedWords)/\(pm.dailyGoalWords) slov",
             isCurrentUser: true,
             masteredCount: pm.masteredWordIds.count,
             totalCorrectCount: pm.totalCorrect,
@@ -147,7 +162,10 @@ public final class LeaderboardService: ObservableObject {
             accuracyPercent: 95,
             catalogWordCount: 1430,
             languageCode: pm.selectedLanguage.code,
-            lastActiveDate: pm.todayKey
+            lastActiveDate: pm.todayKey,
+            todayXp: pm.todayXp,
+            weeklyCompleted: pm.weeklyCompletedWords,
+            weeklyXp: pm.weeklyXp
         )
     }
 
