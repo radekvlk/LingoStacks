@@ -274,9 +274,11 @@ public struct FlashcardSessionView: View {
 
     private var speechStatusView: some View {
         VStack(spacing: 8) {
-            AudioVisualizerView()
+            if speechController.isMicEnabled {
+                AudioVisualizerView()
+            }
 
-            if !speechController.partialTranscript.isEmpty {
+            if !speechController.partialTranscript.isEmpty && speechController.isMicEnabled {
                 Text(speechController.partialTranscript)
                     .font(.subheadline)
                     .foregroundColor(.white)
@@ -286,52 +288,75 @@ public struct FlashcardSessionView: View {
                     .clipShape(Capsule())
             }
         }
+        .frame(height: 36)
     }
 
-    // MARK: - Bottom Action Controls
+    // MARK: - Bottom Action Controls (Animated Capsule)
 
     private var bottomControls: some View {
-        HStack(spacing: 24) {
-            // "Nevím" Button (Red)
-            Button {
-                advanceCard(isCorrect: false, method: .swipedDontKnow)
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.title2.bold())
-                    .foregroundColor(.red)
-                    .frame(width: 60, height: 60)
-                    .background(Color.red.opacity(0.15))
-                    .clipShape(Circle())
+        HStack(spacing: 16) {
+            // When Mic is OFF: reveal [✕ Nevím] button on the left
+            if !speechController.isMicEnabled {
+                Button {
+                    advanceCard(isCorrect: false, method: .swipedDontKnow)
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.title2.bold())
+                        .foregroundColor(.red)
+                        .frame(width: 54, height: 54)
+                        .background(Color.red.opacity(0.18))
+                        .clipShape(Circle())
+                }
+                .transition(.scale.combined(with: .opacity))
             }
 
             // Big Center Microphone Button
             Button {
-                speechController.toggleListening()
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                    speechController.toggleListening()
+                }
             } label: {
                 ZStack {
                     Circle()
-                        .fill(speechController.isListening ? Color.green : Color.blue)
-                        .frame(width: 76, height: 76)
-                        .shadow(color: (speechController.isListening ? Color.green : Color.blue).opacity(0.4), radius: 12)
+                        .fill(speechController.isMicEnabled ? Color.blue : Color(white: 0.25))
+                        .frame(width: 72, height: 72)
+                        .shadow(
+                            color: speechController.isMicEnabled ? Color.blue.opacity(0.4) : Color.clear,
+                            radius: 12
+                        )
 
-                    Image(systemName: speechController.isListening ? "waveform" : "mic.fill")
-                        .font(.title.bold())
+                    Image(systemName: speechController.isMicEnabled ? "mic.fill" : "mic.slash.fill")
+                        .font(.title2.bold())
                         .foregroundColor(.white)
                 }
             }
 
-            // "Vím" Button (Green)
-            Button {
-                advanceCard(isCorrect: true, method: .swipedKnow)
-            } label: {
-                Image(systemName: "checkmark")
-                    .font(.title2.bold())
-                    .foregroundColor(.green)
-                    .frame(width: 60, height: 60)
-                    .background(Color.green.opacity(0.15))
-                    .clipShape(Circle())
+            // When Mic is OFF: reveal [✓ Vím] button on the right
+            if !speechController.isMicEnabled {
+                Button {
+                    advanceCard(isCorrect: true, method: .swipedKnow)
+                } label: {
+                    Image(systemName: "checkmark")
+                        .font(.title2.bold())
+                        .foregroundColor(.green)
+                        .frame(width: 54, height: 54)
+                        .background(Color.green.opacity(0.18))
+                        .clipShape(Circle())
+                }
+                .transition(.scale.combined(with: .opacity))
             }
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(
+            Capsule()
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    Capsule()
+                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                )
+        )
+        .animation(.spring(response: 0.35, dampingFraction: 0.75), value: speechController.isMicEnabled)
     }
 
     // MARK: - Session Setup & Advance Logic
@@ -350,7 +375,7 @@ public struct FlashcardSessionView: View {
 
         // Auto-start listening on session open
         speechController.requestPermissions { granted in
-            if granted {
+            if granted && speechController.isMicEnabled {
                 speechController.startListening()
             }
         }
@@ -369,7 +394,6 @@ public struct FlashcardSessionView: View {
     private func handleDragEnd(gesture: DragGesture.Value) {
         let threshold: CGFloat = 110
         if gesture.translation.width > threshold {
-            // Swiped RIGHT -> Vím
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 dragOffset = CGSize(width: 500, height: gesture.translation.height)
             }
@@ -377,7 +401,6 @@ public struct FlashcardSessionView: View {
                 advanceCard(isCorrect: true, method: .swipedKnow)
             }
         } else if gesture.translation.width < -threshold {
-            // Swiped LEFT -> Nevím
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 dragOffset = CGSize(width: -500, height: gesture.translation.height)
             }
@@ -385,7 +408,6 @@ public struct FlashcardSessionView: View {
                 advanceCard(isCorrect: false, method: .swipedDontKnow)
             }
         } else {
-            // Snap back
             withAnimation(.spring(response: 0.35, dampingFraction: 0.6)) {
                 dragOffset = .zero
             }
@@ -414,7 +436,6 @@ public struct FlashcardSessionView: View {
                 currentIndex += 1
                 prepareActiveCard()
             } else {
-                // Completed all cards in session!
                 speechController.stopListening()
                 progressManager.completeSession()
                 onSessionFinished(attemptResults)

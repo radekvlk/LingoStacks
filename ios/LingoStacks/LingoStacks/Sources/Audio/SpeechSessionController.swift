@@ -16,6 +16,18 @@ public final class SpeechSessionController: NSObject, ObservableObject, AVSpeech
 
     // MARK: - Published Properties for SwiftUI
 
+    /// User intent: whether the microphone is toggled ON or OFF
+    @Published public var isMicEnabled: Bool = true {
+        didSet {
+            if isMicEnabled {
+                startListening()
+            } else {
+                stopListening()
+            }
+        }
+    }
+
+    /// True only while the underlying recognition engine is actively streaming
     @Published public private(set) var isListening: Bool = false
     @Published public private(set) var audioLevel: Float = 0.0 // 0.0 ... 1.0 for visualizer
     @Published public private(set) var partialTranscript: String = ""
@@ -40,10 +52,12 @@ public final class SpeechSessionController: NSObject, ObservableObject, AVSpeech
     private var recognitionTask: SFSpeechRecognitionTask?
     private let speechSynthesizer = AVSpeechSynthesizer()
 
-    private var shouldStayListening: Bool = false
+    private var isStartingListening: Bool = false
     private var isPausedForTts: Bool = false
     private var isPausedForTransition: Bool = false
     private var lastSpokenMatchTime: TimeInterval = 0
+    private var consecutiveErrors: Int = 0
+    private var lastRestartAttemptTime: TimeInterval = 0
 
     private var ttsCompletionHandler: (() -> Void)?
 
@@ -80,23 +94,16 @@ public final class SpeechSessionController: NSObject, ObservableObject, AVSpeech
     // MARK: - Listening Lifecycle
 
     public func toggleListening() {
-        if isListening || shouldStayListening {
-            stopListening()
-        } else {
-            startListening()
-        }
+        isMicEnabled.toggle()
     }
 
     public func startListening() {
-        shouldStayListening = true
+        guard isMicEnabled, !isSpeakingTts, !isPausedForTransition else { return }
         errorMessage = nil
-        guard !isSpeakingTts && !isPausedForTransition else { return }
-
         startRecognitionCycle()
     }
 
     public func stopListening() {
-        shouldStayListening = false
         stopRecognitionCycle()
     }
 
@@ -106,35 +113,48 @@ public final class SpeechSessionController: NSObject, ObservableObject, AVSpeech
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
             guard let self = self else { return }
             self.isPausedForTransition = false
-            if self.shouldStayListening && !self.isSpeakingTts {
+            if self.isMicEnabled && !self.isSpeakingTts {
                 self.startRecognitionCycle()
             }
         }
     }
 
     private func startRecognitionCycle() {
-        guard !isListening, !isSpeakingTts, !isPausedForTransition else { return }
+        guard isMicEnabled, !isListening, !isStartingListening, !isSpeakingTts, !isPausedForTransition else { return }
+        isStartingListening = true
 
-        // Cancel any pending task
-        recognitionTask?.cancel()
-        recognitionTask = nil
+        // Clean previous tasks
+        if recognitionTask != nil {
+            recognitionTask?.cancel()
+            recognitionTask = nil
+        }
+        recognitionRequest = nil
 
         let localeIdentifier = expectNativeAnswer ? "cs-CZ" : activeLanguage.speechLocaleTag
         speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: localeIdentifier))
 
         guard let speechRecognizer = speechRecognizer, speechRecognizer.isAvailable else {
-            errorMessage = "Rozpoznávání řeči není v tomto jazyce dostupné."
+            isStartingListening = false
+            print("⚠️ [SpeechSessionController] SpeechRecognizer unavailable for \(localeIdentifier)")
             return
         }
 
         recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
-        guard let recognitionRequest = recognitionRequest else { return }
+        guard let recognitionRequest = recognitionRequest else {
+            isStartingListening = false
+            return
+        }
         recognitionRequest.shouldReportPartialResults = true
 
         let inputNode = audioEngine.inputNode
         let recordingFormat = inputNode.outputFormat(forBus: 0)
 
-        // Install audio tap for RMS volume equalizer
+        // Ensure bus format is valid
+        guard recordingFormat.sampleRate > 0 else {
+            isStartingListening = false
+            return
+        }
+
         inputNode.removeTap(onBus: 0)
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, _ in
             self?.recognitionRequest?.append(buffer)
@@ -145,9 +165,13 @@ public final class SpeechSessionController: NSObject, ObservableObject, AVSpeech
             audioEngine.prepare()
             try audioEngine.start()
             isListening = true
+            isStartingListening = false
+            consecutiveErrors = 0
         } catch {
-            errorMessage = "Chyba spuštění mikrofonu: \(error.localizedDescription)"
+            isStartingListening = false
             isListening = false
+            inputNode.removeTap(onBus: 0)
+            print("⚠️ [SpeechSessionController] AudioEngine start failed: \(error)")
             return
         }
 
@@ -155,9 +179,10 @@ public final class SpeechSessionController: NSObject, ObservableObject, AVSpeech
             guard let self = self else { return }
 
             if let result = result {
+                self.consecutiveErrors = 0
                 let candidates = [result.bestTranscription.formattedString] +
                     result.transcriptions.map { $0.formattedString }
-                
+
                 let latestSnippet = WordMatcher.shared.extractNormalizedTargets(
                     targetWord: VocabWord(id: "tmp", czech: "", foreign: result.bestTranscription.formattedString)
                 ).first ?? result.bestTranscription.formattedString
@@ -182,10 +207,18 @@ public final class SpeechSessionController: NSObject, ObservableObject, AVSpeech
 
             if error != nil || (result?.isFinal ?? false) {
                 self.stopRecognitionCycle()
-                // Auto-restart if user still wants to listen and not paused
-                if self.shouldStayListening && !self.isSpeakingTts && !self.isPausedForTransition {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        self.startRecognitionCycle()
+
+                // Debounced graceful restart (prevents blinking loops)
+                let now = Date().timeIntervalSince1970
+                if self.isMicEnabled && !self.isSpeakingTts && !self.isPausedForTransition {
+                    self.consecutiveErrors += 1
+                    if self.consecutiveErrors <= 3 && (now - self.lastRestartAttemptTime > 0.8) {
+                        self.lastRestartAttemptTime = now
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                            if self.isMicEnabled {
+                                self.startRecognitionCycle()
+                            }
+                        }
                     }
                 }
             }
@@ -206,21 +239,21 @@ public final class SpeechSessionController: NSObject, ObservableObject, AVSpeech
         DispatchQueue.main.async {
             self.isListening = false
             self.audioLevel = 0.0
+            self.isStartingListening = false
         }
     }
 
     private func calculateRmsAudioLevel(buffer: AVAudioPCMBuffer) {
         guard let channelData = buffer.floatChannelData?[0] else { return }
         let channelDataValue = Array(UnsafeBufferPointer(start: channelData, count: Int(buffer.frameLength)))
-        
+
         var sum: Float = 0
         for sample in channelDataValue {
             sum += sample * sample
         }
         let rms = sqrt(sum / Float(buffer.frameLength))
-        // Normalize roughly between 0.0 and 1.0 with soft exponential curve
         let normalized = min(1.0, max(0.0, rms * 8.0))
-        
+
         DispatchQueue.main.async {
             self.audioLevel = normalized
         }
@@ -272,7 +305,7 @@ public final class SpeechSessionController: NSObject, ObservableObject, AVSpeech
 
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = AVSpeechSynthesisVoice(language: languageTag) ?? AVSpeechSynthesisVoice(language: "en-US")
-        utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.95 // slightly relaxed speed for clear pronunciation
+        utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.95
         utterance.pitchMultiplier = 1.0
 
         speechSynthesizer.speak(utterance)
@@ -287,8 +320,7 @@ public final class SpeechSessionController: NSObject, ObservableObject, AVSpeech
             self.ttsCompletionHandler?()
             self.ttsCompletionHandler = nil
 
-            // Resume listening if user had mic active
-            if self.shouldStayListening && !self.isPausedForTransition {
+            if self.isMicEnabled && !self.isPausedForTransition {
                 self.startRecognitionCycle()
             }
         }

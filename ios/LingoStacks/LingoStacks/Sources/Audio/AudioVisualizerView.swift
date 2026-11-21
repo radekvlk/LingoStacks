@@ -22,7 +22,7 @@ public struct AudioVisualizerView: View {
                 BarView(
                     index: index,
                     level: speechController.audioLevel,
-                    isListening: speechController.isListening,
+                    isListening: speechController.isMicEnabled,
                     tintColor: tintColor
                 )
             }

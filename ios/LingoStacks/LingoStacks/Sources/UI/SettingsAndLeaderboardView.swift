@@ -17,6 +17,10 @@ public struct SettingsAndLeaderboardView: View {
     @State private var reminderTime: Date = Calendar.current.date(bySettingHour: 19, minute: 0, second: 0, of: Date()) ?? Date()
     @State private var reminderEnabled: Bool = false
 
+    public init(initialTab: Int = 0) {
+        self._selectedTab = State(initialValue: initialTab)
+    }
+
     public var body: some View {
         NavigationView {
             VStack(spacing: 0) {
