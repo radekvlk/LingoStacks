@@ -2,7 +2,7 @@
 //  FlashcardSessionView.swift
 //  LingoStacks
 //
-//  Interactive Cupertino Glass flashcard session with gestures and real-time speech recognition
+//  Complete Cupertino Glass flashcard session with TopBar metrics, LiveSpeechBanner, 3D stack, WordMemoryInsights, and auto-expanding BottomControlBar
 //
 
 import SwiftUI
@@ -39,6 +39,16 @@ public struct FlashcardSessionView: View {
         return sessionWords[currentIndex]
     }
 
+    private var nextWord: VocabWord? {
+        guard currentIndex + 1 < sessionWords.count else { return nil }
+        return sessionWords[currentIndex + 1]
+    }
+
+    private var thirdWord: VocabWord? {
+        guard currentIndex + 2 < sessionWords.count else { return nil }
+        return sessionWords[currentIndex + 2]
+    }
+
     private var isCurrentReversed: Bool {
         switch progressManager.studyDirection {
         case .nativeToForeign: return false
@@ -47,36 +57,48 @@ public struct FlashcardSessionView: View {
         }
     }
 
+    private var currentSrsStat: WordSrsStat? {
+        guard let word = currentWord else { return nil }
+        return progressManager.wordSrsMap[word.id]
+    }
+
     public var body: some View {
         ZStack {
-            // Dark elegant background
-            Color(red: 0.07, green: 0.08, blue: 0.12)
+            // Dark luxury background
+            Color(red: 0.06, green: 0.07, blue: 0.11)
                 .ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                // MARK: - Top Bar
-                topBar
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
+            VStack(spacing: 8) {
+                // MARK: - 1. Apple Session TopBar (nad kartou)
+                topBarView
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
 
-                Spacer()
+                // MARK: - 2. Live Speech Banner (nad kartou)
+                liveSpeechBannerView
+                    .padding(.horizontal, 16)
 
-                // MARK: - Flashcard
+                Spacer(minLength: 2)
+
+                // MARK: - 3. 3D Stack Flashcard Area
                 if let word = currentWord {
-                    cardView(word: word)
-                        .padding(.horizontal, 20)
+                    cardStackView(word: word)
+                        .padding(.horizontal, 16)
                 }
 
-                Spacer()
+                Spacer(minLength: 2)
 
-                // MARK: - Speech Equalizer & Recognition Status
-                speechStatusView
-                    .padding(.bottom, 16)
+                // MARK: - 4. Word Memory Insights Card (pod kartou)
+                if let word = currentWord {
+                    wordMemoryInsightsCard(word: word)
+                        .padding(.horizontal, 16)
+                }
 
-                // MARK: - Bottom Controls
+                Spacer(minLength: 4)
+
+                // MARK: - 5. Bottom Control Bar (pod kartou)
                 bottomControls
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 28)
+                    .padding(.bottom, 20)
             }
         }
         .onAppear {
@@ -87,57 +109,166 @@ public struct FlashcardSessionView: View {
         }
     }
 
-    // MARK: - Top Bar
+    // MARK: - 1. Top Bar View (AppleSessionTopBar)
 
-    private var topBar: some View {
-        HStack {
-            Button {
-                speechController.stopListening()
-                onDismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.headline.bold())
+    private var topBarView: some View {
+        VStack(spacing: 8) {
+            // First row: Deck title + CEFR badge ... Close button
+            HStack(spacing: 8) {
+                Text(deck.emoji)
+                    .font(.system(size: 20))
+
+                Text(deck.localizedTitle(isCzech: true))
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+
+                Text(deck.level.label)
+                    .font(.caption2.bold())
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(deck.level.accentColor)
+                    .clipShape(Capsule())
+
+                Spacer()
+
+                Button {
+                    speechController.stopListening()
+                    onDismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.secondary)
+                        .frame(width: 28, height: 28)
+                        .background(Color.white.opacity(0.12))
+                        .clipShape(Circle())
+                }
+            }
+
+            // Second row: Lesson progress ... Daily goal & streak
+            HStack {
+                Text("Lekce: \(currentIndex + 1) / \(sessionWords.count) (zbývá \(max(0, sessionWords.count - currentIndex - 1)))")
+                    .font(.caption.bold())
+                    .foregroundColor(.blue)
+
+                Spacer()
+
+                HStack(spacing: 4) {
+                    Text("Dnes: \(progressManager.todayCompletedWords)/\(progressManager.dailyGoalWords)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text("🔥 \(progressManager.streakDays)")
+                        .font(.caption.bold())
+                        .foregroundColor(.orange)
+                }
+            }
+
+            // Progress bar
+            ProgressView(value: Double(currentIndex + 1), total: Double(max(1, sessionWords.count)))
+                .tint(.blue)
+                .scaleEffect(x: 1, y: 0.6, anchor: .center)
+        }
+        .padding(12)
+        .cupertinoGlass(cornerRadius: 18)
+    }
+
+    // MARK: - 2. Live Speech Banner
+
+    private var liveSpeechBannerView: some View {
+        HStack(spacing: 10) {
+            // Glowing status dot or equalizer
+            if speechController.isMicEnabled {
+                Circle()
+                    .fill(Color.green)
+                    .frame(width: 8, height: 8)
+                    .shadow(color: .green, radius: 4)
+
+                AudioVisualizerView()
+            } else {
+                Circle()
+                    .fill(Color.gray)
+                    .frame(width: 8, height: 8)
+            }
+
+            // Text status / partial recognition
+            if speechController.isMicEnabled {
+                if !speechController.partialTranscript.isEmpty {
+                    Text(speechController.partialTranscript)
+                        .font(.caption.bold())
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                } else {
+                    Text(speechController.isListening ? "Poslouchám výslovnost..." : "Mikrofon připraven...")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            } else {
+                Text("Mikrofon je vypnutý (použijte tlačítka nebo swipe)")
+                    .font(.caption)
                     .foregroundColor(.secondary)
-                    .padding(10)
-                    .cupertinoGlass(cornerRadius: 14)
             }
 
             Spacer()
 
-            // Direction Pill
-            Text(progressManager.studyDirection.shortLabel(language: progressManager.selectedLanguage))
+            // Direction badge
+            Text(isCurrentReversed ? "🇨🇿 CZ" : "\(progressManager.selectedLanguage.flagEmoji) \(progressManager.selectedLanguage.code.uppercased())")
                 .font(.caption2.bold())
                 .foregroundColor(.secondary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .cupertinoGlass(cornerRadius: 10)
-
-            Spacer()
-
-            // Progress Counter
-            Text("\(min(currentIndex + 1, sessionWords.count)) / \(sessionWords.count)")
-                .font(.subheadline.bold())
-                .foregroundColor(.primary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .cupertinoGlass(cornerRadius: 12)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(Color.white.opacity(0.08))
+                .clipShape(Capsule())
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .frame(height: 38)
+        .cupertinoGlass(cornerRadius: 14)
     }
 
-    // MARK: - Card View with Gestures
+    // MARK: - 3. 3D Card Stack Area
 
     @ViewBuilder
-    private func cardView(word: VocabWord) -> some View {
-        let rotation = Double(dragOffset.width / 20)
+    private func cardStackView(word: VocabWord) -> some View {
+        ZStack {
+            // 3rd card in background (depth)
+            if thirdWord != nil {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(Color(white: 0.12))
+                    .frame(height: 290)
+                    .scaleEffect(0.90)
+                    .offset(y: 20)
+                    .opacity(0.4)
+            }
+
+            // 2nd card in background (depth)
+            if nextWord != nil {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(Color(white: 0.16))
+                    .frame(height: 290)
+                    .scaleEffect(0.95)
+                    .offset(y: 10)
+                    .opacity(0.7)
+            }
+
+            // Active Card (Front)
+            activeCardContent(word: word)
+        }
+        .frame(height: 310)
+    }
+
+    @ViewBuilder
+    private func activeCardContent(word: VocabWord) -> some View {
+        let rotation = Double(dragOffset.width / 22)
         let promptText = isCurrentReversed ? word.foreign : word.czech
         let targetText = isCurrentReversed ? word.czech : word.foreign
 
         ZStack {
-            VStack(spacing: 16) {
-                // Card Header: Emoji & Audio Button
+            VStack(spacing: 12) {
+                // Card Header: Emoji + Speaker
                 HStack {
                     Text(word.emoji)
-                        .font(.system(size: 40))
+                        .font(.system(size: 34))
 
                     Spacer()
 
@@ -147,10 +278,10 @@ public struct FlashcardSessionView: View {
                         speechController.speak(text: text, languageTag: tag)
                     } label: {
                         Image(systemName: "speaker.wave.2.fill")
-                            .font(.title3)
+                            .font(.headline)
                             .foregroundColor(.blue)
-                            .padding(10)
-                            .background(Color.blue.opacity(0.12))
+                            .padding(8)
+                            .background(Color.blue.opacity(0.15))
                             .clipShape(Circle())
                     }
                 }
@@ -159,21 +290,20 @@ public struct FlashcardSessionView: View {
 
                 // Main Prompt Text
                 Text(promptText)
-                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
                     .minimumScaleFactor(0.7)
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, 8)
 
-                // Subtitle / Target Language indicator
                 Text(isCurrentReversed ? "Přeložte do češtiny" : "Vyslovte v jazyce: \(progressManager.selectedLanguage.localizedTitle(isCzech: true))")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
 
                 Spacer()
 
-                // Expandable Hint Section
-                VStack(spacing: 8) {
+                // Expandable Hint
+                VStack(spacing: 6) {
                     Button {
                         withAnimation(.spring(response: 0.3)) {
                             isShowingHint.toggle()
@@ -185,16 +315,16 @@ public struct FlashcardSessionView: View {
                         }
                         .font(.footnote.bold())
                         .foregroundColor(.yellow)
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, 14)
                         .padding(.vertical, 6)
-                        .background(Color.yellow.opacity(0.15))
+                        .background(Color.yellow.opacity(0.18))
                         .clipShape(Capsule())
                     }
 
                     if isShowingHint {
-                        VStack(spacing: 6) {
+                        VStack(spacing: 4) {
                             Text(targetText)
-                                .font(.headline)
+                                .font(.headline.bold())
                                 .foregroundColor(.green)
 
                             if !word.phonetic.isEmpty {
@@ -202,32 +332,23 @@ public struct FlashcardSessionView: View {
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
-
-                            if !word.exampleSentence.isEmpty {
-                                Text("\"\(word.exampleSentence)\"")
-                                    .font(.caption.italic())
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
-                                    .padding(.horizontal, 16)
-                            }
                         }
-                        .padding(.top, 4)
-                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                        .transition(.opacity)
                     }
                 }
             }
-            .padding(24)
+            .padding(18)
             .frame(maxWidth: .infinity)
-            .frame(height: 380)
+            .frame(height: 290)
             .background(
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .fill(.ultraThinMaterial)
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(Color(white: 0.15))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
                             .stroke(swipeBorderColor, lineWidth: 2)
                     )
             )
-            .shadow(color: Color.black.opacity(0.25), radius: 20, x: 0, y: 10)
+            .shadow(color: Color.black.opacity(0.35), radius: 16, x: 0, y: 8)
             .offset(dragOffset)
             .rotationEffect(.degrees(rotation))
             .gesture(
@@ -259,43 +380,91 @@ public struct FlashcardSessionView: View {
         Text(text)
             .font(.title3.bold())
             .foregroundColor(color)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 6)
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: 10)
                     .stroke(color, lineWidth: 2)
             )
             .rotationEffect(.degrees(alignment == .topLeading ? -15 : 15))
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
-            .padding(32)
+            .padding(24)
     }
 
-    // MARK: - Speech Equalizer & Status
+    // MARK: - 4. Word Memory Insights Card (pod kartou)
 
-    private var speechStatusView: some View {
-        VStack(spacing: 8) {
-            if speechController.isMicEnabled {
-                AudioVisualizerView()
+    private func wordMemoryInsightsCard(word: VocabWord) -> some View {
+        let box = currentSrsStat?.box ?? 0
+        let statusTitle: String = {
+            if currentSrsStat == nil { return "Nové slovíčko" }
+            if box == 0 { return "K procvičení" }
+            if box >= 4 { return "V dlouhodobé paměti ✓" }
+            return "Upevňuje se • Box \(box)/5"
+        }()
+
+        let statusColor: Color = {
+            if currentSrsStat == nil { return .blue }
+            if box == 0 { return .red }
+            if box >= 4 { return .green }
+            return .orange
+        }()
+
+        return VStack(spacing: 8) {
+            HStack {
+                HStack(spacing: 6) {
+                    Text("🧠")
+                        .font(.subheadline)
+                    Text(statusTitle)
+                        .font(.caption.bold())
+                        .foregroundColor(statusColor)
+                }
+
+                Spacer()
+
+                // 5 Leitner level segment bars
+                HStack(spacing: 3) {
+                    ForEach(1...5, id: \.self) { b in
+                        RoundedRectangle(cornerRadius: 1.5)
+                            .fill(b <= box ? statusColor : Color.white.opacity(0.15))
+                            .frame(width: 14, height: 4)
+                    }
+                }
             }
 
-            if !speechController.partialTranscript.isEmpty && speechController.isMicEnabled {
-                Text(speechController.partialTranscript)
-                    .font(.subheadline)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 4)
-                    .background(Color.white.opacity(0.1))
-                    .clipShape(Capsule())
+            // Example sentence if available
+            if !word.exampleSentence.isEmpty {
+                HStack(alignment: .center, spacing: 6) {
+                    Text("\"\(word.exampleSentence)\"")
+                        .font(.caption.italic())
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+
+                    Spacer()
+
+                    Button {
+                        speechController.speak(
+                            text: word.exampleSentence,
+                            languageTag: progressManager.selectedLanguage.speechLocaleTag
+                        )
+                    } label: {
+                        Image(systemName: "speaker.wave.1.fill")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                            .padding(4)
+                    }
+                }
             }
         }
-        .frame(height: 36)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .cupertinoGlass(cornerRadius: 16)
     }
 
-    // MARK: - Bottom Action Controls (Animated Capsule)
+    // MARK: - 5. Bottom Controls Bar
 
     private var bottomControls: some View {
-        HStack(spacing: 16) {
-            // When Mic is OFF: reveal [✕ Nevím] button on the left
+        HStack(spacing: 20) {
+            // When Mic is OFF: reveal [✕ Nevím] on left
             if !speechController.isMicEnabled {
                 Button {
                     advanceCard(isCorrect: false, method: .swipedDontKnow)
@@ -310,7 +479,7 @@ public struct FlashcardSessionView: View {
                 .transition(.scale.combined(with: .opacity))
             }
 
-            // Big Center Microphone Button
+            // Big Center Microphone Button (Toggles Mic)
             Button {
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
                     speechController.toggleListening()
@@ -318,20 +487,20 @@ public struct FlashcardSessionView: View {
             } label: {
                 ZStack {
                     Circle()
-                        .fill(speechController.isMicEnabled ? Color.blue : Color(white: 0.25))
+                        .fill(speechController.isMicEnabled ? Color.green : Color(white: 0.25))
                         .frame(width: 72, height: 72)
                         .shadow(
-                            color: speechController.isMicEnabled ? Color.blue.opacity(0.4) : Color.clear,
+                            color: speechController.isMicEnabled ? Color.green.opacity(0.4) : Color.clear,
                             radius: 12
                         )
 
-                    Image(systemName: speechController.isMicEnabled ? "mic.fill" : "mic.slash.fill")
+                    Image(systemName: speechController.isMicEnabled ? "waveform" : "mic.slash.fill")
                         .font(.title2.bold())
                         .foregroundColor(.white)
                 }
             }
 
-            // When Mic is OFF: reveal [✓ Vím] button on the right
+            // When Mic is OFF: reveal [✓ Vím] on right
             if !speechController.isMicEnabled {
                 Button {
                     advanceCard(isCorrect: true, method: .swipedKnow)
@@ -359,21 +528,18 @@ public struct FlashcardSessionView: View {
         .animation(.spring(response: 0.35, dampingFraction: 0.75), value: speechController.isMicEnabled)
     }
 
-    // MARK: - Session Setup & Advance Logic
+    // MARK: - Advance & Gestures Logic
 
     private func setupSession() {
         sessionWords = progressManager.prioritizeWordsForSession(words: deck.words, targetCount: 10)
         prepareActiveCard()
 
-        // Bind SpeechController match callback
         speechController.onWordMatched = { [self] word, transcript, method in
             advanceCard(isCorrect: true, method: method, transcript: transcript)
         }
         speechController.onTransitionReady = { [self] in
-            // Card was advanced, start next listen
         }
 
-        // Auto-start listening on session open
         speechController.requestPermissions { granted in
             if granted && speechController.isMicEnabled {
                 speechController.startListening()
@@ -392,7 +558,7 @@ public struct FlashcardSessionView: View {
     }
 
     private func handleDragEnd(gesture: DragGesture.Value) {
-        let threshold: CGFloat = 110
+        let threshold: CGFloat = 100
         if gesture.translation.width > threshold {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 dragOffset = CGSize(width: 500, height: gesture.translation.height)

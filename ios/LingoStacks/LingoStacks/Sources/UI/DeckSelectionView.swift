@@ -2,7 +2,7 @@
 //  DeckSelectionView.swift
 //  LingoStacks
 //
-//  Overview of decks and study progress in Cupertino Glass design with signature floating glass bottom bar
+//  Overview of decks and study progress in Cupertino Glass design
 //
 
 import SwiftUI
@@ -12,10 +12,7 @@ public struct DeckSelectionView: View {
     @ObservedObject var vocabularyRepo = VocabularyRepository.shared
 
     @State private var selectedLevelFilter: CefrLevel? = nil
-    @State private var showingSettings: Bool = false
-    @State private var settingsInitialTab: Int = 0 // 0 = Nastavení, 1 = Žebříček
     @State private var showingLanguagePicker: Bool = false
-    @State private var activeBottomTab: Int = 0 // 0 = Domů, 1 = Trénink, 2 = Žebříček, 3 = Nastavení
 
     public var onSelectDeck: (VocabDeck) -> Void
 
@@ -31,83 +28,38 @@ public struct DeckSelectionView: View {
         return all
     }
 
-    private var totalNeedsReviewCount: Int {
-        currentDecks.reduce(0) { $0 + progressManager.getDeckNeedsReviewCount(deck: $1) }
-    }
-
     public var body: some View {
-        ZStack {
-            // Elegant background gradient
-            LinearGradient(
-                colors: [Color(.systemGroupedBackground), Color(.systemBackground)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+        NavigationView {
+            ZStack {
+                Color(.systemGroupedBackground).ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                // MARK: - Header
-                headerView
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
-                    .padding(.bottom, 12)
+                VStack(spacing: 0) {
+                    // MARK: - Header
+                    headerView
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                        .padding(.bottom, 10)
 
-                // MARK: - CEFR Level Filter
-                levelFilterBar
-                    .padding(.bottom, 10)
+                    // MARK: - CEFR Level Filter
+                    levelFilterBar
+                        .padding(.bottom, 8)
 
-                // MARK: - Decks ScrollView
-                ScrollView {
-                    LazyVStack(spacing: 12) {
-                        ForEach(currentDecks) { deck in
-                            DeckCardRow(deck: deck) {
-                                onSelectDeck(deck)
+                    // MARK: - Decks ScrollView
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            ForEach(currentDecks) { deck in
+                                DeckCardRow(deck: deck) {
+                                    onSelectDeck(deck)
+                                }
                             }
                         }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 100) // Space for floating bottom bar
-                }
-            }
-
-            // MARK: - Signature Apple Floating Glass Bar (Bottom)
-            VStack {
-                Spacer()
-                AppleFloatingGlassBar(
-                    selectedTab: activeBottomTab,
-                    reviewBadgeCount: totalNeedsReviewCount
-                ) { index in
-                    activeBottomTab = index
-                    switch index {
-                    case 0:
-                        // Domů -> stay here
-                        break
-                    case 1:
-                        // Trénink -> launch first deck with due words or first deck
-                        if let targetDeck = currentDecks.first(where: { progressManager.getDeckNeedsReviewCount(deck: $0) > 0 }) ?? currentDecks.first {
-                            onSelectDeck(targetDeck)
-                        }
-                        activeBottomTab = 0
-                    case 2:
-                        // Žebříček
-                        settingsInitialTab = 1
-                        showingSettings = true
-                        activeBottomTab = 0
-                    case 3:
-                        // Nastavení
-                        settingsInitialTab = 0
-                        showingSettings = true
-                        activeBottomTab = 0
-                    default:
-                        break
+                        .padding(.horizontal, 16)
+                        .padding(.top, 4)
+                        .padding(.bottom, 16)
                     }
                 }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 16)
             }
-        }
-        .sheet(isPresented: $showingSettings) {
-            SettingsAndLeaderboardView(initialTab: settingsInitialTab)
+            .navigationBarHidden(true)
         }
         .sheet(isPresented: $showingLanguagePicker) {
             LanguagePickerSheet()
@@ -191,73 +143,6 @@ public struct DeckSelectionView: View {
             }
             .padding(.horizontal, 16)
         }
-    }
-}
-
-// MARK: - Signature Apple Floating Glass Bar
-
-public struct AppleFloatingGlassBar: View {
-    let selectedTab: Int
-    let reviewBadgeCount: Int
-    let onSelectTab: (Int) -> Void
-
-    public var body: some View {
-        HStack(spacing: 0) {
-            tabButton(index: 0, title: "Domů", icon: "house.fill")
-            tabButton(index: 1, title: "Trénink", icon: "bolt.fill", badge: reviewBadgeCount)
-            tabButton(index: 2, title: "Žebříček", icon: "trophy.fill")
-            tabButton(index: 3, title: "Nastavení", icon: "gearshape.fill")
-        }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
-        .background(
-            Capsule()
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    Capsule()
-                        .stroke(
-                            LinearGradient(
-                                colors: [Color.white.opacity(0.35), Color.white.opacity(0.10)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            ),
-                            lineWidth: 1
-                        )
-                )
-                .shadow(color: Color.black.opacity(0.25), radius: 16, x: 0, y: 8)
-        )
-    }
-
-    private func tabButton(index: Int, title: String, icon: String, badge: Int = 0) -> some View {
-        Button {
-            onSelectTab(index)
-        } label: {
-            VStack(spacing: 3) {
-                ZStack(alignment: .topTrailing) {
-                    Image(systemName: icon)
-                        .font(.system(size: 20, weight: selectedTab == index ? .bold : .medium))
-                        .foregroundColor(selectedTab == index ? .blue : .secondary)
-
-                    if badge > 0 {
-                        Text("\(badge)")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 1)
-                            .background(Color.orange)
-                            .clipShape(Capsule())
-                            .offset(x: 10, y: -6)
-                    }
-                }
-
-                Text(title)
-                    .font(.system(size: 11, weight: selectedTab == index ? .semibold : .regular))
-                    .foregroundColor(selectedTab == index ? .blue : .secondary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 4)
-        }
-        .buttonStyle(.plain)
     }
 }
 
