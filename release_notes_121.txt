@@ -1,0 +1,10 @@
+<cs-CZ>
+• Úprava žebříčku: Odstraněno herní slovo „hráčů“ z nadpisu (nyní „Kompletní pořadí ($totalParticipants)“).
+• Oprava počítadla lekce: Vyřešeno zamrzání čítače na 18/60 v lekcích (včetně nepravidelných sloves a smíšeného směru učení) – postup se nyní dynamicky načítá a plynule posouvá až k dokončení lekce.
+• Plná obousměrná podpora smíšeného režimu (MIXED) pro výpočet zvládnutých slovíček v balíčku.
+</cs-CZ>
+<en-GB>
+• Leaderboard wording: Removed the gaming term 'players/learners' from the header (now 'All Rankings ($totalParticipants)').
+• Lesson progress counter fix: Resolved progress freezing at 18/60 in lessons (including irregular verbs and mixed study direction) – counter and progress bar now update dynamically up to 60/60 completion.
+• Full bidirectional support for MIXED study direction in deck mastery and session tracking.
+</en-GB>

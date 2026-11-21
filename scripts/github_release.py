@@ -5,24 +5,20 @@ import mimetypes
 
 TOKEN_PATH = r"C:\Users\radek.vlk\.gemini\antigravity\brain\43b0acd7-1097-4287-b01f-eedb0d465b28\scratch\github_token.txt"
 REPO = "radekvlk/LingoStacks"
-TAG = "v1.0.14"
-NAME = "LingoStacks v1.0.14 (Build 120)"
+TAG = "v1.0.15"
+NAME = "LingoStacks v1.0.15 (Build 121)"
 
-BODY = """versionCode: 120
+BODY = """versionCode: 121
 
 [CS]
-• **Ukazatel pozice v žebříčku:** Přímo v záhlaví i na připnuté kartě v žebříčku vidíte své přesné umístění (#X z N hráčů), počet XP i dynamický odstup na hráče před vámi. Není potřeba nikam rolovat ani se hledat v dlouhém seznamu.
-• **Oprava odkazu na offline balíčky řeči:** Tlačítko v nastavení nyní otevírá přímo hlasové nastavení Google / správu klávesnic namísto chybného přesměrování na výběr digitálního asistenta.
-• **Oprava denního cíle a popisků:** Tlačítko Zopakovat chyby již nepřepisuje denní cíl a statistická dlaždice nese jasný popisek „Dnes splněno“.
-• **Výslovnostní homofon kravata (tie / thai):** Bezpečné uznání slova tie i při izolovaném rozpoznání jako Thai.
-• **Úprava textu v nastavení:** Odstraněn matoucí technický pojem bounce.
+• **Úprava žebříčku:** Odstraněno herní slovo „hráčů“ z nadpisu statistického pořadí (nyní „Kompletní pořadí ($totalParticipants)“).
+• **Oprava počítadla lekce:** Vyřešeno zamrzání čítače na 18/60 v lekcích (včetně nepravidelných sloves a smíšeného směru učení) – postup se nyní dynamicky načítá a plynule posouvá až k dokončení celé lekce.
+• **Plná obousměrná podpora smíšeného režimu (MIXED):** Výpočet zvládnutých slovíček a prioritizace fronty správně zohledňuje oba směry procvičování.
 
 [EN]
-• **Leaderboard User Rank Indicator:** Prominent pinned card in the leaderboard section displays your exact ranking (#X of N learners), your period XP, and dynamic gap to the player ahead.
-• **Fixed Offline Speech Pack Settings Link:** Direct navigation to Google speech / keyboard settings without redirecting to the digital assistant selection screen.
-• **Fixed Daily Goal & Clarified Stats:** Retrying missed cards never overwrites the user's daily goal setting, and the stat tile is clearly labeled "Today's Progress".
-• **Pronunciation Homophone 'tie' / 'thai':** Reliable acceptance of 'tie' even when Google STT transcribes isolated audio as 'Thai'.
-• **Updated Settings Copy:** Removed the technical term 'bounce'.
+• **Leaderboard Header Copy:** Removed gaming terminology 'players/learners' from leaderboard header (now 'All Rankings ($totalParticipants)').
+• **Lesson Progress Counter Fix:** Resolved counter freezing at 18/60 in lessons (including irregular verbs and mixed study direction) – counter and progress bar now update dynamically up to full lesson completion.
+• **Full Bidirectional MIXED Mode Support:** Deck mastery calculation and spaced repetition queue now properly track both study directions.
 """
 
 def main():
@@ -76,9 +72,9 @@ def main():
 
     # 2. Upload APK assets
     apk_paths = [
-        ("LingoStacks_v1.0.14.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.14.apk"),
-        ("LingoStacks.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.14.apk"),
-        ("LingoStacks_v1.0.14_playstore.aab", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.14_playstore.aab")
+        ("LingoStacks_v1.0.15.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.15.apk"),
+        ("LingoStacks.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.15.apk"),
+        ("LingoStacks_v1.0.15_playstore.aab", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.15_playstore.aab")
     ]
 
     # Delete existing asset with same name if any
