@@ -80,7 +80,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -268,12 +275,26 @@ fun DeckSelectionScreen(
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE ||
             (configuration.screenWidthDp > configuration.screenHeightDp)
 
+    val backdropLayer = rememberGraphicsLayer()
+    val currentSurfaceBg = SurfaceBg
+
     Scaffold(
         containerColor = SurfaceBg
     ) { innerPadding ->
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .drawWithContent {
+                        backdropLayer.record {
+                            drawRect(currentSurfaceBg)
+                            this@drawWithContent.drawContent()
+                        }
+                        drawLayer(backdropLayer)
+                    }
+            ) {
             when (activeBottomTab) {
                 0 -> {
                     if (isLandscape) {
@@ -517,24 +538,48 @@ fun DeckSelectionScreen(
             )
         }
     }
+    } // end backdropLayer recording Box
 
-    // Soft blur/fade veil behind the floating bar to gently melt background text and cards
+    // Real subtle Gaussian blur starting tightly above the floating bar (~8dp above)
+    val navBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val blurRegionHeight = navBottomPadding + 88.dp
     Box(
         modifier = Modifier
             .align(Alignment.BottomCenter)
             .fillMaxWidth()
-            .height(210.dp)
-            .background(
-                brush = Brush.verticalGradient(
-                    0.0f to Color.Transparent,
-                    0.18f to SurfaceBg.copy(alpha = 0.50f),
-                    0.35f to SurfaceBg.copy(alpha = 0.92f),
-                    0.50f to SurfaceBg.copy(alpha = 0.99f),
-                    0.70f to SurfaceBg,
-                    1.0f to SurfaceBg
+            .height(blurRegionHeight)
+            .graphicsLayer {
+                compositingStrategy = CompositingStrategy.Offscreen
+            }
+            .drawWithContent {
+                drawContent()
+                val featherPx = 12.dp.toPx()
+                val featherFrac = (featherPx / size.height).coerceIn(0.05f, 0.30f)
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        0.0f to Color.Transparent,
+                        featherFrac to Color.Black,
+                        1.0f to Color.Black
+                    ),
+                    blendMode = BlendMode.DstIn
                 )
-            )
-    )
+            }
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .blur(radius = 5.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+                .drawBehind {
+                    val fullHeight = backdropLayer.size.height.toFloat()
+                    if (fullHeight > 0f) {
+                        val offsetY = fullHeight - size.height
+                        translate(top = -offsetY) {
+                            drawLayer(backdropLayer)
+                        }
+                    }
+                }
+        )
+    }
 
     // Apple Floating Glass Bar
     AppleFloatingGlassBar(
@@ -2882,17 +2927,17 @@ fun AppleFloatingGlassBar(
         if (isDark) {
             Brush.verticalGradient(
                 colors = listOf(
-                    Color(0xF626262A),
-                    Color(0xFA18181A),
-                    Color(0xFD101012)
+                    Color(0xE026262A),
+                    Color(0xE618181A),
+                    Color(0xEC101012)
                 )
             )
         } else {
             Brush.verticalGradient(
                 colors = listOf(
-                    Color(0xFEFFFFFF),
-                    Color(0xF8F6F8FC),
-                    Color(0xF2EDF2F9)
+                    Color(0xE6FFFFFF),
+                    Color(0xDFF6F8FC),
+                    Color(0xD8EDF2F9)
                 )
             )
         }

@@ -1,0 +1,12 @@
+<en-GB>
+• Subtle real Gaussian blur (5dp) behind the floating bottom navigation bar starting tightly above the bar.
+• Translucent frosted glass bar lets background cards and icons remain clearly visible while softly blurred.
+• Standalone Practice button with unclipped review counter badge.
+• Full-page tabs for Statistics and Settings.
+</en-GB>
+<cs-CZ>
+• Skutečný jemný Gaussian blur (5dp) za spodní plovoucí lištou začínající těsně nad horní hranou lišty.
+• Poloprůhledný skleněný efekt lišty ponechává karty a ikony na pozadí jasně viditelné, pouze jemně rozostřené.
+• Samostatné tlačítko Trénink s neoříznutou pilulkou počtu slovíček.
+• Plnohodnotné záložky Statistiky a Nastavení.
+</cs-CZ>
