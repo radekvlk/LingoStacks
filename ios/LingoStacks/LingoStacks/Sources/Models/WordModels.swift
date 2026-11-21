@@ -69,7 +69,7 @@ public enum LearningLanguage: String, Codable, CaseIterable, Identifiable {
         }
     }
 
-    public func localizedTitle(isCzech: Boolean = true) -> String {
+    public func localizedTitle(isCzech: Bool = true) -> String {
         isCzech ? titleCs : titleEn
     }
 }
