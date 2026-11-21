@@ -28,7 +28,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.material.icons.filled.Leaderboard
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -132,16 +135,17 @@ fun DeckSelectionScreen(
     val selectedLevel = progressState.selectedCefrLevel
     val studyDirection = progressState.studyDirection
     var activeBottomTab by remember { mutableIntStateOf(0) }
-    var showSettingsDialog by remember { mutableStateOf(false) }
-    var settingsInitialTab by remember { mutableIntStateOf(0) }
     var showCompleteStatsDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(initialOpenStats) {
         if (initialOpenStats) {
-            settingsInitialTab = 0
-            showSettingsDialog = true
+            activeBottomTab = 1
             onStatsOpened()
         }
+    }
+
+    BackHandler(enabled = activeBottomTab != 0) {
+        activeBottomTab = 0
     }
     val portraitListState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -270,48 +274,48 @@ fun DeckSelectionScreen(
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
-            if (isLandscape) {
-            // Fold / Tablet Landscape (na sirku): 2 sloupce vedle sebe (Plnohodnotny Dashboard vlevo, Balicky vpravo)
-            val allLanguageStats = remember(progressState.srsRevision, studyDirection, progressState.nativeLanguage) {
-                LearningLanguage.entries.filter { it != progressState.nativeLanguage }.map { progressState.getLanguageCompleteStats(it) }
-            }
-            val activeLangStats = allLanguageStats.firstOrNull { it.language == selectedLanguage }
-                ?: allLanguageStats.first()
+            when (activeBottomTab) {
+                0 -> {
+                    if (isLandscape) {
+                        // Fold / Tablet Landscape (na sirku): 2 sloupce vedle sebe (Plnohodnotny Dashboard vlevo, Balicky vpravo)
+                        val allLanguageStats = remember(progressState.srsRevision, studyDirection, progressState.nativeLanguage) {
+                            LearningLanguage.entries.filter { it != progressState.nativeLanguage }.map { progressState.getLanguageCompleteStats(it) }
+                        }
+                        val activeLangStats = allLanguageStats.firstOrNull { it.language == selectedLanguage }
+                            ?: allLanguageStats.first()
 
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(horizontal = 24.dp, vertical = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
-                // Levy sloupec: Hlavicka, denni cil, rychly start, statistiky a prehled jazyku
-                val landscapeListState = rememberLazyListState()
-                val isLandscapeHeaderVisible by remember {
-                    derivedStateOf { landscapeListState.firstVisibleItemIndex == 0 }
-                }
-                LazyColumn(
-                    state = landscapeListState,
-                    modifier = Modifier
-                        .weight(0.92f)
-                        .fillMaxHeight(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    item {
-                        DeckHeaderRow(
-                            selectedLanguage = selectedLanguage,
-                            strings = strings,
-                            animateWave = isLandscapeHeaderVisible,
-                            onOpenLeaderboard = {
-                                settingsInitialTab = 0
-                                showSettingsDialog = true
-                            },
-                            onOpenSettings = {
-                                settingsInitialTab = 1
-                                showSettingsDialog = true
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(innerPadding)
+                                .padding(horizontal = 24.dp, vertical = 14.dp),
+                            horizontalArrangement = Arrangement.spacedBy(20.dp)
+                        ) {
+                            // Levy sloupec: Hlavicka, denni cil, rychly start, statistiky a prehled jazyku
+                            val landscapeListState = rememberLazyListState()
+                            val isLandscapeHeaderVisible by remember {
+                                derivedStateOf { landscapeListState.firstVisibleItemIndex == 0 }
                             }
-                        )
-                    }
+                            LazyColumn(
+                                state = landscapeListState,
+                                modifier = Modifier
+                                    .weight(0.92f)
+                                    .fillMaxHeight(),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                item {
+                                    DeckHeaderRow(
+                                        selectedLanguage = selectedLanguage,
+                                        strings = strings,
+                                        animateWave = isLandscapeHeaderVisible,
+                                        onOpenLeaderboard = {
+                                            activeBottomTab = 1
+                                        },
+                                        onOpenSettings = {
+                                            activeBottomTab = 2
+                                        }
+                                    )
+                                }
 
                     val pendingOta = if (BuildConfig.ENABLE_OTA_UPDATES) progressState.availableOtaRelease else null
                     if (pendingOta != null && !progressState.otaBannerDismissed) {
@@ -348,7 +352,7 @@ fun DeckSelectionScreen(
                             onSelectDirection = { direction ->
                                 progressState.updateStudyDirection(direction)
                             },
-                            onOpenStats = { showCompleteStatsDialog = true }
+                            onOpenStats = { activeBottomTab = 1 }
                         )
                     }
 
@@ -372,7 +376,7 @@ fun DeckSelectionScreen(
                             accuracyPercent = progressState.accuracyPercent,
                             totalSpokenCorrect = progressState.totalSpokenCorrect,
                             activeLangStats = activeLangStats,
-                            onOpenStats = { showCompleteStatsDialog = true }
+                            onOpenStats = { activeBottomTab = 1 }
                         )
                     }
 
@@ -477,7 +481,7 @@ fun DeckSelectionScreen(
                         onSelectDirection = { direction ->
                             progressState.updateStudyDirection(direction)
                         },
-                        onOpenStats = { showCompleteStatsDialog = true }
+                        onOpenStats = { activeBottomTab = 1 }
                     )
                 }
 
@@ -494,71 +498,86 @@ fun DeckSelectionScreen(
                 }
             }
         }
-
-        // Apple Floating Glass Bar
-        AppleFloatingGlassBar(
-            selectedTab = activeBottomTab,
-            onSelectTab = { idx ->
-                activeBottomTab = idx
-                when (idx) {
-                    0 -> {
-                        coroutineScope.launch {
-                            portraitListState.animateScrollToItem(0)
-                        }
-                    }
-                    1 -> {
-                        // ⚡ Trénink: Rychlý start procvičování doporučeného balíčku / posun na další lekci
-                        val targetDeck = recommendedPair?.first ?: filteredDecks.firstOrNull()
-                        if (targetDeck != null) {
-                            if (selectedLevel != null && targetDeck.level != selectedLevel) {
-                                progressState.updateSelectedCefrLevel(targetDeck.level)
-                            }
-                            progressState.updateLastStudiedDeck(targetDeck.id)
-                            onSelectDeck(targetDeck)
-                        }
-                    }
-                    2 -> {
-                        settingsInitialTab = 0
-                        showSettingsDialog = true
-                    }
-                    3 -> {
-                        settingsInitialTab = 1
-                        showSettingsDialog = true
-                    }
-                }
-            },
-            isCzech = strings.isCzech,
-            reviewBadgeCount = if (isGoalReached) 0 else remainingWords,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
-                .padding(horizontal = 24.dp, vertical = 14.dp)
-        )
-
-        AppleFullSettingsDialog(
-            visible = showSettingsDialog,
-            progressState = progressState,
-            initialTab = settingsInitialTab,
-            onDismiss = {
-                showSettingsDialog = false
-                activeBottomTab = 0
-            }
-        )
-
-        AppleCompleteStatsDialog(
-            visible = showCompleteStatsDialog,
-            progressState = progressState,
-            onOpenLeaderboard = {
-                showCompleteStatsDialog = false
-                settingsInitialTab = 0
-                showSettingsDialog = true
-            },
-            onDismiss = {
-                showCompleteStatsDialog = false
-                activeBottomTab = 0
-            }
-        )
     }
+    1 -> {
+            StatsTabContent(
+                progressState = progressState,
+                onOpenCompleteStats = { showCompleteStatsDialog = true },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = innerPadding.calculateTopPadding())
+            )
+        }
+        2 -> {
+            SettingsTabContent(
+                progressState = progressState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = innerPadding.calculateTopPadding())
+            )
+        }
+    }
+
+    // Soft blur/fade veil behind the floating bar to gently melt background text and cards
+    Box(
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .fillMaxWidth()
+            .height(210.dp)
+            .background(
+                brush = Brush.verticalGradient(
+                    0.0f to Color.Transparent,
+                    0.18f to SurfaceBg.copy(alpha = 0.50f),
+                    0.35f to SurfaceBg.copy(alpha = 0.92f),
+                    0.50f to SurfaceBg.copy(alpha = 0.99f),
+                    0.70f to SurfaceBg,
+                    1.0f to SurfaceBg
+                )
+            )
+    )
+
+    // Apple Floating Glass Bar
+    AppleFloatingGlassBar(
+        selectedTab = activeBottomTab,
+        onSelectTab = { idx ->
+            if (idx == 0 && activeBottomTab == 0) {
+                coroutineScope.launch {
+                    portraitListState.animateScrollToItem(0)
+                }
+            }
+            activeBottomTab = idx
+        },
+        onStartPractice = {
+            // ⚡ Trénink: Rychlý start procvičování doporučeného balíčku / posun na další lekci
+            val targetDeck = recommendedPair?.first ?: filteredDecks.firstOrNull()
+            if (targetDeck != null) {
+                if (selectedLevel != null && targetDeck.level != selectedLevel) {
+                    progressState.updateSelectedCefrLevel(targetDeck.level)
+                }
+                progressState.updateLastStudiedDeck(targetDeck.id)
+                onSelectDeck(targetDeck)
+            }
+        },
+        isCzech = strings.isCzech,
+        reviewBadgeCount = if (isGoalReached) 0 else remainingWords,
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .navigationBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 14.dp)
+    )
+
+    AppleCompleteStatsDialog(
+        visible = showCompleteStatsDialog,
+        progressState = progressState,
+        onOpenLeaderboard = {
+            showCompleteStatsDialog = false
+            activeBottomTab = 1
+        },
+        onDismiss = {
+            showCompleteStatsDialog = false
+        }
+    )
+}
 }
 }
 
@@ -2823,17 +2842,17 @@ data class AppleBottomTabItem(
 fun AppleFloatingGlassBar(
     selectedTab: Int,
     onSelectTab: (Int) -> Unit,
+    onStartPractice: () -> Unit,
     isCzech: Boolean,
     reviewBadgeCount: Int = 0,
     modifier: Modifier = Modifier
 ) {
     val isDark = cz.slovickaspeak.app.ui.theme.isDarkThemeActive
-    val tabs = remember(isCzech, reviewBadgeCount) {
+    val tabs = remember(isCzech) {
         listOf(
             AppleBottomTabItem(0, if (isCzech) "Domů" else "Home", Icons.Filled.Home),
-            AppleBottomTabItem(1, if (isCzech) "Trénink" else "Practice", Icons.Filled.Bolt, badge = reviewBadgeCount),
-            AppleBottomTabItem(2, if (isCzech) "Statistiky" else "Stats", Icons.Filled.EmojiEvents),
-            AppleBottomTabItem(3, if (isCzech) "Nastavení" else "Settings", Icons.Filled.Settings)
+            AppleBottomTabItem(1, if (isCzech) "Statistiky" else "Stats", Icons.Filled.Leaderboard),
+            AppleBottomTabItem(2, if (isCzech) "Nastavení" else "Settings", Icons.Filled.Settings)
         )
     }
 
@@ -2863,17 +2882,17 @@ fun AppleFloatingGlassBar(
         if (isDark) {
             Brush.verticalGradient(
                 colors = listOf(
-                    Color(0xE826262A),
-                    Color(0xF018181A),
-                    Color(0xF6101012)
+                    Color(0xF626262A),
+                    Color(0xFA18181A),
+                    Color(0xFD101012)
                 )
             )
         } else {
             Brush.verticalGradient(
                 colors = listOf(
-                    Color(0xF8FFFFFF),
-                    Color(0xEEF6F8FC),
-                    Color(0xE6EDF2F9)
+                    Color(0xFEFFFFFF),
+                    Color(0xF8F6F8FC),
+                    Color(0xF2EDF2F9)
                 )
             )
         }
@@ -2919,260 +2938,222 @@ fun AppleFloatingGlassBar(
         }
     }
 
-    BoxWithConstraints(
+    Row(
         modifier = modifier
-            .widthIn(max = 390.dp)
-            .fillMaxWidth()
-            .shadow(
-                elevation = 22.dp,
-                shape = CircleShape,
-                spotColor = if (isDark) Color(0xB8000000) else Color(0x35001830),
-                ambientColor = Color(0x28000000)
-            )
-            .border(
-                width = 1.dp,
-                brush = glassBorderBrush,
-                shape = CircleShape
-            )
-            .clip(CircleShape)
-            .background(brush = glassBgBrush)
-            .padding(4.dp),
-        contentAlignment = Alignment.CenterStart
+            .widthIn(max = 420.dp)
+            .fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        val barWidth = maxWidth
-        val tabCount = tabs.size
-        val tabWidth = barWidth / tabCount
-        val density = LocalDensity.current
-        val tabWidthPx = with(density) { tabWidth.toPx() }
-
-        val tabFraction = remember { Animatable(selectedTab.toFloat()) }
-        var isDragging by remember { mutableStateOf(false) }
-        val coroutineScope = rememberCoroutineScope()
-        val haptics = LocalHapticFeedback.current
-        var lastHapticIndex by remember { mutableStateOf(selectedTab) }
-
-        // Keep synced when selectedTab changes externally
-        LaunchedEffect(selectedTab) {
-            if (!isDragging && tabFraction.targetValue != selectedTab.toFloat() && tabFraction.value != selectedTab.toFloat()) {
-                tabFraction.animateTo(
-                    targetValue = selectedTab.toFloat(),
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioLowBouncy,
-                        stiffness = Spring.StiffnessMediumLow
-                    )
-                )
-            }
-        }
-
-        // Liquid squash & stretch deformation while in transit
-        val currentFraction = tabFraction.value
-        val distFromNearest = kotlin.math.abs(currentFraction - currentFraction.roundToInt())
-        val stretchProgress = kotlin.math.sin(distFromNearest * kotlin.math.PI.toFloat()).coerceIn(0f, 1f)
-        val pillScaleX = 1f + 0.16f * stretchProgress
-        val pillScaleY = 1f - 0.06f * stretchProgress
-
-        Box(
+        // 1. Left container (3 tabs pill)
+        BoxWithConstraints(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(58.dp)
-                .pointerInput(tabWidthPx, tabCount) {
-                    awaitEachGesture {
-                        val down = awaitFirstDown(requireUnconsumed = false)
-                        var dragStarted = false
-                        var totalDragX = 0f
-                        val touchSlop = viewConfiguration.touchSlop
+                .weight(1f)
+                .shadow(
+                    elevation = 22.dp,
+                    shape = CircleShape,
+                    spotColor = if (isDark) Color(0xB8000000) else Color(0x35001830),
+                    ambientColor = Color(0x28000000)
+                )
+                .border(
+                    width = 1.dp,
+                    brush = glassBorderBrush,
+                    shape = CircleShape
+                )
+                .clip(CircleShape)
+                .background(brush = glassBgBrush)
+                .padding(4.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            val barWidth = maxWidth
+            val tabCount = tabs.size
+            val tabWidth = barWidth / tabCount
+            val density = LocalDensity.current
+            val tabWidthPx = with(density) { tabWidth.toPx() }
 
-                        try {
-                            while (true) {
-                                val event = awaitPointerEvent()
-                                val change = event.changes.firstOrNull { it.id == down.id } ?: break
+            val tabFraction = remember { Animatable(selectedTab.toFloat()) }
+            var isDragging by remember { mutableStateOf(false) }
+            val coroutineScope = rememberCoroutineScope()
+            val haptics = LocalHapticFeedback.current
+            var lastHapticIndex by remember { mutableStateOf(selectedTab) }
 
-                                if (!change.pressed) {
-                                    // Pointer UP
+            // Keep synced when selectedTab changes externally
+            LaunchedEffect(selectedTab) {
+                if (!isDragging && tabFraction.targetValue != selectedTab.toFloat() && tabFraction.value != selectedTab.toFloat()) {
+                    tabFraction.animateTo(
+                        targetValue = selectedTab.toFloat(),
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioLowBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    )
+                }
+            }
+
+            // Liquid squash & stretch deformation while in transit
+            val currentFraction = tabFraction.value
+            val distFromNearest = kotlin.math.abs(currentFraction - currentFraction.roundToInt())
+            val stretchProgress = kotlin.math.sin(distFromNearest * kotlin.math.PI.toFloat()).coerceIn(0f, 1f)
+            val pillScaleX = 1f + 0.16f * stretchProgress
+            val pillScaleY = 1f - 0.06f * stretchProgress
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(58.dp)
+                    .pointerInput(tabWidthPx, tabCount) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            var dragStarted = false
+                            var totalDragX = 0f
+                            val touchSlop = viewConfiguration.touchSlop
+
+                            try {
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    val change = event.changes.firstOrNull { it.id == down.id } ?: break
+
+                                    if (!change.pressed) {
+                                        // Pointer UP
+                                        if (dragStarted) {
+                                            isDragging = false
+                                            val targetIndex = tabFraction.value.roundToInt().coerceIn(0, tabCount - 1)
+                                            coroutineScope.launch {
+                                                tabFraction.animateTo(
+                                                    targetValue = targetIndex.toFloat(),
+                                                    animationSpec = spring(
+                                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                                        stiffness = Spring.StiffnessMediumLow
+                                                    )
+                                                )
+                                            }
+                                            onSelectTab(targetIndex)
+                                        } else {
+                                            // Tap detected
+                                            val tappedIndex = (change.position.x / tabWidthPx).toInt().coerceIn(0, tabCount - 1)
+                                            coroutineScope.launch {
+                                                tabFraction.animateTo(
+                                                    targetValue = tappedIndex.toFloat(),
+                                                    animationSpec = spring(
+                                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                                        stiffness = Spring.StiffnessMediumLow
+                                                    )
+                                                )
+                                            }
+                                            onSelectTab(tappedIndex)
+                                        }
+                                        change.consume()
+                                        break
+                                    }
+
+                                    val dragAmount = change.position.x - change.previousPosition.x
+                                    totalDragX += dragAmount
+
+                                    if (!dragStarted && kotlin.math.abs(totalDragX) > touchSlop) {
+                                        dragStarted = true
+                                        isDragging = true
+                                    }
+
                                     if (dragStarted) {
-                                        isDragging = false
-                                        val targetIndex = tabFraction.value.roundToInt().coerceIn(0, tabCount - 1)
-                                        coroutineScope.launch {
-                                            tabFraction.animateTo(
-                                                targetValue = targetIndex.toFloat(),
-                                                animationSpec = spring(
-                                                    dampingRatio = Spring.DampingRatioLowBouncy,
-                                                    stiffness = Spring.StiffnessMediumLow
-                                                )
-                                            )
+                                        change.consume()
+                                        val deltaFraction = dragAmount / tabWidthPx
+                                        val newFraction = (tabFraction.value + deltaFraction).coerceIn(-0.15f, (tabCount - 1).toFloat() + 0.15f)
+                                        val rounded = newFraction.roundToInt().coerceIn(0, tabCount - 1)
+                                        if (rounded != lastHapticIndex) {
+                                            lastHapticIndex = rounded
+                                            try {
+                                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            } catch (_: Exception) {}
                                         }
-                                        onSelectTab(targetIndex)
-                                    } else {
-                                        // Tap detected
-                                        val tappedIndex = (change.position.x / tabWidthPx).toInt().coerceIn(0, tabCount - 1)
                                         coroutineScope.launch {
-                                            tabFraction.animateTo(
-                                                targetValue = tappedIndex.toFloat(),
-                                                animationSpec = spring(
-                                                    dampingRatio = Spring.DampingRatioLowBouncy,
-                                                    stiffness = Spring.StiffnessMediumLow
-                                                )
-                                            )
+                                            tabFraction.snapTo(newFraction)
                                         }
-                                        onSelectTab(tappedIndex)
                                     }
-                                    change.consume()
-                                    break
                                 }
-
-                                val dragAmount = change.position.x - change.previousPosition.x
-                                totalDragX += dragAmount
-
-                                if (!dragStarted && kotlin.math.abs(totalDragX) > touchSlop) {
-                                    dragStarted = true
-                                    isDragging = true
-                                }
-
-                                if (dragStarted) {
-                                    change.consume()
-                                    val deltaFraction = dragAmount / tabWidthPx
-                                    val newFraction = (tabFraction.value + deltaFraction).coerceIn(-0.15f, (tabCount - 1).toFloat() + 0.15f)
-                                    val rounded = newFraction.roundToInt().coerceIn(0, tabCount - 1)
-                                    if (rounded != lastHapticIndex) {
-                                        lastHapticIndex = rounded
-                                        try {
-                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        } catch (_: Exception) {}
-                                    }
+                            } finally {
+                                if (isDragging) {
+                                    isDragging = false
+                                    val targetIndex = tabFraction.value.roundToInt().coerceIn(0, tabCount - 1)
                                     coroutineScope.launch {
-                                        tabFraction.snapTo(newFraction)
-                                    }
-                                }
-                            }
-                        } finally {
-                            if (isDragging) {
-                                isDragging = false
-                                val targetIndex = tabFraction.value.roundToInt().coerceIn(0, tabCount - 1)
-                                coroutineScope.launch {
-                                    tabFraction.animateTo(
-                                        targetValue = targetIndex.toFloat(),
-                                        animationSpec = spring(
-                                            dampingRatio = Spring.DampingRatioLowBouncy,
-                                            stiffness = Spring.StiffnessMediumLow
+                                        tabFraction.animateTo(
+                                            targetValue = targetIndex.toFloat(),
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                                stiffness = Spring.StiffnessMediumLow
+                                            )
                                         )
-                                    )
+                                    }
+                                    onSelectTab(targetIndex)
                                 }
-                                onSelectTab(targetIndex)
                             }
                         }
                     }
-                }
-        ) {
-            // 1. Single Continuous Sliding Liquid Glass Pill Indicator
-            Box(
-                modifier = Modifier
-                    .offset {
-                        IntOffset(
-                            x = (tabFraction.value * tabWidthPx).roundToInt(),
-                            y = 0
-                        )
-                    }
-                    .width(tabWidth)
-                    .fillMaxHeight()
-                    .graphicsLayer {
-                        scaleX = pillScaleX
-                        scaleY = pillScaleY
-                    }
-                    .padding(horizontal = 2.dp, vertical = 2.dp)
-                    .shadow(
-                        elevation = if (isDark) 5.dp else 4.dp,
-                        shape = CircleShape,
-                        spotColor = if (isDark) Color(0x60000000) else Color(0x25001830),
-                        ambientColor = Color.Transparent
-                    )
-                    .border(
-                        width = 0.85.dp,
-                        brush = pillBorderBrush,
-                        shape = CircleShape
-                    )
-                    .clip(CircleShape)
-                    .background(brush = pillBrush)
-            )
-
-            // 2. Tab Items Row (icons + labels)
-            Row(
-                modifier = Modifier.fillMaxSize(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
             ) {
-                tabs.forEach { tab ->
-                    val distance = kotlin.math.abs(tabFraction.value - tab.index)
-                    val proximity = (1f - distance).coerceIn(0f, 1f)
-                    val itemScale = 0.94f + 0.12f * proximity
-
-                    val contentColor = if (isDark) {
-                        Color.White.copy(alpha = 0.48f + 0.52f * proximity)
-                    } else {
-                        androidx.compose.ui.graphics.lerp(
-                            Color(0xFF8E8E93),
-                            Color(0xFF141416),
-                            proximity
+                // 1. Single Continuous Sliding Liquid Glass Pill Indicator
+                Box(
+                    modifier = Modifier
+                        .offset {
+                            IntOffset(
+                                x = (tabFraction.value * tabWidthPx).roundToInt(),
+                                y = 0
+                            )
+                        }
+                        .width(tabWidth)
+                        .fillMaxHeight()
+                        .graphicsLayer {
+                            scaleX = pillScaleX
+                            scaleY = pillScaleY
+                        }
+                        .padding(horizontal = 2.dp, vertical = 2.dp)
+                        .shadow(
+                            elevation = if (isDark) 5.dp else 4.dp,
+                            shape = CircleShape,
+                            spotColor = if (isDark) Color(0x60000000) else Color(0x25001830),
+                            ambientColor = Color.Transparent
                         )
-                    }
+                        .border(
+                            width = 0.85.dp,
+                            brush = pillBorderBrush,
+                            shape = CircleShape
+                        )
+                        .clip(CircleShape)
+                        .background(brush = pillBrush)
+                )
 
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            modifier = Modifier.graphicsLayer {
-                                scaleX = itemScale
-                                scaleY = itemScale
-                            },
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+                // 2. Tab Items Row (icons + labels)
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    tabs.forEach { tab ->
+                        val distance = kotlin.math.abs(tabFraction.value - tab.index)
+                        val proximity = (1f - distance).coerceIn(0f, 1f)
+                        val itemScale = 0.94f + 0.12f * proximity
+
+                        val contentColor = if (isDark) {
+                            Color.White.copy(alpha = 0.48f + 0.52f * proximity)
+                        } else {
+                            androidx.compose.ui.graphics.lerp(
+                                Color(0xFF8E8E93),
+                                Color(0xFF141416),
+                                proximity
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
+                            contentAlignment = Alignment.Center
                         ) {
-                            BadgedBox(
-                                badge = {
-                                    if (tab.badge > 0) {
-                                        val badgeText = if (tab.badge > 999) "999+" else tab.badge.toString()
-                                        val isSingleDigit = badgeText.length == 1
-                                        Surface(
-                                            shape = CircleShape,
-                                            color = if (isDark) Color(0xFF2C2C2E) else Color.White,
-                                            border = BorderStroke(
-                                                width = 1.3.dp,
-                                                color = if (isDark) Color.White.copy(alpha = 0.40f) else Color.Black.copy(alpha = 0.22f)
-                                            ),
-                                            shadowElevation = 2.dp,
-                                            modifier = Modifier
-                                                .offset(x = 6.dp, y = 2.dp)
-                                                .then(
-                                                    if (isSingleDigit) Modifier.size(19.dp)
-                                                    else Modifier
-                                                        .height(19.dp)
-                                                        .widthIn(min = 19.dp)
-                                                )
-                                        ) {
-                                            Box(
-                                                modifier = if (isSingleDigit) {
-                                                    Modifier.fillMaxSize()
-                                                } else {
-                                                    Modifier
-                                                        .fillMaxHeight()
-                                                        .padding(horizontal = 5.dp)
-                                                },
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    text = badgeText,
-                                                    fontSize = if (isSingleDigit) 9.5.sp else 8.5.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    lineHeight = 9.sp,
-                                                    color = if (isDark) Color.White else Color(0xFF1C1C1E),
-                                                    textAlign = TextAlign.Center
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
+                            Column(
+                                modifier = Modifier.graphicsLayer {
+                                    scaleX = itemScale
+                                    scaleY = itemScale
+                                },
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
                             ) {
                                 Icon(
                                     imageVector = tab.icon,
@@ -3180,15 +3161,132 @@ fun AppleFloatingGlassBar(
                                     tint = contentColor,
                                     modifier = Modifier.size(21.dp)
                                 )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = tab.title,
+                                    fontSize = 10.sp,
+                                    fontWeight = if (proximity > 0.5f) FontWeight.SemiBold else FontWeight.Medium,
+                                    color = contentColor
+                                )
                             }
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = tab.title,
-                                fontSize = 10.sp,
-                                fontWeight = if (proximity > 0.5f) FontWeight.SemiBold else FontWeight.Medium,
-                                color = contentColor
-                            )
                         }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        // 2. Right separated Training button (Trénink)
+        val practiceInteractionSource = remember { MutableInteractionSource() }
+        val isPracticePressed by practiceInteractionSource.collectIsPressedAsState()
+        val practiceScale by animateFloatAsState(
+            targetValue = if (isPracticePressed) 0.88f else 1f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMedium
+            ),
+            label = "practiceScale"
+        )
+        val haptics = LocalHapticFeedback.current
+
+        Box(
+            modifier = Modifier
+                .size(66.dp)
+                .graphicsLayer {
+                    scaleX = practiceScale
+                    scaleY = practiceScale
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            // Circular button body (clipped to CircleShape)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .shadow(
+                        elevation = 22.dp,
+                        shape = CircleShape,
+                        spotColor = if (isDark) Color(0xB8000000) else Color(0x35001830),
+                        ambientColor = Color(0x28000000)
+                    )
+                    .border(
+                        width = 1.dp,
+                        brush = glassBorderBrush,
+                        shape = CircleShape
+                    )
+                    .clip(CircleShape)
+                    .background(brush = glassBgBrush)
+                    .clickable(
+                        interactionSource = practiceInteractionSource,
+                        indication = null
+                    ) {
+                        try {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        } catch (_: Exception) {}
+                        onStartPractice()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Bolt,
+                        contentDescription = if (isCzech) "Trénink" else "Practice",
+                        tint = if (isDark) AppleOrange else Color(0xFFE65100),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = if (isCzech) "Trénink" else "Practice",
+                        fontSize = 9.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDark) AppleOrange else Color(0xFFE65100)
+                    )
+                }
+            }
+
+            // Unclipped Badge (pill) allowed to overflow freely outside the circular button
+            if (reviewBadgeCount > 0) {
+                val badgeText = if (reviewBadgeCount > 999) "999+" else reviewBadgeCount.toString()
+                val isSingleDigit = badgeText.length == 1
+                Surface(
+                    shape = CircleShape,
+                    color = if (isDark) Color(0xFF2C2C2E) else Color.White,
+                    border = BorderStroke(
+                        width = 1.3.dp,
+                        color = if (isDark) Color.White.copy(alpha = 0.50f) else Color.Black.copy(alpha = 0.22f)
+                    ),
+                    shadowElevation = 4.dp,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = 4.dp, y = (-2).dp)
+                        .then(
+                            if (isSingleDigit) Modifier.size(20.dp)
+                            else Modifier
+                                .height(20.dp)
+                                .widthIn(min = 20.dp)
+                        )
+                ) {
+                    Box(
+                        modifier = if (isSingleDigit) {
+                            Modifier.fillMaxSize()
+                        } else {
+                            Modifier
+                                .fillMaxHeight()
+                                .padding(horizontal = 6.dp)
+                        },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = badgeText,
+                            fontSize = if (isSingleDigit) 10.sp else 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            lineHeight = 10.sp,
+                            color = if (isDark) Color.White else Color(0xFF1C1C1E),
+                            textAlign = TextAlign.Center
+                        )
                     }
                 }
             }

@@ -100,6 +100,310 @@ import cz.slovickaspeak.app.ui.theme.*
 import kotlinx.coroutines.delay
 
 @Composable
+fun StatsTabContent(
+    progressState: ProgressStateHolder,
+    onOpenCompleteStats: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val strings = rememberAppStrings(progressState.nativeLanguage)
+    var showGoogleEmailPrompt by remember { mutableStateOf(false) }
+    var manualGoogleEmail by remember { mutableStateOf("") }
+    var manualGoogleName by remember { mutableStateOf("") }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(Unit) {
+        progressState.pushMyProgressToCloud(force = true)
+    }
+    LaunchedEffect(progressState.googleUser) {
+        showGoogleEmailPrompt = false
+    }
+    LaunchedEffect(progressState.googleUser, lifecycleOwner) {
+        if (progressState.googleUser != null) {
+            lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                while (true) {
+                    progressState.refreshFromCloud()
+                    delay(30_000L)
+                }
+            }
+        }
+    }
+
+    val googleSignInClient = remember(context) {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(context.getString(cz.slovickaspeak.app.R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+        GoogleSignIn.getClient(context, gso)
+    }
+    val googleAccountLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        try {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            val account = task.getResult(ApiException::class.java)
+            val idToken = account?.idToken
+            val email = account?.email
+            if (!idToken.isNullOrBlank() && !email.isNullOrBlank()) {
+                val derivedName = account.displayName?.takeIf { it.isNotBlank() }
+                    ?: email.substringBefore("@")
+                        .split(".", "_", "-")
+                        .joinToString(" ") { part -> part.replaceFirstChar { it.uppercase() } }
+                progressState.signInWithGoogleFirebase(idToken, derivedName, email)
+                showGoogleEmailPrompt = false
+            } else if (progressState.googleUser == null) {
+                showGoogleEmailPrompt = true
+            }
+        } catch (_: ApiException) {
+            if (progressState.googleUser == null) showGoogleEmailPrompt = true
+        } catch (_: Exception) {
+            if (progressState.googleUser == null) showGoogleEmailPrompt = true
+        }
+    }
+
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        Column(
+            modifier = Modifier
+                .widthIn(max = 680.dp)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Header: Title & Cloud sync badge
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (strings.isCzech) "Statistiky" else "Statistics",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextDark,
+                    letterSpacing = (-0.5).sp
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(if (isDarkThemeActive) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f))
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(7.dp)
+                            .clip(CircleShape)
+                            .background(if (progressState.lastSyncOnlineOk) AppleGreen else AppleOrange)
+                    )
+                    Text(
+                        text = if (progressState.lastSyncOnlineOk) {
+                            if (strings.isCzech) "Synchronizováno" else "Synced"
+                        } else {
+                            progressState.lastSyncStatus.replace("✓", "").trim()
+                        },
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextMuted
+                    )
+                }
+            }
+
+            // 1. Overall Personal Statistics
+            AllStatisticsSectionCard(
+                strings = strings,
+                progressState = progressState,
+                onTileClick = onOpenCompleteStats
+            )
+
+            // 2. Fair Daily & Weekly XP Leaderboard
+            DailyLeaderboardSectionCard(
+                strings = strings,
+                leaderboard = progressState.dailyLeaderboard,
+                weeklyLeaderboard = progressState.weeklyLeaderboard,
+                isSignedIn = progressState.googleUser != null,
+                isSyncing = progressState.isSyncingCloud,
+                onRefresh = { progressState.refreshFromCloud() }
+            )
+
+            // 3. Google Account Profile
+            GoogleAccountSectionCard(
+                strings = strings,
+                progressState = progressState,
+                showEmailPrompt = showGoogleEmailPrompt,
+                manualName = manualGoogleName,
+                manualEmail = manualGoogleEmail,
+                onManualNameChange = { manualGoogleName = it },
+                onManualEmailChange = { manualGoogleEmail = it },
+                onConfirmManualSignIn = {
+                    progressState.signInWithGoogle(manualGoogleName, manualGoogleEmail)
+                    showGoogleEmailPrompt = false
+                },
+                onStartGoogleSignIn = {
+                    try {
+                        googleAccountLauncher.launch(googleSignInClient.signInIntent)
+                    } catch (_: Exception) {
+                        showGoogleEmailPrompt = true
+                    }
+                }
+            )
+
+            Spacer(modifier = Modifier.navigationBarsPadding())
+            Spacer(modifier = Modifier.height(115.dp))
+        }
+    }
+}
+
+@Composable
+fun SettingsTabContent(
+    progressState: ProgressStateHolder,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val strings = rememberAppStrings(progressState.nativeLanguage)
+    var showVoiceGuideDialog by remember { mutableStateOf(false) }
+
+    if (showVoiceGuideDialog) {
+        VoiceRecognitionGuideDialog(
+            isCzech = strings.isCzech,
+            onDismiss = { showVoiceGuideDialog = false },
+            onOpenSettings = {
+                showVoiceGuideDialog = false
+                openVoiceRecognitionSettings(context)
+            }
+        )
+    }
+
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        Column(
+            modifier = Modifier
+                .widthIn(max = 680.dp)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Text(
+                text = if (strings.isCzech) "Nastavení" else "Settings",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextDark,
+                letterSpacing = (-0.5).sp
+            )
+
+            // Section 1: Learning Preferences
+            AppleSectionHeader(if (strings.isCzech) "Předvolby učení" else "Learning Preferences")
+            DailyGoalSectionCard(
+                strings = strings,
+                currentGoal = progressState.dailyGoalWords,
+                onSelectGoal = { progressState.updateDailyGoal(it) }
+            )
+
+            NativeLanguageSectionCard(
+                strings = strings,
+                nativeLanguage = progressState.nativeLanguage,
+                onSelectNativeLanguage = { progressState.updateNativeLanguage(it) }
+            )
+
+            // Section 2: Appearance & Behavior (Unified Apple Inset Card)
+            AppleSectionHeader(if (strings.isCzech) "Vzhled a chování karet" else "Appearance & Audio")
+            Surface(
+                shape = RoundedCornerShape(22.dp),
+                color = CardSurface,
+                border = BorderStroke(0.5.dp, CardBorderGray.copy(alpha = 0.55f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column {
+                    AppleInsetToggleRow(
+                        title = if (strings.isCzech) "Tmavý režim" else "Dark Mode",
+                        subtitle = if (strings.isCzech) "Přepne vzhled aplikace mezi světlým a tmavým." else "Switches appearance between Light and Dark.",
+                        checked = progressState.isDarkMode,
+                        onCheckedChange = { progressState.updateDarkMode(it) },
+                        vectorIcon = Icons.Filled.DarkMode,
+                        iconTint = Color.White,
+                        iconBg = Color(0xFF5856D6)
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = 56.dp),
+                        thickness = 0.5.dp,
+                        color = CardBorderGray.copy(alpha = 0.45f)
+                    )
+                    AppleInsetToggleRow(
+                        title = if (strings.isCzech) "Zobrazení slova po odpovědi" else "Word Display After Answer",
+                        subtitle = if (strings.isCzech) "Po odjezdu karty ukáže okno se slovem." else "Shows a window with the word between cards.",
+                        checked = progressState.pauseCardWhileSpeaking,
+                        onCheckedChange = { progressState.updatePauseCardWhileSpeaking(it) },
+                        vectorIcon = Icons.Filled.Visibility,
+                        iconTint = Color.White,
+                        iconBg = ApplePurple
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = 56.dp),
+                        thickness = 0.5.dp,
+                        color = CardBorderGray.copy(alpha = 0.45f)
+                    )
+                    AppleInsetToggleRow(
+                        title = if (strings.isCzech) "Zopakovat výslovnost" else "Repeat Pronunciation",
+                        subtitle = if (strings.isCzech) "Po vyřešení nahlas zopakuje správnou výslovnost." else "Repeats correct pronunciation out loud after each card.",
+                        checked = progressState.autoPronounceEnabled,
+                        onCheckedChange = { progressState.setAutoPronounce(it) },
+                        vectorIcon = Icons.Filled.VolumeUp,
+                        iconTint = Color.White,
+                        iconBg = AppleBlue
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = 56.dp),
+                        thickness = 0.5.dp,
+                        color = CardBorderGray.copy(alpha = 0.45f)
+                    )
+                    AppleInsetActionRow(
+                        title = if (strings.isCzech) "Rychlé rozpoznávání hlasu" else "Fast Voice Recognition",
+                        subtitle = if (strings.isCzech) "Návod na stažení offline balíčku pro bleskovou odezvu." else "Guide to offline speech pack for instant response.",
+                        onClick = { showVoiceGuideDialog = true },
+                        vectorIcon = Icons.Filled.Mic,
+                        iconTint = Color.White,
+                        iconBg = AppleGreen
+                    )
+                }
+            }
+
+            // Section 3: Study Reminder
+            AppleSectionHeader(if (strings.isCzech) "Notifikace" else "Notifications")
+            StudyReminderSectionCard(
+                strings = strings,
+                reminderEnabled = progressState.studyReminderEnabled,
+                reminderHour = progressState.studyReminderHour,
+                reminderMinute = progressState.studyReminderMinute,
+                onUpdateReminder = { enabled, hour, minute ->
+                    progressState.updateStudyReminder(enabled, hour, minute)
+                }
+            )
+
+            // Section 4: System & Version
+            AppleSectionHeader(if (strings.isCzech) "O aplikaci" else "About")
+            AppVersionSectionCard(
+                strings = strings,
+                progressState = progressState
+            )
+
+            Spacer(modifier = Modifier.navigationBarsPadding())
+            Spacer(modifier = Modifier.height(115.dp))
+        }
+    }
+}
+
+@Composable
 fun AppleFullSettingsDialog(
     visible: Boolean = true,
     progressState: ProgressStateHolder,

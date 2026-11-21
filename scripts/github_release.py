@@ -5,20 +5,28 @@ import mimetypes
 
 TOKEN_PATH = r"C:\Users\radek.vlk\.gemini\antigravity\brain\43b0acd7-1097-4287-b01f-eedb0d465b28\scratch\github_token.txt"
 REPO = "radekvlk/LingoStacks"
-TAG = "v1.0.15"
-NAME = "LingoStacks v1.0.15 (Build 121)"
+TAG = "v1.0.16"
+NAME = "LingoStacks v1.0.16 (Build 122)"
 
-BODY = """versionCode: 121
+BODY = """versionCode: 122
 
 [CS]
-• **Úprava žebříčku:** Odstraněno herní slovo „hráčů“ z nadpisu statistického pořadí (nyní „Kompletní pořadí ($totalParticipants)“).
-• **Oprava počítadla lekce:** Vyřešeno zamrzání čítače na 18/60 v lekcích (včetně nepravidelných sloves a smíšeného směru učení) – postup se nyní dynamicky načítá a plynule posouvá až k dokončení celé lekce.
-• **Plná obousměrná podpora smíšeného režimu (MIXED):** Výpočet zvládnutých slovíček a prioritizace fronty správně zohledňuje oba směry procvičování.
+• **Přepracovaná plovoucí navigační lišta (styl Samsung Health):** Domů, Statistiky a Nastavení v hlavní plovoucí liště, samostatně oddělené tlačítko Trénink se zachováním vyskakovacího procvičování.
+• **Plnohodnotné záložky Statistiky a Nastavení:** Již nezakrývají spodní navigační lištu jako modální okna, navigace zůstává stále přístupná.
+• **Neoříznutá pilulka s počtem slovíček na tlačítku Trénink:** Odznak nyní volně přesahuje přes okraj tlačítka a dynamicky se rozšiřuje pro 1 až 3+ ciferná čísla.
+• **Plynulý závoj / rozostření za lištou:** Zesílený spodní závoj (210 dp) plynule rozpouští procházející karty a zabraňuje prosvítání písmen v mezeře mezi tlačítky.
+• **Oprava odkazu na offline řeč:** V nastavení naviguje přímo k návodu a instalaci offline hlasových balíčků namísto Google Asistenta.
+• **Ukazatel vlastní pozice v žebříčku:** Přidán přehledný indikátor pořadí uživatele bez ohledu na celkový počet účastníků.
+• **Úprava textů:** Odstraněno slovo „bounce“ v nastavení a herní texty v záhlaví žebříčku.
 
 [EN]
-• **Leaderboard Header Copy:** Removed gaming terminology 'players/learners' from leaderboard header (now 'All Rankings ($totalParticipants)').
-• **Lesson Progress Counter Fix:** Resolved counter freezing at 18/60 in lessons (including irregular verbs and mixed study direction) – counter and progress bar now update dynamically up to full lesson completion.
-• **Full Bidirectional MIXED Mode Support:** Deck mastery calculation and spaced repetition queue now properly track both study directions.
+• **Redesigned Floating Navigation Bar (Samsung Health style):** Home, Statistics, and Settings in the main floating pill, with a separate standalone Training button keeping the full-screen practice flow.
+• **Full-Page Statistics & Settings Tabs:** Modern standalone tabs replacing modal popups, keeping the navigation bar permanently accessible.
+• **Unclipped Review Counter Badge:** The badge on the Training button now overflows cleanly without clipping and expands flexibly for 1 to 3+ digit counts.
+• **Smooth Background Veil / Blur:** 210 dp gradient veil gently diffuses scrolling cards and completely eliminates text bleeding through the gap between bar items.
+• **Offline Speech Setup Fix:** Offline speech settings action now leads directly to TTS guide dialog instead of Google Assistant.
+• **Leaderboard User Position:** Added clear user rank indicator regardless of total participants.
+• **Copy Polish:** Removed 'bounce' wording from settings and non-educational gaming terms from leaderboard header.
 """
 
 def main():
@@ -72,9 +80,9 @@ def main():
 
     # 2. Upload APK assets
     apk_paths = [
-        ("LingoStacks_v1.0.15.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.15.apk"),
-        ("LingoStacks.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.15.apk"),
-        ("LingoStacks_v1.0.15_playstore.aab", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.15_playstore.aab")
+        ("LingoStacks_v1.0.16.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.16.apk"),
+        ("LingoStacks.apk", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.16.apk"),
+        ("LingoStacks_v1.0.16_playstore.aab", r"C:\Users\radek.vlk\.gemini\antigravity\scratch\SlovickaSpeak\LingoStacks_v1.0.16_playstore.aab")
     ]
 
     # Delete existing asset with same name if any

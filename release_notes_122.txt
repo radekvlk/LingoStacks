@@ -1,0 +1,16 @@
+<en-GB>
+• Redesigned bottom navigation bar: Floating pill with standalone Practice button.
+• Unclipped review badge: Practice badge expands cleanly for 3+ digit numbers.
+• Smooth backdrop veil: Soft gradient behind bar prevents background text bleed.
+• Full-page tabs for Statistics and Settings (nav bar stays visible).
+• Settings & offline voice fix: Direct guidance to voice recognition setup.
+• Leaderboard: User rank clearly displayed.
+</en-GB>
+<cs-CZ>
+• Nová plovoucí lišta se samostatným tlačítkem Trénink (styl Samsung Health).
+• Neoříznutá pilulka na tlačítku Trénink: Čísla se volně rozšiřují i pro 3+ cifer.
+• Jemný závoj pozadí: Plynulé rozostření brání prosvítání textu v mezeře lišty.
+• Samostatné plné záložky pro Statistiky a Nastavení (lišta zůstává přístupná).
+• Oprava nastavení řeči a offline balíčků.
+• Žebříček: Zobrazení vlastní pozice v celkovém pořadí.
+</cs-CZ>
