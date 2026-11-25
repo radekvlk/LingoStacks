@@ -1,0 +1,12 @@
+<cs-CZ>
+• Oslava dosažení denního limitu: Apple Spring animace s proměnou ikony na zlatý pohár a jiskřičkami
+• Čisté přechody kartiček bez zanechání prázdného obrysu
+• Nový adaptivní widget na domovskou obrazovku: škálovatelný od mikro 1×1 až po 4×2+ dashboard
+• Rychlé zkratky aplikace (App Shortcuts) z domovské obrazovky
+</cs-CZ>
+<en-GB>
+• Daily goal celebration: Apple Spring physics bounce, trophy icon morph, and sparkle burst
+• Seamless flashcard swipe transitions without lingering outlines
+• New responsive home screen widget: adaptive from 1x1 micro badge to 4x2+ rich dashboard
+• App Shortcuts: long-press the home screen app icon for quick actions
+</en-GB>

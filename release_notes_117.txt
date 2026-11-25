@@ -1,0 +1,12 @@
+<cs-CZ>
+• Optimalizace pro velká písma: karta si drží prioritu a plnou velikost bez ořezu textu
+• Spodní ovládací panel: mikrofon má přesně ukotvenou výšku bez poskakování a čistý odstup
+• Pružinové animace: plynulé roztažení kapsle a hravý bounce odskok tlačítek Nevím a Vím
+• Širokoúhlé jiskřičky: oslava splnění denního limitu se rozletuje volně do prostoru
+</cs-CZ>
+<en-GB>
+• Accessibility & Large fonts: flashcards maintain center priority, maximum readability and scale
+• Stable bottom control bar: guaranteed breathing gap, zero vertical jump on mic toggle
+• Spring animations: smooth island expansion and playful bounce pop-in for action buttons
+• Unconstrained sparkle burst: golden celebratory particles expand freely on goal completion
+</en-GB>

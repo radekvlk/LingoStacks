@@ -15,3 +15,11 @@ app/build/
 # Google Play service account keys
 play-publisher-key*.json
 *-service-account*.json
+*.keystore
+*.jks
+
+# Built Android packages & Python cache
+*.apk
+*.aab
+__pycache__/
+*.pyc

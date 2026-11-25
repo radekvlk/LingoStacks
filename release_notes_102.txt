@@ -1,0 +1,14 @@
+<cs-CZ>
+• Oprava automatické obnovy postupu ze zálohy Google účtu po přihlášení do nové instalace
+• Přidáno tlačítko pro okamžitou ruční obnovu dat z cloudu v Nastavení
+• Informace o záloze: záloha nezabírá žádné místo na vašem Google účtu ani Disku
+• Úprava animace denního cíle na hlavní obrazovce: přejede pouze jednou a dynamicky se přizpůsobí celé šířce i na skládacích telefonech (Galaxy Z Fold)
+• Celkové zvýšení stability a výkonu aplikace
+</cs-CZ>
+<en-GB>
+• Fix automatic progress restore from Google account backup upon signing in on a fresh install
+• Added manual cloud backup restore button directly in Settings
+• Backup storage clarity: backup takes 0 MB of your personal Google account or Google Drive storage
+• Daily goal progress bar animation polished: sweeps once and dynamically adapts to wide and foldable screens (Galaxy Z Fold)
+• Overall performance and stability improvements
+</en-GB>

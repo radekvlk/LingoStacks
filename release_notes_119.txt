@@ -1,0 +1,10 @@
+<cs-CZ>
+• Oprava denního cíle: tlačítko Zopakovat chyby již nepřepisuje nastavený denní cíl
+• Zpřesněný popisek ve statistikách Nastavení: Dnes splněno místo matoucího Dnešní cíl
+• Vylepšené rozpoznávání homofonů: spolehlivé uznání slovíčka tie (kravata) i při přepisu jako thai
+</cs-CZ>
+<en-GB>
+• Fixed daily goal: retrying missed words no longer overwrites user's daily goal setting
+• Clarified stats in Settings: Today's Progress tile now clearly indicates words completed today
+• Enhanced homophone matching: reliable recognition of 'tie' even when transcribed as 'thai'
+</en-GB>

@@ -1,0 +1,12 @@
+<cs-CZ>
+• Symetrický plovoucí mikrofon: 100% fixní střed obrazovky bez poskakování do stran, čistý taktilní bounce
+• Tlačítka Nevím a Vím se plynule a symetricky vysouvají zpoza mikrofonu na obě strany
+• Fix odznaku denního limitu: zelený obdélník se při jiskřičkách neroztahuje a drží si kompaktní tvar
+• Karta se slovíčkem má plnou prioritu a přizpůsobení pro velká systémová písma
+</cs-CZ>
+<en-GB>
+• Symmetrical mic island: perfectly anchored screen center, zero sideways drift, tactile in-place bounce
+• Action buttons smoothly emerge symmetrically from behind the center microphone
+• Fixed daily goal badge: compact pill bounds preserved during celebration sparkle burst
+• Flashcard center priority and scale preserved with large accessibility system fonts
+</en-GB>
